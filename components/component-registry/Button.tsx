@@ -38,10 +38,11 @@ const ButtonRenderer: React.FC<{
   component: { props: ButtonProps };
   mode: 'edit' | 'preview';
   actions?: ActionHandlers;
+  onUpdateDataStore?: (key: string, value: any) => void;
   isEditingInline?: boolean;
   onCommitInlineEdit?: (newValue: string) => void;
   evaluationScope: Record<string, any>;
-}> = ({ component, mode, actions, isEditingInline, onCommitInlineEdit, evaluationScope }) => {
+}> = ({ component, mode, actions, onUpdateDataStore, isEditingInline, onCommitInlineEdit, evaluationScope }) => {
   const p = component.props;
   
   // Evaluate dynamic properties for rendering
@@ -51,7 +52,7 @@ const ButtonRenderer: React.FC<{
   const textColor = useJavaScriptRenderer(p.textColor, evaluationScope, '#FFFFFF');
   
   const handleButtonClick = () => {
-    if (mode === 'preview' && !isDisabled && actions) {
+    if (mode === 'preview' && !isDisabled) {
       // Add a reference to actions into the scope for executeCode
       const clickScope = { ...evaluationScope, actions };
 
@@ -62,8 +63,14 @@ const ButtonRenderer: React.FC<{
                 alert(message);
             }
             break;
+        case 'updateData':
+            if (p.actionUpdateKey && onUpdateDataStore) {
+                const valueToUpdate = evaluateAndProcess(p.actionUpdateValue, clickScope);
+                onUpdateDataStore(p.actionUpdateKey, valueToUpdate);
+            }
+            break;
         case 'updateVariable':
-            if (p.actionVariableName) {
+            if (p.actionVariableName && actions) {
                 const newValue = evaluateAndProcess(p.actionVariableValue, clickScope);
                 actions.updateVariable(p.actionVariableName, newValue);
             }
@@ -73,7 +80,7 @@ const ButtonRenderer: React.FC<{
                 alert("Button Action Error: No Data Source selected for 'Create Record' action.");
                 return;
            }
-           if (p.dataSourceName && p.newRecordData) {
+           if (p.dataSourceName && p.newRecordData && actions) {
                 const result = evaluateAndProcess(p.newRecordData, clickScope);
                 
                 if (typeof result !== 'object' || result === null || Array.isArray(result)) {
@@ -87,13 +94,13 @@ const ButtonRenderer: React.FC<{
             break;
         case 'updateRecord':
             const selectedRecordForUpdate = evaluateAndProcess('{{selectedRecord}}', clickScope);
-            if (p.dataSourceName && selectedRecordForUpdate) {
+            if (p.dataSourceName && selectedRecordForUpdate && actions) {
                 actions.updateRecord(p.dataSourceName, selectedRecordForUpdate.id, selectedRecordForUpdate);
             }
             break;
         case 'deleteRecord':
             const selectedRecordForDelete = evaluateAndProcess('{{selectedRecord}}', clickScope);
-            if (p.dataSourceName && selectedRecordForDelete) {
+            if (p.dataSourceName && selectedRecordForDelete && actions) {
                 actions.deleteRecord(p.dataSourceName, selectedRecordForDelete.id);
             }
             break;
@@ -158,13 +165,13 @@ const ButtonProperties: React.FC<{
   
   const actionOptions: { value: ButtonActionType, label: string }[] = [
     { value: 'none', label: 'None' },
-    { value: 'executeCode', label: 'Execute Code' },
     { value: 'alert', label: 'Show Alert' },
+    { value: 'updateData', label: 'Update Data Store' },
     { value: 'updateVariable', label: 'Update Variable' },
+    { value: 'executeCode', label: 'Execute Code' },
     { value: 'createRecord', label: 'Create Record' },
     { value: 'updateRecord', label: 'Update Record' },
     { value: 'deleteRecord', label: 'Delete Record' },
-    // FIX: Add 'navigate' action to the list of options for the button properties panel.
     { value: 'navigate', label: 'Navigate' },
   ];
   
@@ -178,19 +185,23 @@ const ButtonProperties: React.FC<{
       <CollapsibleSection title="Content">
         <PropFxInput label="Text" value={p.text} onChange={val => updateProp('text', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('text', newVal))} />
         <div className="grid grid-cols-2 gap-2">
-          {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
           <PropFxInput label="Background" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
-          {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
           <PropFxInput label="Text Color" value={p.textColor} onChange={val => updateProp('textColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('textColor', newVal))} />
         </div>
       </CollapsibleSection>
       <CollapsibleSection title="On Click Action" isOpenDefault={false}>
         <PropSelect label="Action Type" value={p.actionType} onChange={val => updateProp('actionType', val)} options={actionOptions} />
-        {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
+        
         {p.actionType === 'alert' && <PropFxInput label="Alert Message" value={p.actionAlertMessage} onChange={val => updateProp('actionAlertMessage', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionAlertMessage', newVal))} />}
         
+        {p.actionType === 'updateData' && (
+            <>
+                <PropInput label="Data Store Key" value={p.actionUpdateKey} onChange={val => updateProp('actionUpdateKey', val)} placeholder="e.g. selectedUser" />
+                <PropFxInput label="New Value" value={p.actionUpdateValue} onChange={val => updateProp('actionUpdateValue', val)} placeholder="e.g. {{ { id: 1 } }}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionUpdateValue', newVal))} />
+            </>
+        )}
+
         {p.actionType === 'executeCode' && (
-            // FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition.
             <PropFxInput 
                 label="Code to Execute" 
                 value={p.actionCodeToExecute} 
@@ -203,7 +214,6 @@ const ButtonProperties: React.FC<{
         {p.actionType === 'updateVariable' && (
             <>
                 <PropSelect label="Variable to Update" value={p.actionVariableName} onChange={val => updateProp('actionVariableName', val)} options={variableOptions} />
-                {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
                 <PropFxInput label="New Value" value={p.actionVariableValue} onChange={val => updateProp('actionVariableValue', val)} placeholder="e.g. {{!isLoading}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionVariableValue', newVal))} />
             </>
         )}
@@ -212,7 +222,6 @@ const ButtonProperties: React.FC<{
             <PropSelect label="Data Source" value={p.dataSourceName} onChange={val => updateProp('dataSourceName', val)} options={dataSourceOptions} />
         )}
         {p.actionType === 'createRecord' && (
-            // FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition.
             <PropFxInput label="New Record Object" value={p.newRecordData} onChange={val => updateProp('newRecordData', val)} placeholder="{{ { name: InputName.value } }}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('newRecordData', newVal))} />
         )}
 

@@ -236,4 +236,94 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     await expect(page.getByLabel('INPUT component')).toBeVisible();
   });
 
+  test('Import and Preview Workflow', async ({ page }) => {
+    // @ts-ignore
+    const loginAppJson = fs.readFileSync(path.join(process.cwd(), 'e2e', 'assets', 'login_app.json'), 'utf-8');
+
+    // 1. Simulate file import
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'login-app.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(loginAppJson)
+    });
+
+    // 2. Verify the app "Login" now exists on the dashboard
+    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+
+    // 3. Open the app in the editor
+    const appCard = page.locator('.grid > div').filter({ hasText: 'Login' });
+    await appCard.getByRole('button', { name: 'Edit App' }).click();
+
+    // 4. Verify editor contents
+    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+    await expect(page.getByLabel('INPUT component')).toHaveCount(2);
+    await expect(page.getByLabel('BUTTON component')).toHaveCount(2);
+    await expect(page.getByLabel('LABEL component')).toHaveCount(2);
+    await expect(page.getByLabel('FORM component')).toHaveCount(1);
+    
+    // 5. Switch to Preview
+    await page.getByRole('button', { name: 'Preview' }).click();
+    await expect(page.getByLabel('Application Preview')).toBeVisible();
+
+    // 6. Interact with the form in the preview
+    const previewFrame = page.locator('.relative.w-full');
+    const emailInput = previewFrame.getByPlaceholder('Username or Email');
+    const passwordInput = previewFrame.getByPlaceholder('Password');
+
+    const randomEmail = `test-${Date.now()}@example.com`;
+    const randomPassword = `password${Date.now()}`;
+
+    await emailInput.fill(randomEmail);
+    await passwordInput.fill(randomPassword);
+
+    // 7. Verify the inputs hold the new values
+    await expect(emailInput).toHaveValue(randomEmail);
+    await expect(passwordInput).toHaveValue(randomPassword);
+  });
+
+  test('Save as Template from Imported App Workflow', async ({ page }) => {
+    // This test ensures the full flow from importing an app to making a template from it works.
+    
+    // 1. Import the Login App (to ensure it exists on the dashboard)
+    // @ts-ignore
+    const loginAppJson = fs.readFileSync(path.join(process.cwd(), 'e2e', 'assets', 'login_app.json'), 'utf-8');
+    await page.locator('input[type="file"]').first().setInputFiles({
+        name: 'login-app.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(loginAppJson)
+    });
+    await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+    
+    // 2. Find the app card, open its menu, and click "Save as Template"
+    const appCard = page.locator('.grid > div').filter({ hasText: 'Login' });
+    await appCard.getByRole('button').nth(1).click(); // Click the kebab menu
+    await page.getByText('Save as Template').click();
+    
+    // 3. Fill out the "Save as Template" modal
+    await expect(page.getByRole('heading', { name: 'Save as Template' })).toBeVisible();
+    const templateName = `My Login Template - ${Date.now()}`;
+    const templateDesc = `A reusable login form template.`;
+    await page.getByLabel('Template Name').fill(templateName);
+    await page.getByLabel('Description').fill(templateDesc);
+
+    // 4. Upload a thumbnail image
+    // @ts-ignore
+    const imagePath = path.join(process.cwd(), 'e2e', 'assets', 'login_thumbnail.png');
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Upload Image' }).click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles(imagePath);
+
+    // 5. Save the template
+    await page.getByRole('button', { name: 'Save Template' }).click();
+    
+    // 6. Verify modal is closed and template card is visible
+    await expect(page.getByRole('heading', { name: 'Save as Template' })).not.toBeVisible();
+    const templateCard = page.locator('h2:has-text("App Templates")').locator('..').locator('.grid > div').filter({ hasText: templateName });
+    await expect(templateCard).toBeVisible();
+
+    // 7. Verify the thumbnail image exists and has a data URL source
+    const thumbnail = templateCard.locator('img');
+    await expect(thumbnail).toHaveAttribute('src', /^data:image\/png;base64,.+/);
+  });
 });

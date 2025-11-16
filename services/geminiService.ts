@@ -6,7 +6,8 @@ import { componentRegistry } from '../components/component-registry/registry';
 
 const componentEnum = ['LABEL', 'INPUT', 'BUTTON', 'IMAGE', 'PANEL', 'FORM', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'DIVIDER', 'H_STACK', 'V_STACK', 'RADIO_GROUP', 'SWITCH', 'TABLE', 'MODAL'];
 // FIX: Added 'navigate' to the buttonActionEnum to match the available actions defined in types.ts.
-const buttonActionEnum = ['alert', 'updateData', 'none', 'createRecord', 'updateRecord', 'deleteRecord', 'updateVariable', 'executeCode', 'navigate'];
+// FIX: Added 'selectRecord' to fully align with ButtonActionType.
+const buttonActionEnum = ['alert', 'updateData', 'none', 'createRecord', 'updateRecord', 'deleteRecord', 'selectRecord', 'updateVariable', 'executeCode', 'navigate'];
 const variableTypeEnum = ['string', 'number', 'boolean', 'object', 'array'];
 
 const appSchema = {
