@@ -1,9 +1,10 @@
 
+
 import React from 'react';
 import { ComponentType, RadioGroupProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps } from './common';
 import { get } from '../../utils/data-helpers';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -17,7 +18,7 @@ const RadioGroupRenderer: React.FC<{
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
   const options = p.options.split(',').map(opt => opt.trim());
-  const isDisabled = !!useExpression(p.disabled, evaluationScope, false);
+  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
   const isDisabledInEdit = mode === 'edit' || isDisabled;
   const groupLabelId = `${component.id}-group-label`;
   const selectedValue = get(dataStore, p.dataStoreKey);

@@ -5,7 +5,8 @@ import { AppDefinition, ComponentType, DataStore, AppVariableType, AppComponent 
 import { componentRegistry } from '../components/component-registry/registry';
 
 const componentEnum = ['LABEL', 'INPUT', 'BUTTON', 'IMAGE', 'PANEL', 'FORM', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'DIVIDER', 'H_STACK', 'V_STACK', 'RADIO_GROUP', 'SWITCH', 'TABLE', 'MODAL'];
-const buttonActionEnum = ['alert', 'updateData', 'none', 'createRecord', 'updateRecord', 'deleteRecord', 'updateVariable', 'executeCode'];
+// FIX: Added 'navigate' to the buttonActionEnum to match the available actions defined in types.ts.
+const buttonActionEnum = ['alert', 'updateData', 'none', 'createRecord', 'updateRecord', 'deleteRecord', 'updateVariable', 'executeCode', 'navigate'];
 const variableTypeEnum = ['string', 'number', 'boolean', 'object', 'array'];
 
 const appSchema = {

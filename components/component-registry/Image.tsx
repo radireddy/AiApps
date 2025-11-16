@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { ComponentType, ImageProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, StateProps } from './common';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -13,13 +14,13 @@ const ImageRenderer: React.FC<{
 }> = ({ component, evaluationScope }) => {
   const p = component.props;
   const style = {
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
     objectFit: p.objectFit,
-    opacity: useExpression(p.opacity, evaluationScope, 1),
-    boxShadow: useExpression(p.boxShadow, evaluationScope, ''),
+    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
   };
   return <img src={p.src} alt={p.alt} style={style} className="w-full h-full" />;
 };

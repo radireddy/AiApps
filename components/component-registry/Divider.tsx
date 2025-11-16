@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { ComponentType, DividerProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropFxInput } from './common';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -11,7 +12,7 @@ const DividerRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, evaluationScope }) => {
   const p = component.props;
-  const color = useExpression(p.color, evaluationScope, '#d1d5db');
+  const color = useJavaScriptRenderer(p.color, evaluationScope, '#d1d5db');
   return <div style={{ backgroundColor: color, opacity: p.opacity }} className="w-full h-full"></div>;
 };
 

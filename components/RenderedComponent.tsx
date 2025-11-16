@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppComponent, ComponentProps, ComponentType, ActionHandlers } from '../types';
 import { componentRegistry } from './component-registry/registry';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../property-renderers/useJavaScriptRenderer';
 
 interface RenderedComponentProps {
   component: AppComponent;
@@ -47,7 +47,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const ComponentRenderer = plugin.renderer;
   const isSelected = component.id === selectedComponentId;
   
-  const isHidden = !!useExpression(component.props.hidden, evaluationScope, false);
+  const isHidden = !!useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
 
   // Exit inline editing when component is deselected
   useEffect(() => {

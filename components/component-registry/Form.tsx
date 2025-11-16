@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { ComponentType, FormProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropFxInput } from './common';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -14,14 +15,14 @@ const FormRenderer: React.FC<{
 }> = ({ component, children, evaluationScope }) => {
   const p = component.props;
   const style = {
-    backgroundColor: useExpression(p.backgroundColor, evaluationScope, '#ffffff'),
-    background: useExpression(p.backgroundGradient, evaluationScope, '') || useExpression(p.backgroundColor, evaluationScope, '#ffffff'),
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    backgroundColor: useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
+    background: useJavaScriptRenderer(p.backgroundGradient, evaluationScope, '') || useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: useExpression(p.opacity, evaluationScope, 1),
-    boxShadow: useExpression(p.boxShadow, evaluationScope, ''),
+    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
   };
   return <div style={style} className="w-full h-full relative">{children}</div>;
 };

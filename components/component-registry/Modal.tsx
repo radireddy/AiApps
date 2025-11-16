@@ -1,9 +1,11 @@
 
+
 import React from 'react';
 import { ComponentType, ModalProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropFxInput, StateProps } from './common';
 import { PanelPlugin } from './Panel'; // Modals are a type of panel
-import { useExpression } from '../../expressions/useExpression';
+// FIX: Replaced non-existent `useExpression` with `useJavaScriptRenderer`.
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -14,14 +16,14 @@ const ModalRenderer: React.FC<{
 }> = ({ component, children, evaluationScope }) => {
   const p = component.props;
   const panelStyle = {
-    backgroundColor: useExpression(p.backgroundColor, evaluationScope, '#ffffff'),
-    background: useExpression(p.backgroundGradient, evaluationScope, '') || useExpression(p.backgroundColor, evaluationScope, '#ffffff'),
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    backgroundColor: useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
+    background: useJavaScriptRenderer(p.backgroundGradient, evaluationScope, '') || useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: useExpression(p.opacity, evaluationScope, 1),
-    boxShadow: useExpression(p.boxShadow, evaluationScope, ''),
+    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
     width: `${p.width}px`,
     height: `${p.height}px`,
   };

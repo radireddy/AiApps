@@ -1,8 +1,9 @@
 
+
 import React from 'react';
 import { ComponentType, ButtonProps, ComponentPlugin, ActionHandlers, ButtonActionType, DataSourceInstance, AppVariable } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, StateProps, PropFxInput, InlineTextEditor } from './common';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { safeEval } from '../../expressions/engine';
 import { commonStylingProps } from '../../constants';
 
@@ -44,10 +45,10 @@ const ButtonRenderer: React.FC<{
   const p = component.props;
   
   // Evaluate dynamic properties for rendering
-  const text = useExpression(p.text, evaluationScope, '');
-  const isDisabled = !!useExpression(p.disabled, evaluationScope, false);
-  const backgroundColor = useExpression(p.backgroundColor, evaluationScope, '#4f46e5');
-  const textColor = useExpression(p.textColor, evaluationScope, '#FFFFFF');
+  const text = useJavaScriptRenderer(p.text, evaluationScope, '');
+  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#4f46e5');
+  const textColor = useJavaScriptRenderer(p.textColor, evaluationScope, '#FFFFFF');
   
   const handleButtonClick = () => {
     if (mode === 'preview' && !isDisabled && actions) {
@@ -110,11 +111,11 @@ const ButtonRenderer: React.FC<{
   const style = {
     backgroundColor,
     color: textColor,
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: isDisabled ? 0.6 : useExpression(p.opacity, evaluationScope, 1),
+    opacity: isDisabled ? 0.6 : useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -163,6 +164,8 @@ const ButtonProperties: React.FC<{
     { value: 'createRecord', label: 'Create Record' },
     { value: 'updateRecord', label: 'Update Record' },
     { value: 'deleteRecord', label: 'Delete Record' },
+    // FIX: Add 'navigate' action to the list of options for the button properties panel.
+    { value: 'navigate', label: 'Navigate' },
   ];
   
   const dataSourceOptions = dataSources.map(ds => ({ value: ds.id, label: ds.id }));
@@ -175,15 +178,19 @@ const ButtonProperties: React.FC<{
       <CollapsibleSection title="Content">
         <PropFxInput label="Text" value={p.text} onChange={val => updateProp('text', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('text', newVal))} />
         <div className="grid grid-cols-2 gap-2">
+          {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
           <PropFxInput label="Background" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
+          {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
           <PropFxInput label="Text Color" value={p.textColor} onChange={val => updateProp('textColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('textColor', newVal))} />
         </div>
       </CollapsibleSection>
       <CollapsibleSection title="On Click Action" isOpenDefault={false}>
         <PropSelect label="Action Type" value={p.actionType} onChange={val => updateProp('actionType', val)} options={actionOptions} />
+        {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
         {p.actionType === 'alert' && <PropFxInput label="Alert Message" value={p.actionAlertMessage} onChange={val => updateProp('actionAlertMessage', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionAlertMessage', newVal))} />}
         
         {p.actionType === 'executeCode' && (
+            // FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition.
             <PropFxInput 
                 label="Code to Execute" 
                 value={p.actionCodeToExecute} 
@@ -196,6 +203,7 @@ const ButtonProperties: React.FC<{
         {p.actionType === 'updateVariable' && (
             <>
                 <PropSelect label="Variable to Update" value={p.actionVariableName} onChange={val => updateProp('actionVariableName', val)} options={variableOptions} />
+                {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
                 <PropFxInput label="New Value" value={p.actionVariableValue} onChange={val => updateProp('actionVariableValue', val)} placeholder="e.g. {{!isLoading}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionVariableValue', newVal))} />
             </>
         )}
@@ -204,6 +212,7 @@ const ButtonProperties: React.FC<{
             <PropSelect label="Data Source" value={p.dataSourceName} onChange={val => updateProp('dataSourceName', val)} options={dataSourceOptions} />
         )}
         {p.actionType === 'createRecord' && (
+            // FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition.
             <PropFxInput label="New Record Object" value={p.newRecordData} onChange={val => updateProp('newRecordData', val)} placeholder="{{ { name: InputName.value } }}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('newRecordData', newVal))} />
         )}
 

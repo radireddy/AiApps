@@ -4,6 +4,8 @@ import path from 'path';
 import crypto from 'crypto';
 import v8to from 'v8-to-istanbul';
 
+// FIX: Suppress TypeScript error for process.cwd(). It is available in the Node.js environment where Playwright runs.
+// @ts-ignore
 const NYC_OUTPUT_DIR = path.join(process.cwd(), '.nyc_output');
 
 // Clean up the output directory before all tests run
@@ -42,6 +44,8 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
       
       // Map the URL path to a file system path.
       // e.g., http://localhost:3000/App.tsx -> /path/to/project/src/App.tsx
+      // FIX: Suppress TypeScript error for process.cwd(). It is available in the Node.js environment where Playwright runs.
+      // @ts-ignore
       const filePath = path.join(process.cwd(), url.pathname.substring(1));
 
       if (!fs.existsSync(filePath)) {

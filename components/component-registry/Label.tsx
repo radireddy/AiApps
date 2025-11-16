@@ -1,9 +1,11 @@
 
+
 import React from 'react';
-import { ComponentType, LabelProps, ComponentPlugin } from '../../types';
+import { ComponentType, LabelProps, ComponentPlugin, PropertyRendererType } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, StateProps, PropFxInput, InlineTextEditor } from './common';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
+import { propertyRendererRegistry } from '../../property-renderers/registry';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -14,27 +16,27 @@ const LabelRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, isEditingInline, onCommitInlineEdit, evaluationScope }) => {
   const p = component.props;
+
+  // Dynamically select the renderer based on the textRenderer prop
+  const rendererHook = propertyRendererRegistry[p.textRenderer || 'javascript'] || propertyRendererRegistry.literal;
+  const content = rendererHook(p.text, evaluationScope, '');
   
-  // Evaluate dynamic properties
-  const text = useExpression(p.text, evaluationScope, '');
-  const color = useExpression(p.color, evaluationScope, '#111827');
-  const backgroundColor = useExpression(p.backgroundColor, evaluationScope, 'transparent');
+  const color = useJavaScriptRenderer(p.color, evaluationScope, '#111827');
+  const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, 'transparent');
 
   const style: React.CSSProperties = {
-    fontSize: `${useExpression(p.fontSize, evaluationScope, 16)}px`,
+    fontSize: `${useJavaScriptRenderer(p.fontSize, evaluationScope, 16)}px`,
     fontWeight: p.fontWeight,
     color: color,
     textAlign: p.textAlign,
-    fontFamily: useExpression(p.fontFamily, evaluationScope, 'sans-serif'),
+    fontFamily: useJavaScriptRenderer(p.fontFamily, evaluationScope, 'sans-serif'),
     backgroundColor: backgroundColor,
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '0px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '0px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, 'transparent'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '0px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '0px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, 'transparent'),
     borderStyle: p.borderStyle,
-    opacity: useExpression(p.opacity, evaluationScope, 1),
-    boxShadow: useExpression(p.boxShadow, evaluationScope, ''),
-    display: 'flex',
-    alignItems: 'center',
+    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
     padding: '8px',
     boxSizing: 'border-box'
   };
@@ -57,8 +59,13 @@ const LabelRenderer: React.FC<{
           </div>
       )
   }
+  
+  // For renderers that return a string (like Markdown), we need to render it as HTML
+  if (p.textRenderer === 'markdown' && typeof content === 'string') {
+      return <div style={{...style, display: 'block'}} dangerouslySetInnerHTML={{ __html: content }} />;
+  }
 
-  return <div style={style}>{String(text)}</div>;
+  return <div style={{...style, display: 'flex', alignItems: 'center'}}>{String(content)}</div>;
 };
 
 const LabelProperties: React.FC<{
@@ -67,11 +74,18 @@ const LabelProperties: React.FC<{
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
   const p = component.props;
+  const rendererOptions: { value: PropertyRendererType, label: string }[] = [
+      { value: 'javascript', label: 'JavaScript Expression' },
+      { value: 'markdown', label: 'Markdown' },
+      { value: 'literal', label: 'Plain Text' },
+  ];
+
   return (
     <>
       <LayoutProps props={p} updateProp={updateProp} />
       <StateProps props={{...p, id: component.id}} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
       <CollapsibleSection title="Content">
+          <PropSelect label="Text Renderer" value={p.textRenderer} onChange={val => updateProp('textRenderer', val)} options={rendererOptions} />
           <PropFxInput label="Text" value={p.text} onChange={val => updateProp('text', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('text', newVal))} />
       </CollapsibleSection>
       <CollapsibleSection title="Typography">
@@ -107,7 +121,8 @@ export const LabelPlugin: ComponentPlugin = {
       textAlign: 'left',
       fontFamily: '{{theme.font.family}}',
       backgroundColor: 'transparent',
-      borderStyle: 'none'
+      borderStyle: 'none',
+      textRenderer: 'javascript',
     },
   },
   renderer: LabelRenderer,

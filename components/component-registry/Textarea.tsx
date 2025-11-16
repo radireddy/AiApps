@@ -1,9 +1,10 @@
 
+
 import React from 'react';
 import { ComponentType, TextareaProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps } from './common';
 import { get } from '../../utils/data-helpers';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -16,12 +17,12 @@ const TextareaRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
-  const isDisabled = !!useExpression(p.disabled, evaluationScope, false);
+  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
 
   const style = {
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
     opacity: isDisabled ? 0.6 : 1,
   };

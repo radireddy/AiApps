@@ -1,9 +1,10 @@
 
+
 import React from 'react';
 import { ComponentType, InputProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps, PropFxInput, InlineTextEditor } from './common';
 import { get } from '../../utils/data-helpers';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -18,15 +19,15 @@ const InputRenderer: React.FC<{
   onCommitInlineEdit?: (newValue: string) => void;
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope, isEditingInline, onCommitInlineEdit }) => {
   const p = component.props;
-  const isDisabled = !!useExpression(p.disabled, evaluationScope, false);
-  const placeholder = useExpression(p.placeholder, evaluationScope, '');
+  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const placeholder = useJavaScriptRenderer(p.placeholder, evaluationScope, '');
 
   const style: React.CSSProperties = {
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: isDisabled ? 0.6 : useExpression(p.opacity, evaluationScope, 1),
+    opacity: isDisabled ? 0.6 : useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     padding: '0.5rem',
     boxSizing: 'border-box',
     backgroundColor: 'white',

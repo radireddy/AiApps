@@ -1,9 +1,10 @@
 
+
 import React from 'react';
 import { ComponentType, SwitchProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps } from './common';
 import { get } from '../../utils/data-helpers';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -16,7 +17,7 @@ const SwitchRenderer: React.FC<{
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
   const isChecked = !!get(dataStore, p.dataStoreKey);
-  const isDisabled = !!useExpression(p.disabled, evaluationScope, false);
+  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
   const isDisabledInEdit = mode === 'edit' || isDisabled;
 
   return (

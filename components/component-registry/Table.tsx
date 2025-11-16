@@ -1,8 +1,9 @@
 
+
 import React, { useMemo } from 'react';
 import { ComponentType, TableProps, ComponentPlugin, ActionHandlers, DataSourceInstance } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect } from './common';
-import { useExpression } from '../../expressions/useExpression';
+import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { get } from '../../utils/data-helpers';
 import { commonStylingProps } from '../../constants';
 
@@ -15,7 +16,7 @@ const TableRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, mode, actions, evaluationScope }) => {
   const p = component.props;
-  const data = useExpression(evaluationScope[p.dataSourceName], evaluationScope, []);
+  const data = useJavaScriptRenderer(evaluationScope[p.dataSourceName], evaluationScope, []);
   const selectedRecord = get(evaluationScope, p.selectedRecordKey || '');
 
   const columns = useMemo(() => {
@@ -32,12 +33,12 @@ const TableRenderer: React.FC<{
   }
 
   const style = {
-    borderRadius: useExpression(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useExpression(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useExpression(p.borderColor, evaluationScope, '#e5e7eb'),
+    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
+    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
+    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: useExpression(p.opacity, evaluationScope, 1),
-    boxShadow: useExpression(p.boxShadow, evaluationScope, ''),
+    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
   };
 
   const hasData = Array.isArray(data) && data.length > 0;

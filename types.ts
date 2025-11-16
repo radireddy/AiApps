@@ -1,4 +1,3 @@
-
 // DOCS_IMPACT: The User Guide section on "Actions & Events" for Buttons needs to be updated. A new 'navigate' action was added. It requires a new 'actionNavigatePageId' property to be documented, which will hold the ID of the page to navigate to.
 import React from 'react';
 
@@ -97,6 +96,10 @@ export interface BorderProps {
     borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted';
 }
 
+export type PropertyRendererType = 'javascript' | 'markdown' | 'literal';
+export type PropertyRendererHook = <T>(value: T, scope: Record<string, any>, defaultValue: T) => T;
+
+
 export interface LabelProps extends BaseProps, BorderProps {
   text: string;
   fontSize: number | string;
@@ -105,6 +108,7 @@ export interface LabelProps extends BaseProps, BorderProps {
   textAlign?: 'left' | 'center' | 'right';
   fontFamily?: string;
   backgroundColor?: string;
+  textRenderer?: PropertyRendererType;
 }
 
 export interface InputProps extends BaseProps, BorderProps {
