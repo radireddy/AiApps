@@ -1,7 +1,25 @@
-import { test, expect, Page, Locator } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import v8to from 'v8-to-istanbul';
+
+const NYC_OUTPUT_DIR = path.join(process.cwd(), '.nyc_output');
+
+// Clean up the output directory before all tests run
+test.beforeAll(async () => {
+  if (fs.existsSync(NYC_OUTPUT_DIR)) {
+    fs.rmSync(NYC_OUTPUT_DIR, { recursive: true, force: true });
+  }
+  fs.mkdirSync(NYC_OUTPUT_DIR, { recursive: true });
+});
+
 
 test.describe('Gemini Low-Code App Builder E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    // Start V8 code coverage collection
+    await page.coverage.startJSCoverage();
+
     // Navigate to the dashboard before each test
     await page.goto('/');
     // Clear local storage to ensure a clean state for each test
@@ -9,6 +27,47 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     // Reload to apply the cleared storage
     await page.goto('/');
   });
+
+  test.afterEach(async ({ page }) => {
+    // Stop V8 code coverage collection
+    const coverage = await page.coverage.stopJSCoverage();
+    const istanbulCoverage = {};
+
+    for (const entry of coverage) {
+      const url = new URL(entry.url);
+      // We are only interested in files from our application, served from localhost
+      if (!url.hostname.includes('localhost') || !entry.source) {
+        continue;
+      }
+      
+      // Map the URL path to a file system path.
+      // e.g., http://localhost:3000/App.tsx -> /path/to/project/src/App.tsx
+      const filePath = path.join(process.cwd(), url.pathname.substring(1));
+
+      if (!fs.existsSync(filePath)) {
+          continue;
+      }
+
+      try {
+        // Convert the V8 coverage data to the Istanbul format
+        const converter = v8to(filePath, 0, { source: entry.source });
+        await converter.applyCoverage(entry.functions);
+        // Merge the coverage data for this script into our collection
+        Object.assign(istanbulCoverage, converter.toIstanbul());
+      } catch (e) {
+        console.error(`Failed to process coverage for ${filePath}`, e);
+      }
+    }
+    
+    // Write the collected Istanbul coverage data to a unique file in the .nyc_output directory
+    if (Object.keys(istanbulCoverage).length > 0) {
+      fs.writeFileSync(
+        path.join(NYC_OUTPUT_DIR, `coverage-${crypto.randomUUID()}.json`),
+        JSON.stringify(istanbulCoverage)
+      );
+    }
+  });
+
 
   test('App Lifecycle: Create, Verify, and Delete an App', async ({ page }) => {
     const newAppName = `My Test App - ${Date.now()}`;
@@ -59,7 +118,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     const inputComponent = page.getByLabel('INPUT component');
     await inputComponent.click();
     await expect(page.getByTestId('properties-panel')).toBeVisible();
-    await page.getByTestId('prop-input-Data Store Key').fill('userName');
+    await page.getByTestId('prop-input-Data Store Key').locator('input').fill('userName');
     
     // Drag and drop a Label component
     await page.getByTestId('palette-item-LABEL').dragTo(canvas, {
@@ -155,7 +214,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     await page.getByRole('button', { name: 'Save Template' }).click();
 
     // 3. Verify template exists
-    const templateCard = page.locator('.grid > div').filter({ hasText: `${appName} Template` });
+    const templateCard = page.locator('h2:has-text("App Templates")').locator('..').locator('.grid > div').filter({ hasText: `${appName} Template` });
     await expect(templateCard).toBeVisible();
 
     // 4. Create a new app from the template
