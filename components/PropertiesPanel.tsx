@@ -44,7 +44,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
   const PropertiesRenderer = plugin?.properties;
 
   return (
-    <aside style={{ width: `${width}px` }} className={`${commonPanelClasses} overflow-hidden`} role="region" aria-label="Properties">
+    <aside style={{ width: `${width}px` }} className={`${commonPanelClasses} overflow-hidden`} role="region" aria-label="Properties" data-testid="properties-panel">
        <div className="flex items-center justify-between p-2 border-b border-gray-200">
         <div className="px-2 py-2">
             <h3 id="properties-heading" className="text-md font-semibold text-gray-800">{component && plugin ? plugin.paletteConfig.label : 'Properties'}</h3>

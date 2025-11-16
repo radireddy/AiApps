@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { BorderProps, ComponentProps } from '../../types';
 
@@ -33,7 +34,7 @@ export const PropFxInput: React.FC<{
     };
 
     return (
-         <div className="mb-3">
+         <div className="mb-3" data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
             <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
             <div className="flex items-center">
                 <input
@@ -71,7 +72,7 @@ export const PropFxInput: React.FC<{
 export const PropInput: React.FC<{ label: string; value: any; onChange: (val: any) => void; type?: string; placeholder?: string; step?: number; min?: number; max?: number; id?: string; }> = ({ label, value, onChange, type = 'text', placeholder, id, ...rest }) => {
     const inputId = id || `prop-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
     return (
-        <div className="mb-3">
+        <div className="mb-3" data-testid={`prop-input-${label.replace(/\s+/g, '-')}`}>
             <label htmlFor={inputId} className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
             <input
             id={inputId}

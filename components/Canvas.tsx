@@ -61,6 +61,7 @@ export const Canvas: React.FC<CanvasProps> = ({ components, allComponents, onDro
       }}
       role="region"
       aria-label="Application design canvas"
+      data-testid="canvas"
     >
       {rootComponents.map(comp => (
         <RenderedComponent

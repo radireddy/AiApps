@@ -22,6 +22,7 @@ const PaletteItem: React.FC<{ componentPlugin: ComponentPlugin }> = ({ component
       className="flex flex-col items-center justify-center p-2 border border-gray-200 rounded-md cursor-grab bg-white hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 transition-all text-center"
       title={`Drag to add a ${componentPlugin.paletteConfig.label}`}
       aria-label={`${componentPlugin.paletteConfig.label} component`}
+      data-testid={`palette-item-${componentPlugin.type}`}
     >
       {componentPlugin.paletteConfig.icon}
       <span className="text-xs font-semibold mt-1">{componentPlugin.paletteConfig.label}</span>
