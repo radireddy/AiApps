@@ -1,6 +1,6 @@
 
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { AppDefinition, AppComponent, ComponentType, DataStore, ComponentProps, ActionHandlers, DataSourceInstance, TableProps, AppVariable, Theme, AppPage } from '../types';
 import { componentRegistry } from '../components/component-registry/registry';
 import { dataSourceRegistry } from '../data-sources/registry';
@@ -23,9 +23,16 @@ const parseInitialValue = (value: any, type: AppVariable['type']) => {
     }
 };
 
+export type AlignAction =
+  | 'align-left' | 'align-center-h' | 'align-right'
+  | 'align-top' | 'align-center-v' | 'align-bottom'
+  | 'distribute-h' | 'distribute-v'
+  | 'match-width' | 'match-height';
+
+
 export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef: AppDefinition) => void) => {
   const [appDefinition, setAppDefinitionState] = useState<AppDefinition>(initialAppDefinition);
-  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [selectedComponentIds, setSelectedComponentIds] = useState<string[]>([]);
   const [currentPageId, setCurrentPageId] = useState<string>(initialAppDefinition.mainPageId);
   
   const { components, dataStore, dataSources: dataSourceInstances, variables, theme } = appDefinition;
@@ -82,7 +89,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
   const setAppDefinition = useCallback((definition: AppDefinition) => {
     setAppDefinitionState(definition);
-    setSelectedComponentId(null);
+    setSelectedComponentIds([]);
     setCurrentPageId(definition.mainPageId);
   }, []);
   
@@ -159,13 +166,41 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         )
     }));
   }, []);
-
-  const selectComponent = useCallback((id: string) => {
-    setSelectedComponentId(id);
+  
+  const updateComponents = useCallback((updates: Array<{ id: string; props: Partial<ComponentProps> }>) => {
+    setAppDefinitionState(prev => {
+        const updatesMap = new Map(updates.map(u => [u.id, u.props]));
+        return {
+            ...prev,
+            components: prev.components.map(c => {
+                if (updatesMap.has(c.id)) {
+                    return { ...c, props: { ...c.props, ...updatesMap.get(c.id) } };
+                }
+                return c;
+            }),
+        };
+    });
   }, []);
 
-  const deselectComponent = useCallback(() => {
-    setSelectedComponentId(null);
+  // FIX: Added 'React' import to resolve 'React.MouseEvent' type error.
+  const selectComponent = useCallback((id: string, e?: React.MouseEvent) => {
+    if (e && (e.shiftKey || e.ctrlKey || e.metaKey)) {
+        setSelectedComponentIds(prevIds => {
+            const newIds = new Set(prevIds);
+            if (newIds.has(id)) {
+                newIds.delete(id); // Deselect if already selected
+            } else {
+                newIds.add(id); // Select if not selected
+            }
+            return Array.from(newIds);
+        });
+    } else {
+        setSelectedComponentIds([id]); // Default behavior: select only this one
+    }
+  }, []);
+
+  const deselectAllComponents = useCallback(() => {
+    setSelectedComponentIds([]);
   }, []);
   
   const deleteComponent = useCallback((id: string) => {
@@ -186,8 +221,32 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             components: prev.components.filter(c => !idsToDelete.has(c.id)),
         }
     });
-    setSelectedComponentId(null);
+    setSelectedComponentIds(prev => prev.filter(selectedId => selectedId !== id));
   }, []);
+
+  const deleteSelectedComponents = useCallback(() => {
+    if (selectedComponentIds.length === 0) return;
+    setAppDefinitionState(prev => {
+        const allIdsToDelete = new Set<string>();
+        const findChildren = (parentId: string) => {
+            prev.components.forEach(c => {
+                if(c.parentId === parentId) {
+                    allIdsToDelete.add(c.id);
+                    findChildren(c.id);
+                }
+            });
+        };
+        selectedComponentIds.forEach(id => {
+            allIdsToDelete.add(id);
+            findChildren(id);
+        });
+        return {
+            ...prev,
+            components: prev.components.filter(c => !allIdsToDelete.has(c.id)),
+        }
+    });
+    setSelectedComponentIds([]);
+  }, [selectedComponentIds]);
 
   const updateDataStore = useCallback((key: string, value: any) => {
     setAppDefinitionState(prev => ({
@@ -290,6 +349,152 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     });
   }, [setAppDefinitionState]);
 
+  // FIX: Completely overhauled alignment and distribution logic to be robust, prevent overlaps, and correctly space all components.
+  const alignAndDistribute = useCallback((action: AlignAction) => {
+    if (selectedComponentIds.length < 2) return;
+
+    const componentsMap = new Map(components.map(c => [c.id, c]));
+    const selectedComponents = selectedComponentIds.map(id => componentsMap.get(id)).filter((c): c is AppComponent => !!c);
+    
+    if (selectedComponents.length < 2) return;
+
+    const updates: Array<{ id: string; props: Partial<ComponentProps> }> = [];
+    const GAP = 10; // Default gap between components when stacking
+
+    const boundingBox = selectedComponents.reduce((acc, c) => ({
+        x1: Math.min(acc.x1, c.props.x),
+        y1: Math.min(acc.y1, c.props.y),
+        x2: Math.max(acc.x2, c.props.x + c.props.width),
+        y2: Math.max(acc.y2, c.props.y + c.props.height)
+    }), { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity });
+
+    switch (action) {
+        // --- HORIZONTAL ALIGNMENT & VERTICAL STACKING ---
+        case 'align-left': {
+            const sorted = [...selectedComponents].sort((a, b) => a.props.y - b.props.y);
+            let currentY = boundingBox.y1;
+            sorted.forEach(c => {
+                updates.push({ id: c.id, props: { x: boundingBox.x1, y: currentY } });
+                currentY += c.props.height + GAP;
+            });
+            break;
+        }
+        case 'align-center-h': {
+            const sorted = [...selectedComponents].sort((a, b) => a.props.y - b.props.y);
+            const centerX = boundingBox.x1 + (boundingBox.x2 - boundingBox.x1) / 2;
+            let currentY = boundingBox.y1;
+            sorted.forEach(c => {
+                updates.push({ id: c.id, props: { x: centerX - c.props.width / 2, y: currentY } });
+                currentY += c.props.height + GAP;
+            });
+            break;
+        }
+        case 'align-right': {
+            const sorted = [...selectedComponents].sort((a, b) => a.props.y - b.props.y);
+            let currentY = boundingBox.y1;
+            sorted.forEach(c => {
+                updates.push({ id: c.id, props: { x: boundingBox.x2 - c.props.width, y: currentY } });
+                currentY += c.props.height + GAP;
+            });
+            break;
+        }
+
+        // --- VERTICAL ALIGNMENT & HORIZONTAL STACKING ---
+        case 'align-top': {
+            const sorted = [...selectedComponents].sort((a, b) => a.props.x - b.props.x);
+            let currentX = boundingBox.x1;
+            sorted.forEach(c => {
+                updates.push({ id: c.id, props: { x: currentX, y: boundingBox.y1 } });
+                currentX += c.props.width + GAP;
+            });
+            break;
+        }
+        case 'align-center-v': {
+            const sorted = [...selectedComponents].sort((a, b) => a.props.x - b.props.x);
+            const centerY = boundingBox.y1 + (boundingBox.y2 - boundingBox.y1) / 2;
+            let currentX = boundingBox.x1;
+            sorted.forEach(c => {
+                updates.push({ id: c.id, props: { x: currentX, y: centerY - c.props.height / 2 } });
+                currentX += c.props.width + GAP;
+            });
+            break;
+        }
+        case 'align-bottom': {
+            const sorted = [...selectedComponents].sort((a, b) => a.props.x - b.props.x);
+            let currentX = boundingBox.x1;
+            sorted.forEach(c => {
+                updates.push({ id: c.id, props: { x: currentX, y: boundingBox.y2 - c.props.height } });
+                currentX += c.props.width + GAP;
+            });
+            break;
+        }
+
+        // --- DISTRIBUTION ---
+        case 'distribute-h': {
+            if (selectedComponents.length > 2) {
+                const sorted = [...selectedComponents].sort((a, b) => a.props.x - b.props.x);
+                const totalWidth = sorted.reduce((sum, c) => sum + c.props.width, 0);
+                const totalSpace = sorted[sorted.length - 1].props.x + sorted[sorted.length - 1].props.width - sorted[0].props.x;
+                const totalGap = totalSpace - totalWidth;
+                const gap = totalGap / (selectedComponents.length - 1);
+
+                let currentX = sorted[0].props.x;
+                updates.push({ id: sorted[0].id, props: { x: currentX } });
+                for (let i = 1; i < sorted.length; i++) {
+                    currentX += sorted[i - 1].props.width + gap;
+                    updates.push({ id: sorted[i].id, props: { x: currentX } });
+                }
+            }
+            break;
+        }
+        case 'distribute-v': {
+             if (selectedComponents.length > 2) {
+                const sorted = [...selectedComponents].sort((a, b) => a.props.y - b.props.y);
+                const totalHeight = sorted.reduce((sum, c) => sum + c.props.height, 0);
+                const totalSpace = sorted[sorted.length - 1].props.y + sorted[sorted.length - 1].props.height - sorted[0].props.y;
+                const totalGap = totalSpace - totalHeight;
+                const gap = totalGap / (selectedComponents.length - 1);
+
+                let currentY = sorted[0].props.y;
+                updates.push({ id: sorted[0].id, props: { y: currentY } });
+                for (let i = 1; i < sorted.length; i++) {
+                    currentY += sorted[i - 1].props.height + gap;
+                    updates.push({ id: sorted[i].id, props: { y: currentY } });
+                }
+            }
+            break;
+        }
+        
+        // --- SIZE MATCHING ---
+        case 'match-width': {
+            const referenceComponent = componentsMap.get(selectedComponentIds[0]);
+            if (!referenceComponent) break;
+            const refWidth = referenceComponent.props.width;
+            selectedComponents.forEach(c => {
+                if (c.id !== referenceComponent.id) {
+                    updates.push({ id: c.id, props: { width: refWidth } });
+                }
+            });
+            break;
+        }
+        case 'match-height': {
+            const referenceComponent = componentsMap.get(selectedComponentIds[0]);
+            if (!referenceComponent) break;
+            const refHeight = referenceComponent.props.height;
+            selectedComponents.forEach(c => {
+                if (c.id !== referenceComponent.id) {
+                    updates.push({ id: c.id, props: { height: refHeight } });
+                }
+            });
+            break;
+        }
+    }
+    
+    if (updates.length > 0) {
+        updateComponents(updates);
+    }
+  }, [selectedComponentIds, components, updateComponents]);
+
 
   // --- DYNAMIC DATA ACTIONS ---
   const handleCreateRecord = useCallback(async (dataSourceName: string, newRecord: any) => {
@@ -347,7 +552,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   
   const selectPage = useCallback((pageId: string) => {
     setCurrentPageId(pageId);
-    setSelectedComponentId(null);
+    setSelectedComponentIds([]);
   }, []);
 
   const currentPageComponents = useMemo(() => {
@@ -394,12 +599,15 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     currentPageId,
     currentPageComponents,
     dataStore,
-    selectedComponentId,
+    selectedComponentIds,
+    setSelectedComponentIds,
     addComponent,
     updateComponent,
+    updateComponents,
     selectComponent,
-    deselectComponent,
+    deselectAllComponents,
     deleteComponent,
+    deleteSelectedComponents,
     updateDataStore,
     actions,
     evaluationScope,
@@ -414,5 +622,6 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     applyTheme,
     reparentComponent,
     selectPage,
+    alignAndDistribute,
   };
 };

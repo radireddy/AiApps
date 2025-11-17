@@ -8,7 +8,7 @@ interface TreeViewProps {
   onToggleCollapse: () => void;
   appDefinition: AppDefinition;
   currentPageId: string;
-  selectedComponentId: string | null;
+  selectedComponentIds: string[];
   onSelectPage: (pageId: string) => void;
   onSelectComponent: (componentId: string, pageId: string) => void;
 }
@@ -71,10 +71,10 @@ const TreeNode: React.FC<{
   expandedNodes: Set<string>;
   toggleNode: (id: string) => void;
   currentPageId: string;
-  selectedComponentId: string | null;
+  selectedComponentIds: string[];
   onSelectPage: (pageId: string) => void;
   onSelectComponent: (componentId: string, pageId: string) => void;
-}> = memo(({ node, level, expandedNodes, toggleNode, currentPageId, selectedComponentId, onSelectPage, onSelectComponent }) => {
+}> = memo(({ node, level, expandedNodes, toggleNode, currentPageId, selectedComponentIds, onSelectPage, onSelectComponent }) => {
   const isExpanded = expandedNodes.has(node.id);
   const isExpandable = node.children.length > 0;
 
@@ -86,7 +86,7 @@ const TreeNode: React.FC<{
     }
   };
   
-  const isSelected = (node.type === 'PAGE' && node.id === currentPageId) || (node.type === 'COMPONENT' && node.id === selectedComponentId);
+  const isSelected = (node.type === 'PAGE' && node.id === currentPageId) || (node.type === 'COMPONENT' && selectedComponentIds.includes(node.id));
   const selectionClass = isSelected ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100';
   const label = node.type === 'COMPONENT' ? `${componentRegistry[node.componentType!].paletteConfig.label}` : node.name;
 
@@ -119,7 +119,7 @@ const TreeNode: React.FC<{
           expandedNodes={expandedNodes}
           toggleNode={toggleNode}
           currentPageId={currentPageId}
-          selectedComponentId={selectedComponentId}
+          selectedComponentIds={selectedComponentIds}
           onSelectPage={onSelectPage}
           onSelectComponent={onSelectComponent}
         />
@@ -128,7 +128,7 @@ const TreeNode: React.FC<{
   );
 });
 
-export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollapse, appDefinition, currentPageId, selectedComponentId, onSelectPage, onSelectComponent }) => {
+export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollapse, appDefinition, currentPageId, selectedComponentIds, onSelectPage, onSelectComponent }) => {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => new Set([appDefinition.id, currentPageId]));
 
     const tree = useMemo(() => buildTree(appDefinition), [appDefinition]);
@@ -191,7 +191,7 @@ export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollaps
                 expandedNodes={expandedNodes}
                 toggleNode={toggleNode}
                 currentPageId={currentPageId}
-                selectedComponentId={selectedComponentId}
+                selectedComponentIds={selectedComponentIds}
                 onSelectPage={onSelectPage}
                 onSelectComponent={onSelectComponent}
             />

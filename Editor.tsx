@@ -1,5 +1,7 @@
 
 
+
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ComponentPalette } from './components/ComponentPalette';
 import { Canvas } from './components/Canvas';
@@ -91,12 +93,15 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     components,
     currentPageId,
     currentPageComponents,
-    selectedComponentId,
+    selectedComponentIds,
+    setSelectedComponentIds,
     addComponent,
     updateComponent,
+    updateComponents,
     selectComponent,
-    deselectComponent,
+    deselectAllComponents,
     deleteComponent,
+    deleteSelectedComponents,
     updateDataStore,
     actions,
     evaluationScope,
@@ -111,6 +116,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     applyTheme,
     reparentComponent,
     selectPage,
+    alignAndDistribute,
   } = useAppData(initialAppDefinition, onSave);
 
   const [expressionEditorState, setExpressionEditorState] = useState<{
@@ -152,7 +158,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
   // Keyboard shortcut for deleting components
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (mode === 'edit' && selectedComponentId) {
+      if (mode === 'edit' && selectedComponentIds.length > 0) {
         const activeElement = document.activeElement;
         if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
           return;
@@ -160,7 +166,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
         
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
-          deleteComponent(selectedComponentId);
+          deleteSelectedComponents();
         }
       }
     };
@@ -168,7 +174,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedComponentId, deleteComponent, mode]);
+  }, [selectedComponentIds, deleteSelectedComponents, mode]);
   
   // Responsive Panel Collapse
   useEffect(() => {
@@ -283,7 +289,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
                         onToggleCollapse={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
                         appDefinition={appDefinition}
                         currentPageId={currentPageId}
-                        selectedComponentId={selectedComponentId}
+                        selectedComponentIds={selectedComponentIds}
                         onSelectPage={selectPage}
                         onSelectComponent={handleSelectComponentFromTree}
                     />;
@@ -383,12 +389,15 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
                 allComponents={components}
                 onDrop={onDrop}
                 onSelectComponent={selectComponent}
-                onDeselectCanvas={deselectComponent}
-                selectedComponentId={selectedComponentId}
+                onDeselectCanvas={deselectAllComponents}
+                selectedComponentIds={selectedComponentIds}
+                onSetSelectedComponentIds={setSelectedComponentIds}
                 updateComponent={updateComponent}
+                updateComponents={updateComponents}
                 onDeleteComponent={deleteComponent}
                 evaluationScope={evaluationScope}
                 onReparentComponent={reparentComponent}
+                currentPageId={currentPageId}
              />
           </main>
           <div 
@@ -399,7 +408,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
           />
           <PropertiesPanel
             components={components}
-            selectedComponentId={selectedComponentId}
+            selectedComponentIds={selectedComponentIds}
             onUpdate={updateComponent}
             width={rightPanelWidth}
             isCollapsed={isRightPanelCollapsed}
@@ -408,6 +417,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
             variables={variables}
             evaluationScope={evaluationScope}
             onOpenExpressionEditor={openExpressionEditor}
+            onAlignAndDistribute={alignAndDistribute}
           />
         </div>
       ) : (

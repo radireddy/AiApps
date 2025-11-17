@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppComponent, ComponentProps, ComponentType, ActionHandlers } from '../types';
 import { componentRegistry } from './component-registry/registry';
@@ -8,9 +9,10 @@ import { useJavaScriptRenderer } from '../property-renderers/useJavaScriptRender
 interface RenderedComponentProps {
   component: AppComponent;
   allComponents: AppComponent[];
-  selectedComponentId: string | null;
+  selectedComponentIds: string[];
   onSelect: (id: string, e: React.MouseEvent) => void;
   onUpdate: (id: string, newProps: Partial<ComponentProps>) => void;
+  onUpdateComponents: (updates: Array<{ id: string; props: Partial<ComponentProps> }>) => void;
   onDelete: (id: string) => void;
   onDrop: (item: { type: ComponentType }, x: number, y: number, parentId: string | null) => void;
   onReparentCheck: (id: string) => void;
@@ -24,9 +26,10 @@ interface RenderedComponentProps {
 export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   component,
   allComponents,
-  selectedComponentId,
+  selectedComponentIds,
   onSelect,
   onUpdate,
+  onUpdateComponents,
   onDelete,
   onDrop,
   onReparentCheck,
@@ -43,9 +46,22 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const componentRef = useRef<HTMLDivElement>(null);
 
+  // This ref will hold the latest `allComponents` array to avoid stale closures in event handlers.
+  const allComponentsRef = useRef(allComponents);
+  useEffect(() => {
+    allComponentsRef.current = allComponents;
+  }, [allComponents]);
+
+  // FIX: This ref ensures the drag handler always has the latest list of selected component IDs,
+  // preventing a stale closure if the selection changes at the start of a drag.
+  const selectedIdsRef = useRef(selectedComponentIds);
+  useEffect(() => {
+    selectedIdsRef.current = selectedComponentIds;
+  }, [selectedComponentIds]);
+
   const plugin = componentRegistry[component.type];
   const ComponentRenderer = plugin.renderer;
-  const isSelected = component.id === selectedComponentId;
+  const isSelected = selectedComponentIds.includes(component.id);
   
   const isHidden = !!useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
 
@@ -59,9 +75,15 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode !== 'edit' || isEditingInline) return;
     if ((e.target as HTMLElement).dataset.resizeHandle) return;
-    
+
+    // FIX: Removed logic that allowed clicks on container backgrounds to "pass through".
+    // Now, any click on any part of a component will select it and stop the event,
+    // allowing containers to be selected and moved properly.
     e.stopPropagation();
-    onSelect(component.id, e);
+    
+    if (!isSelected) {
+      onSelect(component.id, e);
+    }
     setIsDragging(true);
     dragStartPos.current = { x: e.clientX, y: e.clientY };
   };
@@ -86,7 +108,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (mode !== 'edit') return;
+    if (mode !== 'edit' || selectedComponentIds.length > 1) return; // Disable resizing for multi-select
     setIsResizing(true);
     resizeStartInfo.current = {
       x: e.clientX,
@@ -101,15 +123,36 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       if (!isDragging || mode !== 'edit') return;
       const dx = e.clientX - dragStartPos.current.x;
       const dy = e.clientY - dragStartPos.current.y;
-      onUpdate(component.id, { x: (component.props.x as number) + dx, y: (component.props.y as number) + dy });
+
+      // FIX: Read from the refs to get the latest list of selected IDs and component data,
+      // ensuring all selected components move together correctly.
+      const updates = selectedIdsRef.current.map(id => {
+        const compToUpdate = allComponentsRef.current.find(c => c.id === id);
+        if (!compToUpdate) return null;
+        return {
+          id,
+          props: {
+            x: (compToUpdate.props.x as number) + dx,
+            y: (compToUpdate.props.y as number) + dy,
+          }
+        };
+      }).filter((u): u is { id: string; props: { x: number; y: number; } } => u !== null);
+
+      if (updates.length > 0) {
+        onUpdateComponents(updates);
+      }
+      
       dragStartPos.current = { x: e.clientX, y: e.clientY };
     };
+
     const handleMouseUp = () => {
       if (isDragging) {
         setIsDragging(false);
-        onReparentCheck(component.id);
+        // FIX: Use the ref here as well to ensure the reparent check is run on all dragged components.
+        selectedIdsRef.current.forEach(id => onReparentCheck(id));
       }
     };
+
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
@@ -118,7 +161,10 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, onUpdate, component.id, component.props.x, component.props.y, mode, onReparentCheck]);
+    // FIX: Removed `selectedComponentIds` from the dependency array. The event listener is now stable
+    // throughout the drag operation and relies on refs for fresh data, preventing stale closures.
+  }, [isDragging, onUpdateComponents, mode, onReparentCheck]);
+
 
   useEffect(() => {
     const handleResizeMouseMove = (e: MouseEvent) => {
@@ -208,9 +254,10 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
             key={child.id}
             component={child}
             allComponents={allComponents}
-            selectedComponentId={selectedComponentId}
+            selectedComponentIds={selectedComponentIds}
             onSelect={onSelect}
             onUpdate={onUpdate}
+            onUpdateComponents={onUpdateComponents}
             onDelete={onDelete}
             onDrop={onDrop}
             mode={mode}
@@ -235,13 +282,15 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <div
-            data-resize-handle="true"
-            onMouseDown={handleResizeMouseDown}
-            className="absolute -right-1.5 -bottom-1.5 w-3.5 h-3.5 bg-blue-500 border-2 border-white rounded-sm cursor-nwse-resize z-20"
-            aria-label="Resize Component"
-            role="slider"
-          />
+          {selectedComponentIds.length === 1 && (
+            <div
+                data-resize-handle="true"
+                onMouseDown={handleResizeMouseDown}
+                className="absolute -right-1.5 -bottom-1.5 w-3.5 h-3.5 bg-blue-500 border-2 border-white rounded-sm cursor-nwse-resize z-20"
+                aria-label="Resize Component"
+                role="slider"
+            />
+           )}
         </>
       )}
     </div>

@@ -1,5 +1,6 @@
 
 
+
 import React, { useMemo } from 'react';
 import { AppDefinition, DataStore, ActionHandlers, ComponentType, TableProps } from '../types';
 import { RenderedComponent } from './RenderedComponent';
@@ -67,9 +68,12 @@ export const Preview: React.FC<PreviewProps> = ({ appDefinition, onUpdateDataSto
                 key={comp.id}
                 component={comp}
                 allComponents={appDefinition.components}
-                selectedComponentId={null}
+                // FIX: The prop 'selectedComponentId' does not exist on RenderedComponent. It was renamed to 'selectedComponentIds' and its type changed to string[]. In preview mode, no components are selected, so an empty array is the correct value.
+                selectedComponentIds={[]}
                 onSelect={() => {}} // No-op in preview
                 onUpdate={() => {}} // No-op in preview
+                // FIX: The `onUpdateComponents` prop is required by RenderedComponent but was missing. It's a no-op in preview mode.
+                onUpdateComponents={() => {}}
                 onDelete={() => {}} // No-op in preview
                 onDrop={() => {}}   // No-op in preview
                 mode="preview"

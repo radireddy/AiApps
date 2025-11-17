@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { BorderProps, ComponentProps } from '../../types';
 
@@ -230,3 +229,14 @@ export const StateProps: React.FC<{
         <PropFxInput label="Hidden" value={props.hidden} onChange={val => updateProp('hidden', val)} placeholder="e.g. {{!showAlert}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('hidden', newVal))} />
     </CollapsibleSection>
 )};
+
+export const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => {
+  return (
+    <div className="relative group flex items-center justify-center">
+      {children}
+      <div className="absolute bottom-full mb-2 w-max max-w-xs px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 transform -translate-x-1/2 left-1/2 whitespace-nowrap">
+        {text}
+      </div>
+    </div>
+  );
+};

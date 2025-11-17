@@ -4,6 +4,9 @@ import path from 'path';
 import crypto from 'crypto';
 import v8to from 'v8-to-istanbul';
 
+// FIX: Import Buffer to resolve type errors in the Playwright Node.js environment.
+import { Buffer } from 'buffer';
+
 // FIX: Suppress TypeScript error for process.cwd(). It is available in the Node.js environment where Playwright runs.
 // @ts-ignore
 const NYC_OUTPUT_DIR = path.join(process.cwd(), '.nyc_output');
