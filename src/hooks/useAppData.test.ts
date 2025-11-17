@@ -1,5 +1,3 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
 import { useAppData } from './useAppData';
@@ -91,7 +89,7 @@ describe('useAppData', () => {
     expect(result.current.components.length).toBe(1);
     expect(result.current.components.find(c => c.id === 'panel1')).toBeUndefined();
     expect(result.current.components.find(c => c.id === 'child1')).toBeUndefined();
-    expect(result.current.selectedComponentId).toBeNull();
+    expect(result.current.selectedComponentIds.length).toBe(0);
   });
 
   it('should update the data store', () => {

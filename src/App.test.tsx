@@ -1,18 +1,19 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 import { storageService } from './storageService';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
 
 // Mock child components
 jest.mock('./Dashboard', () => ({
   Dashboard: ({ onEditApp, onCreateApp }: any) => (
     <div>
       <h1>Dashboard</h1>
-      <button onClick={() => onCreateApp({ id: 'app_new', name: 'New App' })}>Create App</button>
-      <button onClick={() => onEditApp({ id: 'app_123', name: 'Existing App' })}>Edit App</button>
+      {/* FIX: Pass a full AppMetadata object to satisfy the prop type. */}
+      <button onClick={() => onCreateApp({ id: 'app_new', name: 'New App', createdAt: new Date().toISOString(), lastModifiedAt: new Date().toISOString() })}>Create App</button>
+      <button onClick={() => onEditApp({ id: 'app_123', name: 'Existing App', createdAt: new Date().toISOString(), lastModifiedAt: new Date().toISOString() })}>Edit App</button>
     </div>
   ),
 }));

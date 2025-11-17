@@ -1,5 +1,3 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
@@ -7,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { Dashboard } from './Dashboard';
 import { storageService } from './storageService';
 import { AppMetadata, AppTemplate } from './types';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
 
 jest.mock('./storageService');
 const mockedStorageService = storageService as jest.Mocked<typeof storageService>;

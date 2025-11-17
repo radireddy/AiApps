@@ -1,0 +1,67 @@
+import { describe, it, expect, jest } from '@jest/globals';
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { PropertiesPanel } from './PropertiesPanel';
+import { ComponentType } from '../types';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
+
+// Mock the component registry and a dummy properties renderer
+jest.mock('./component-registry/registry', () => ({
+  componentRegistry: {
+    [ComponentType.LABEL]: {
+      properties: ({ component }: any) => <div>Properties for {component.props.text}</div>,
+      paletteConfig: { label: 'Label' },
+    },
+  },
+}));
+
+describe('PropertiesPanel', () => {
+  const onUpdate = jest.fn();
+  const onOpenExpressionEditor = jest.fn();
+  const onAlignAndDistribute = jest.fn();
+  const baseProps = {
+    onUpdate,
+    width: 288,
+    isCollapsed: false,
+    onToggleCollapse: jest.fn(),
+    dataSources: [],
+    variables: [],
+    evaluationScope: {},
+    onOpenExpressionEditor,
+    onAlignAndDistribute,
+  };
+
+  it('should show a message when no component is selected', () => {
+    render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={[]} />);
+    expect(screen.getByText('Select a component to see its properties.')).toBeInTheDocument();
+  });
+
+  it('should render the properties for a single selected component', () => {
+    const components = [
+      { id: 'comp1', type: ComponentType.LABEL, props: { text: 'My Label' } } as any,
+    ];
+    render(<PropertiesPanel {...baseProps} components={components} selectedComponentIds={['comp1']} />);
+    expect(screen.getByText('Properties for My Label')).toBeInTheDocument();
+    expect(screen.getByText('ID: comp1')).toBeInTheDocument();
+  });
+
+  it('should render the alignment UI for multiple selected components', () => {
+    render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={['comp1', 'comp2']} />);
+    expect(screen.getByText('2 components selected.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Align' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Distribute' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Match Size' })).toBeInTheDocument();
+  });
+
+  it('should call onAlignAndDistribute when an alignment button is clicked', async () => {
+    render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={['comp1', 'comp2']} />);
+    
+    // Tooltip text is used as the accessible name for the button
+    const alignLeftButton = screen.getByLabelText('Align left edges & stack vertically');
+    await userEvent.click(alignLeftButton);
+    
+    expect(onAlignAndDistribute).toHaveBeenCalledWith('align-left');
+  });
+});

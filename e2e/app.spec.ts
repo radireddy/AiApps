@@ -3,11 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import v8to from 'v8-to-istanbul';
-
-// FIX: Import Buffer to resolve type errors in the Playwright Node.js environment.
 import { Buffer } from 'buffer';
 
-// FIX: Suppress TypeScript error for process.cwd(). It is available in the Node.js environment where Playwright runs.
 // @ts-ignore
 const NYC_OUTPUT_DIR = path.join(process.cwd(), '.nyc_output');
 
@@ -47,7 +44,6 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
       
       // Map the URL path to a file system path.
       // e.g., http://localhost:3000/App.tsx -> /path/to/project/src/App.tsx
-      // FIX: Suppress TypeScript error for process.cwd(). It is available in the Node.js environment where Playwright runs.
       // @ts-ignore
       const filePath = path.join(process.cwd(), url.pathname.substring(1));
 
@@ -176,7 +172,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     // Mock the Gemini API response
     await page.route('**/models/gemini-2.5-flash:generateContent**', async route => {
       const json = {
-        components: [{
+        add: [{
             id: 'BUTTON_AI_1',
             type: 'BUTTON',
             props: { x: 100, y: 100, width: 150, height: 40, text: 'AI Generated Button' }
@@ -328,5 +324,169 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     // 7. Verify the thumbnail image exists and has a data URL source
     const thumbnail = templateCard.locator('img');
     await expect(thumbnail).toHaveAttribute('src', /^data:image\/png;base64,.+/);
+  });
+
+  test('Multi-select and Alignment Workflow', async ({ page }) => {
+    const appName = 'Alignment Test';
+    await page.getByRole('button', { name: 'Create New App' }).click();
+    await page.getByPlaceholder('e.g., Customer Dashboard').fill(appName);
+    await page.getByRole('button', { name: 'Create App' }).click();
+    await expect(page.getByRole('heading', { name: appName })).toBeVisible();
+
+    const canvas = page.getByTestId('canvas');
+
+    // Drag three labels to arbitrary positions
+    await page.getByTestId('palette-item-LABEL').dragTo(canvas, { targetPosition: { x: 50, y: 50 } });
+    await page.getByTestId('palette-item-LABEL').dragTo(canvas, { targetPosition: { x: 200, y: 150 } });
+    await page.getByTestId('palette-item-LABEL').dragTo(canvas, { targetPosition: { x: 120, y: 250 } });
+
+    const labels = page.getByLabel('LABEL component');
+    await expect(labels).toHaveCount(3);
+
+    // Marquee select all three
+    await canvas.dragTo(canvas, {
+      sourcePosition: { x: 10, y: 10 },
+      targetPosition: { x: 400, y: 400 },
+    });
+
+    // Verify multi-select UI in properties panel
+    await expect(page.getByText('3 components selected.')).toBeVisible();
+
+    // Click "Align left edges & stack vertically"
+    await page.getByLabel('Align left edges & stack vertically').click();
+    await page.waitForTimeout(200); // Wait for positions to update
+
+    // Verify alignment
+    const box1 = await labels.nth(0).boundingBox();
+    const box2 = await labels.nth(1).boundingBox();
+    const box3 = await labels.nth(2).boundingBox();
+    
+    // They should now have the same 'x' coordinate (within a small tolerance for rounding)
+    expect(box1?.x).toBeCloseTo(box2?.x);
+    expect(box2?.x).toBeCloseTo(box3?.x);
+    // They should be stacked vertically (y2 > y1)
+    expect(box2?.y).toBeGreaterThan(box1?.y);
+    expect(box3?.y).toBeGreaterThan(box2?.y);
+
+    // Click "Match width"
+    // First, let's resize one to be different
+    await labels.nth(1).click(); // Select just one
+    const boxToResize = await labels.nth(1).boundingBox();
+    await page.mouse.move(boxToResize.x + boxToResize.width - 2, boxToResize.y + boxToResize.height - 2);
+    await page.mouse.down();
+    await page.mouse.move(boxToResize.x + boxToResize.width + 100, boxToResize.y + boxToResize.height + 50);
+    await page.mouse.up();
+    
+    // Marquee select again
+    await canvas.dragTo(canvas, {
+        sourcePosition: { x: 10, y: 10 },
+        targetPosition: { x: 500, y: 500 },
+    });
+
+    await page.getByLabel('Match width (first selected)').click();
+    await page.waitForTimeout(200); // Wait for sizes to update
+    
+    const finalBox1 = await labels.nth(0).boundingBox();
+    const finalBox2 = await labels.nth(1).boundingBox();
+    const finalBox3 = await labels.nth(2).boundingBox();
+
+    expect(finalBox1?.width).toBeCloseTo(finalBox2?.width);
+    expect(finalBox2?.width).toBeCloseTo(finalBox3?.width);
+  });
+
+  test('Multi-select, Grouping, and Parenting Workflow', async ({ page }) => {
+    // 1. Import the test application
+    // @ts-ignore
+    const appJsonPath = path.join(process.cwd(), 'e2e', 'assets', 'application.json');
+    const appJsonContent = fs.readFileSync(appJsonPath, 'utf-8');
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: 'application.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(appJsonContent)
+    });
+
+    // 2. Verify and open the app
+    await expect(page.getByRole('heading', { name: 'Grouping components e2e test' })).toBeVisible();
+    await page.getByRole('button', { name: 'Edit App' }).click();
+
+    // 3. Verify editor is loaded with correct components
+    await expect(page.getByRole('heading', { name: 'Grouping components e2e test' })).toBeVisible();
+    const panel = page.getByLabel('PANEL component');
+    const label = page.getByLabel('LABEL component');
+    const input = page.getByLabel('INPUT component');
+    const checkbox = page.getByLabel('CHECKBOX component');
+    const divider = page.getByLabel('DIVIDER component');
+    const switchEl = page.getByLabel('SWITCH component');
+    const button = page.getByLabel('BUTTON component');
+    const canvas = page.getByTestId('canvas');
+
+    await expect(panel).toBeVisible();
+    const componentsToGroup = [label, input, checkbox, divider, switchEl, button];
+    for (const comp of componentsToGroup) {
+      await expect(comp).toBeVisible();
+    }
+    
+    // 4. Marquee select all components except the panel
+    await canvas.dragTo(canvas, {
+      sourcePosition: { x: 650, y: 50 },
+      targetPosition: { x: 1000, y: 400 },
+    });
+
+    // 5. Verify selection
+    await expect(page.getByText('6 components selected.')).toBeVisible();
+
+    // 6. Get initial positions and drag them together
+    const initialPositions = await Promise.all(componentsToGroup.map(c => c.boundingBox()));
+    const dragHandle = label; // Drag using the label as the handle
+    const dragDelta = { x: 50, y: 70 };
+    const startPos = await dragHandle.boundingBox();
+
+    await dragHandle.hover();
+    await page.mouse.down();
+    await page.mouse.move(startPos.x + dragDelta.x, startPos.y + dragDelta.y);
+    await page.mouse.up();
+    await page.waitForTimeout(500); // Wait for positions to settle
+
+    // 7. Verify all selected components moved together
+    for (let i = 0; i < componentsToGroup.length; i++) {
+        const newPos = await componentsToGroup[i].boundingBox();
+        expect(newPos.x).toBeCloseTo(initialPositions[i].x + dragDelta.x, 0);
+        expect(newPos.y).toBeCloseTo(initialPositions[i].y + dragDelta.y, 0);
+    }
+
+    // 8. Drag the group of components into the panel
+    const panelBox = await panel.boundingBox();
+    
+    await dragHandle.hover();
+    await page.mouse.down();
+    // Move the group so the drag handle's center is over the panel's center
+    await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + panelBox.height / 2);
+    await page.mouse.up();
+    await page.waitForTimeout(500); // Wait for parenting logic
+
+    // 9. Deselect and get positions before moving the panel
+    await canvas.click({ position: { x: 1, y: 1 } });
+    await expect(page.getByText('Select a component to see its properties.')).toBeVisible();
+
+    const positionsBeforePanelMove = await Promise.all([panel, ...componentsToGroup].map(c => c.boundingBox()));
+
+    // 10. Select and move the panel
+    await panel.click();
+    const panelDragDelta = { x: -30, y: -20 };
+    const panelStartPos = await panel.boundingBox();
+    await panel.hover();
+    await page.mouse.down();
+    await page.mouse.move(panelStartPos.x + panelDragDelta.x, panelStartPos.y + panelDragDelta.y);
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+
+    // 11. Verify the panel and all its new children moved together
+    const positionsAfterPanelMove = await Promise.all([panel, ...componentsToGroup].map(c => c.boundingBox()));
+
+    for (let i = 0; i < positionsAfterPanelMove.length; i++) {
+        expect(positionsAfterPanelMove[i].x).toBeCloseTo(positionsBeforePanelMove[i].x + panelDragDelta.x, 0);
+        expect(positionsAfterPanelMove[i].y).toBeCloseTo(positionsBeforePanelMove[i].y + panelDragDelta.y, 0);
+    }
   });
 });

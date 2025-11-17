@@ -1,8 +1,7 @@
-
-// FIX: Import jest from @jest/globals to make jest.fn() available.
 import { jest } from '@jest/globals';
 
-export const mockGenerateContent = jest.fn();
+// FIX: Add a generic type to the mock function to avoid 'never' parameter types in tests.
+export const mockGenerateContent = jest.fn<(_: any) => Promise<{ text: string }>>();
 
 export class GoogleGenAI {
   constructor(config: any) {}

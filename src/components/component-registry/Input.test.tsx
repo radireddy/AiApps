@@ -1,11 +1,11 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InputPlugin } from './Input';
 import { ComponentType } from '../../types';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
 
 const InputRenderer = InputPlugin.renderer;
 const InputProperties = InputPlugin.properties;

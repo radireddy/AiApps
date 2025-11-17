@@ -1,5 +1,3 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect } from '@jest/globals';
 import { safeEval } from './engine';
 

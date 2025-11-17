@@ -1,5 +1,3 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect } from '@jest/globals';
 import { get, set } from './data-helpers';
 
@@ -40,7 +38,7 @@ describe('data-helpers', () => {
       expect(get(obj, 'f.g')).toBeUndefined();
     });
 
-    it('should return the object itself for an empty path', () => {
+    it('should return undefined for an empty path', () => {
       expect(get(obj, '')).toBeUndefined(); // as per implementation
     });
   });

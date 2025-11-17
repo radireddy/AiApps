@@ -1,10 +1,10 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { PanelPlugin } from './Panel';
 import { ComponentType } from '../../types';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
 
 const PanelRenderer = PanelPlugin.renderer;
 const PanelProperties = PanelPlugin.properties;

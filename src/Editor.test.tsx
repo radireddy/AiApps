@@ -1,5 +1,3 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
@@ -8,6 +6,8 @@ import { Editor } from './Editor';
 import { storageService } from './storageService';
 import { generateAppLayout } from './services/geminiService';
 import { AppDefinition, ComponentType } from './types';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
 
 jest.mock('./storageService');
 jest.mock('./services/geminiService');
@@ -29,7 +29,8 @@ const mockApp: AppDefinition = {
 };
 
 const mockedStorageService = storageService as jest.Mocked<typeof storageService>;
-const mockedGenerateAppLayout = generateAppLayout as jest.Mock;
+// FIX: Add a generic type to the mock to avoid 'never' type errors.
+const mockedGenerateAppLayout = generateAppLayout as jest.Mock<Promise<AppDefinition | null>>;
 
 describe('Editor', () => {
   beforeEach(() => {

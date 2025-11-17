@@ -1,12 +1,11 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ButtonPlugin } from './Button';
-// FIX: Import ButtonProps type to resolve TypeScript error.
 import { ComponentType, ActionHandlers, ButtonProps } from '../../types';
+// FIX: Import jest-dom to extend jest matchers.
+import '@testing-library/jest-dom';
 
 const ButtonRenderer = ButtonPlugin.renderer;
 const ButtonProperties = ButtonPlugin.properties;

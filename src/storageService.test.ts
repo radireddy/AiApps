@@ -1,5 +1,3 @@
-
-// FIX: Import jest globals to resolve test-related type errors.
 import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
 import { storageService } from './storageService';
 import { AppDefinition, AppTemplate, ComponentType } from './types';
@@ -32,9 +30,10 @@ describe('storageService (with localStorage mock)', () => {
   beforeAll(() => {
     Object.defineProperty(window, 'localStorage', {
       value: {
-        getItem: jest.fn((key) => storage[key] || null),
-        setItem: jest.fn((key, value) => { storage[key] = value; }),
-        removeItem: jest.fn((key) => { delete storage[key]; }),
+        // FIX: Add types to mock function parameters to avoid 'unknown' type errors.
+        getItem: jest.fn((key: string) => storage[key] || null),
+        setItem: jest.fn((key: string, value: string) => { storage[key] = value; }),
+        removeItem: jest.fn((key: string) => { delete storage[key]; }),
         clear: jest.fn(() => { storage = {}; }),
       },
       writable: true,
