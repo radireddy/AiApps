@@ -30,7 +30,7 @@ const mockApp: AppDefinition = {
 
 const mockedStorageService = storageService as jest.Mocked<typeof storageService>;
 // FIX: Add a generic type to the mock to avoid 'never' type errors.
-const mockedGenerateAppLayout = generateAppLayout as jest.Mock<Promise<AppDefinition | null>>;
+const mockedGenerateAppLayout = generateAppLayout as jest.Mock<typeof generateAppLayout>;
 
 describe('Editor', () => {
   beforeEach(() => {

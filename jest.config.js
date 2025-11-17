@@ -21,6 +21,7 @@ module.exports = {
     // Exclude test files themselves
     '!src/**/*.test.{ts,tsx}',
     '!src/**/__mocks__/*.{ts,tsx}',
+    '!src/performance.test.ts', // Exclude performance benchmark
   ],
   coverageThreshold: {
     global: {
