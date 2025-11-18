@@ -2,6 +2,8 @@
 
 
 
+
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ComponentPalette } from './components/ComponentPalette';
 import { Canvas } from './components/Canvas';
@@ -19,6 +21,7 @@ import { ExpressionEditorModal } from './components/ExpressionEditorModal';
 import { storageService } from './storageService';
 import { ThemePanel } from './ThemePanel';
 import { TreeView } from './components/TreeView';
+import { exportToReactProject } from './services/projectExporter';
 
 const MIN_PANEL_WIDTH = 240;
 const MAX_PANEL_WIDTH = 500;
@@ -118,6 +121,8 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     selectPage,
     alignAndDistribute,
   } = useAppData(initialAppDefinition, onSave);
+
+  const [isExporting, setIsExporting] = useState(false);
 
   const [expressionEditorState, setExpressionEditorState] = useState<{
     isOpen: boolean;
@@ -279,6 +284,18 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     }
     selectComponent(componentId);
   }, [currentPageId, selectPage, selectComponent]);
+  
+  const handleExportAsReactProject = async () => {
+    setIsExporting(true);
+    try {
+      await exportToReactProject(appDefinition);
+    } catch (error) {
+      console.error("Failed to export project:", error);
+      alert("An error occurred while trying to export the project. See the console for details.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
 
   const renderLeftPanel = () => {
@@ -339,6 +356,18 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
             <h1 className="text-lg font-semibold text-gray-800">{appDefinition.name}</h1>
         </div>
         <div className="flex items-center gap-4">
+          {mode === 'edit' && (
+            <button
+              onClick={handleExportAsReactProject}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>{isExporting ? 'Exporting...' : 'Export as React Project'}</span>
+            </button>
+          )}
           <button
             onClick={() => setMode(mode === 'edit' ? 'preview' : 'edit')}
             aria-label={`Switch to ${mode === 'edit' ? 'preview' : 'editor'} mode`}
