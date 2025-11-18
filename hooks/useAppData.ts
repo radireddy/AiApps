@@ -515,8 +515,10 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     const provider = dataSourceRegistry[instance.providerId];
     await provider.updateRecord(instance, recordId, updates);
     await refreshDataSource(instance.id);
-    if (appDefinition.dataStore.selectedRecord?.id === recordId) {
-        updateDataStore('selectedRecord', { ...appDefinition.dataStore.selectedRecord, ...updates });
+    const selectedRecord = appDefinition.dataStore.selectedRecord;
+    // FIX: Add type guards to ensure selectedRecord is an object with an 'id' before access.
+    if (selectedRecord && typeof selectedRecord === 'object' && 'id' in selectedRecord && selectedRecord.id === recordId) {
+        updateDataStore('selectedRecord', { ...selectedRecord, ...(typeof updates === 'object' && updates ? updates : {}) });
     }
   }, [appDefinition, refreshDataSource, updateDataStore]); // FIX: Depend on the entire appDefinition
 
@@ -526,7 +528,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     const provider = dataSourceRegistry[instance.providerId];
     await provider.deleteRecord(instance, recordId);
     await refreshDataSource(instance.id);
-    if (appDefinition.dataStore.selectedRecord?.id === recordId) {
+    const selectedRecord = appDefinition.dataStore.selectedRecord;
+    // FIX: Add type guards to ensure selectedRecord is an object with an 'id' before access.
+    if (selectedRecord && typeof selectedRecord === 'object' && 'id' in selectedRecord && selectedRecord.id === recordId) {
         updateDataStore('selectedRecord', null);
     }
   }, [appDefinition, refreshDataSource, updateDataStore]); // FIX: Depend on the entire appDefinition
@@ -580,8 +584,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     components.filter(c => c.type === ComponentType.TABLE).forEach(c => {
         const props = c.props as TableProps;
         if (props.selectedRecordKey) {
+            const existingScopeValue = scope[c.id];
             scope[c.id] = {
-                ...scope[c.id], // Keep existing props
+                ...(typeof existingScopeValue === 'object' && existingScopeValue ? existingScopeValue : {}),
                 selectedRecord: get(dataStore, props.selectedRecordKey)
             }
         }
