@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { AppDefinition, AppComponent, ComponentType, DataStore, ComponentProps, ActionHandlers, DataSourceInstance, TableProps, AppVariable, Theme, AppPage } from '../types';
 import { componentRegistry } from '../components/component-registry/registry';
@@ -30,6 +29,14 @@ export type AlignAction =
   | 'match-width' | 'match-height';
 
 
+/**
+ * The core hook for managing the application state in the Editor.
+ * It handles the `AppDefinition`, component CRUD operations, selection state,
+ * data binding, and interactions with data sources.
+ * 
+ * @param initialAppDefinition - The initial state of the app loaded from storage.
+ * @param onSave - Callback function triggered when the app state changes (debounced).
+ */
 export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef: AppDefinition) => void) => {
   const [appDefinition, setAppDefinitionState] = useState<AppDefinition>(initialAppDefinition);
   const [selectedComponentIds, setSelectedComponentIds] = useState<string[]>([]);
@@ -43,6 +50,10 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   const [variableState, setVariableState] = useState<Record<string, any>>({});
 
 
+  /**
+   * Refreshes the data for a specific data source instance.
+   * Fetches records from the provider and updates the local state.
+   */
   const refreshDataSource = useCallback(async (instanceId: string) => {
     const instance = appDefinition.dataSources.find(ds => ds.id === instanceId);
     if (!instance) return;
@@ -126,6 +137,10 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
       }));
   }, []);
 
+  /**
+   * Adds a new component to the canvas.
+   * Automatically initializes related data store keys if configured in default props.
+   */
   const addComponent = useCallback((type: ComponentType, position: { x: number; y: number }, parentId: string | null = null, pageId: string) => {
     const componentPlugin = componentRegistry[type];
     if (!componentPlugin) return;
@@ -255,6 +270,13 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
       }));
   }, []);
 
+  /**
+   * Handles the complex logic of moving a component into or out of a container.
+   * It calculates the new relative coordinates based on the component's absolute position
+   * and the new parent's position.
+   * 
+   * @param componentId - The ID of the component being moved.
+   */
   const reparentComponent = useCallback((componentId: string) => {
     // Helper to get the absolute position of a component
     const getAbsolutePosition = (cId: string, allComponents: AppComponent[]): { x: number, y: number } => {
@@ -350,10 +372,16 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, [setAppDefinitionState]);
 
   // FIX: Completely overhauled alignment and distribution logic to be robust, prevent overlaps, and correctly space all components.
+  /**
+   * Aligns or distributes selected components.
+   * Supports left/center/right alignment, top/middle/bottom alignment,
+   * and horizontal/vertical distribution.
+   */
   const alignAndDistribute = useCallback((action: AlignAction) => {
     if (selectedComponentIds.length < 2) return;
 
-    const componentsMap = new Map(components.map(c => [c.id, c]));
+    const componentsMap = new Map<string, AppComponent>();
+    components.forEach(c => componentsMap.set(c.id, c));
     const selectedComponents = selectedComponentIds.map(id => componentsMap.get(id)).filter((c): c is AppComponent => !!c);
     
     if (selectedComponents.length < 2) return;
@@ -517,8 +545,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     await refreshDataSource(instance.id);
     const selectedRecord = appDefinition.dataStore.selectedRecord;
     // FIX: Add type guards to ensure selectedRecord is an object with an 'id' before access.
-    if (selectedRecord && typeof selectedRecord === 'object' && 'id' in selectedRecord && selectedRecord.id === recordId) {
-        updateDataStore('selectedRecord', { ...selectedRecord, ...(typeof updates === 'object' && updates ? updates : {}) });
+    // Cast to `any` to satisfy strict type checking when accessing `id` and spreading.
+    if (selectedRecord && typeof selectedRecord === 'object' && 'id' in selectedRecord && (selectedRecord as any).id === recordId) {
+        updateDataStore('selectedRecord', { ...(selectedRecord as any), ...(typeof updates === 'object' && updates ? updates : {}) });
     }
   }, [appDefinition, refreshDataSource, updateDataStore]); // FIX: Depend on the entire appDefinition
 
@@ -530,7 +559,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     await refreshDataSource(instance.id);
     const selectedRecord = appDefinition.dataStore.selectedRecord;
     // FIX: Add type guards to ensure selectedRecord is an object with an 'id' before access.
-    if (selectedRecord && typeof selectedRecord === 'object' && 'id' in selectedRecord && selectedRecord.id === recordId) {
+    // Cast to `any` to satisfy strict type checking when accessing `id`.
+    if (selectedRecord && typeof selectedRecord === 'object' && 'id' in selectedRecord && (selectedRecord as any).id === recordId) {
         updateDataStore('selectedRecord', null);
     }
   }, [appDefinition, refreshDataSource, updateDataStore]); // FIX: Depend on the entire appDefinition
@@ -565,6 +595,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
 
   // --- EXPRESSION EVALUATION SCOPE ---
+  /**
+   * Constructs the scope object used by the expression evaluation engine.
+   * This combines the data store, theme, variables, and component states into a single object.
+   * Any change to these dependencies triggers a re-evaluation of expressions.
+   */
   const evaluationScope = useMemo(() => {
     const scope = { console, theme: appDefinition.theme, ...dataStore, ...dataSourceContents, ...variableState };
     // Add component states to scope

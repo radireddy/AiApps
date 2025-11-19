@@ -1,15 +1,28 @@
+
 // DOCS_IMPACT: The User Guide section on "Actions & Events" for Buttons needs to be updated. A new 'navigate' action was added. It requires a new 'actionNavigatePageId' property to be documented, which will hold the ID of the page to navigate to.
 import React from 'react';
 
+/**
+ * Represents the minimal metadata required to list an application in the dashboard.
+ */
 export interface AppMetadata {
+    /** Unique identifier for the app (e.g., 'app_12345') */
     id: string;
+    /** User-defined name of the application */
     name: string;
+    /** ISO timestamp of creation */
     createdAt: string;
+    /** ISO timestamp of last modification */
     lastModifiedAt: string;
 }
 
+/**
+ * Represents a single page within the application.
+ */
 export interface AppPage {
+    /** Unique identifier for the page */
     id: string;
+    /** Display name of the page (e.g., "Home", "Settings") */
     name: string;
 }
 
@@ -43,6 +56,10 @@ export interface ThemeSpacing {
     lg: string;
 }
 
+/**
+ * Defines the visual styling rules for the application.
+ * Values here are referenced by components using `{{theme.colors.primary}}`, etc.
+ */
 export interface Theme {
   colors: ThemeColors;
   font: ThemeFont;
@@ -78,14 +95,20 @@ export enum ComponentType {
   MODAL = 'MODAL',
 }
 
+/**
+ * Base properties shared by all visual components.
+ */
 export interface BaseProps {
+  /** X position relative to parent (pixels) */
   x: number;
+  /** Y position relative to parent (pixels) */
   y: number;
   width: number;
   height: number;
   opacity?: number | string;
   boxShadow?: string;
   disabled?: boolean | string;
+  /** Expression to determine visibility (e.g., `{{ !user.isLoggedIn }}`) */
   hidden?: boolean | string;
 }
 
@@ -97,6 +120,12 @@ export interface BorderProps {
 }
 
 export type PropertyRendererType = 'javascript' | 'markdown' | 'literal';
+/**
+ * A function hook that transforms a raw property value into a rendered value.
+ * @example
+ * // Returns "Hello World" if value is "{{ 'Hello ' + 'World' }}"
+ * renderer(value, scope, defaultValue) 
+ */
 export type PropertyRendererHook = <T>(value: T, scope: Record<string, any>, defaultValue: T) => T;
 
 
@@ -113,6 +142,7 @@ export interface LabelProps extends BaseProps, BorderProps {
 
 export interface InputProps extends BaseProps, BorderProps {
   placeholder: string;
+  /** The key in the `dataStore` where this input's value is saved (e.g., 'user.name') */
   dataStoreKey: string;
   accessibilityLabel?: string;
 }
@@ -199,14 +229,25 @@ export interface DividerProps extends BaseProps {
 
 export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | FormProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ModalProps;
 
+/**
+ * Represents a single instance of a UI component in the application.
+ */
 export interface AppComponent {
+  /** Unique identifier (e.g. 'BUTTON_16345...') */
   id: string;
   type: ComponentType;
+  /** Configuration properties for the component */
   props: ComponentProps;
+  /** ID of the container component this component resides in, or null if root */
   parentId?: string | null;
+  /** The ID of the page this component belongs to */
   pageId: string;
 }
 
+/**
+ * The central state object for the running application.
+ * Maps keys (strings) to any value.
+ */
 export type DataStore = Record<string, any>;
 
 export interface DataSourceInstance {
@@ -230,13 +271,22 @@ export interface AppVariable {
     initialValue: any;
 }
 
+/**
+ * The Single Source of Truth for an application.
+ * This object contains the entire blueprint of the app: structure, logic, styling, and configuration.
+ */
 export interface AppDefinition extends AppMetadata {
   pages: AppPage[];
   mainPageId: string;
+  /** Flat list of all components across all pages */
   components: AppComponent[];
+  /** Initial state of the data store */
   dataStore: DataStore;
+  /** Configuration for external data connections */
   dataSources: DataSourceInstance[];
+  /** Global state variable definitions */
   variables: AppVariable[];
+  /** Visual theme configuration */
   theme: Theme;
 }
 
@@ -258,11 +308,16 @@ export interface ActionHandlers {
 
 
 // --- Data Source Provider ---
+/**
+ * Interface for implementing a new Data Source Plugin.
+ */
 export interface DataSourceProvider {
-    id: string; // Unique ID like "MOCK_DB", "LOCAL_STORAGE"
-    name: string; // User-friendly name like "Mock Database"
+    /** Unique ID like "MOCK_DB", "LOCAL_STORAGE" */
+    id: string; 
+    /** User-friendly name like "Mock Database" */
+    name: string; 
     description: string;
-    // Schema for the configuration form
+    /** Schema for the configuration form shown in the Data Panel */
     configSchema: {
         [key: string]: {
             label: string;
@@ -291,11 +346,17 @@ export interface PaletteConfig {
   defaultProps: Record<string, any>;
 }
 
+/**
+ * Interface for implementing a new UI Component Plugin.
+ */
 export interface ComponentPlugin {
   type: ComponentType;
   paletteConfig: PaletteConfig;
+  /** React component used to render the element on the canvas */
   renderer: React.FC<any>;
+  /** React component used to render the Properties Panel controls */
   properties: React.FC<any>;
+  /** If true, other components can be dropped inside this one */
   isContainer?: boolean;
 }
 

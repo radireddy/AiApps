@@ -1,3 +1,4 @@
+
 // A simple, safe expression evaluation engine.
 
 /**
@@ -5,9 +6,14 @@
  * It uses the Function constructor with a `with` block to create a sandboxed function,
  * preventing access to global scope (like `window` or `document`) while
  * making all properties of the scope object available as local variables.
+ * 
  * @param expression - The string expression to evaluate (e.g., "a + b.value").
  * @param scope - An object where keys are variable names available to the expression.
- * @returns The result of the expression.
+ * @returns The result of the expression. Returns undefined if syntax is invalid.
+ * 
+ * @example
+ * const scope = { a: 10, b: 5 };
+ * const result = safeEval("a + b", scope); // Returns 15
  */
 export function safeEval(expression: string, scope: Record<string, any>): any {
   // 1. Sanitize the expression. If it's empty or just whitespace, don't even try.

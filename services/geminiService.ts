@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AppDefinition, ComponentType, DataStore, AppVariableType, AppComponent, ComponentProps } from '../types';
 import { componentRegistry } from '../components/component-registry/registry';
@@ -81,6 +80,24 @@ const patchSchema = {
 };
 
 
+/**
+ * Generates or modifies the application layout using the Gemini AI model.
+ * 
+ * This function sends the current app state and user prompt to the LLM.
+ * The LLM is instructed to return a "JSON Patch" object containing lists of
+ * components to add, update, or delete.
+ * 
+ * It handles:
+ * 1. Constructing the system prompt with current context.
+ * 2. Calling the Gemini API with JSON schema enforcement.
+ * 3. Parsing the response.
+ * 4. Post-processing new components (auto-parenting logic based on coordinates).
+ * 
+ * @param prompt - The user's natural language request (e.g., "Add a login form").
+ * @param currentApp - The current state of the application.
+ * @param currentPageId - The ID of the currently active page.
+ * @returns A Promise resolving to the new AppDefinition, or null on failure.
+ */
 export const generateAppLayout = async (prompt: string, currentApp: AppDefinition, currentPageId: string): Promise<AppDefinition | null> => {
   const API_KEY = process.env.API_KEY;
 
