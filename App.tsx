@@ -4,6 +4,7 @@ import { Dashboard } from './Dashboard';
 import { Editor } from './Editor';
 import { AppMetadata } from './types';
 
+//test - able to push code
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'editor'>('dashboard');
   const [currentAppId, setCurrentAppId] = useState<string | null>(null);
