@@ -97,6 +97,31 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         return transformed;
     };
 
+    // If we're in a raw JS/code-block context and have a plain string (not a {{}} expression),
+    // treat it as code to transform (e.g. actions.updateVariable -> setXyz).
+    if (isRaw) {
+        if (value.startsWith('{{') && value.endsWith('}}')) {
+            const expression = value.substring(2, value.length - 2).trim();
+            const finalExpr = transformExpression(expression);
+            return isRaw ? finalExpr : `{${finalExpr}}`;
+        }
+
+        // Handle template-style strings containing mustache placeholders like "Hello {{ name }}"
+        if (value.includes('{{') && value.includes('}}')) {
+            const templateLiteral = value.replace(/{{\s*(.*?)\s*}}/g, (_, expression) => `\${${transformExpression(expression)}}`);
+            return `\`${templateLiteral}\``;
+        }
+
+        // Heuristic: if the value looks like plain text (no code-like chars), return it as a string literal.
+        const seemsLikeCode = /[()\[\].=<>+\-*/%&|?:]/.test(value) || value.includes('.') || value.includes('actions') || value.includes('updateVariable');
+        if (!seemsLikeCode) {
+            return JSON.stringify(value);
+        }
+
+        // Otherwise treat it as code and attempt to transform it.
+        return transformExpression(value);
+    }
+
     if (value.startsWith('{{') && value.endsWith('}}')) {
         const expression = value.substring(2, value.length - 2).trim();
         const finalExpr = transformExpression(expression);

@@ -28,10 +28,10 @@ const SwitchRenderer: React.FC<{
         role="switch"
         aria-checked={isChecked}
         aria-labelledby={`${component.id}-label`}
-        aria-disabled={isDisabled}
+        aria-disabled={isDisabledInEdit}
         onClick={() => onUpdateDataStore?.(p.dataStoreKey, !isChecked)}
         className={`${isChecked ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isDisabledInEdit ? 'pointer-events-none' : ''}`}
-        disabled={isDisabled}
+        disabled={isDisabledInEdit}
       >
         <span className={`${isChecked ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`} aria-hidden="true"/>
       </button>

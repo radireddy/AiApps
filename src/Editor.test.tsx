@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Editor } from './Editor';
-import { storageService } from './storageService';
-import { generateAppLayout } from './services/geminiService';
-import { AppDefinition, ComponentType } from './types';
+import { Editor } from '@/Editor';
+import { storageService } from '@/storageService';
+import { generateAppLayout } from '@/services/geminiService';
+import { AppDefinition, ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
-jest.mock('./storageService');
-jest.mock('./services/geminiService');
+jest.mock('@/storageService');
+jest.mock('@/services/geminiService');
 
 const mockApp: AppDefinition = {
   id: 'app1',
@@ -44,7 +44,7 @@ describe('Editor', () => {
     render(<Editor appId="app1" onBack={() => {}} />);
     expect(screen.getByText('Loading Editor...')).toBeInTheDocument();
     expect(await screen.findByText('Test App')).toBeInTheDocument();
-    expect(screen.getByText('Explorer')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Explorer' })).toBeInTheDocument();
     expect(screen.getByLabelText('Application design canvas')).toBeInTheDocument();
   });
 

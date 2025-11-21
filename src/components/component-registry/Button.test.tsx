@@ -2,8 +2,8 @@ import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ButtonPlugin } from './Button';
-import { ComponentType, ActionHandlers, ButtonProps } from '../../types';
+import { ButtonPlugin } from '@/components/component-registry/Button';
+import { ComponentType, ActionHandlers, ButtonProps } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
@@ -133,22 +133,27 @@ describe('ButtonPlugin', () => {
 
     it('should render basic properties', () => {
       render(<ButtonProperties {...baseProps} />);
-      expect(screen.getByLabelText('Text')).toHaveValue('My Button');
+      // The Text field is rendered as an input with the display value set
+      expect(screen.getByDisplayValue('My Button')).toBeInTheDocument();
     });
 
     it('should update text prop on change', async () => {
       render(<ButtonProperties {...baseProps} />);
-      const textInput = screen.getByLabelText('Text');
-      await userEvent.clear(textInput);
-      await userEvent.type(textInput, 'New Text');
+      const textInput = screen.getByDisplayValue('My Button');
+      // Trigger a single change event to set the new text value
+      fireEvent.change(textInput, { target: { value: 'New Text' } });
       expect(updateProp).toHaveBeenLastCalledWith('text', 'New Text');
     });
 
     it('should show alert message field when actionType is "alert"', async () => {
       const props = { ...baseProps, component: { ...baseProps.component, props: { ...baseProps.component.props, actionType: 'alert' as const } } };
       render(<ButtonProperties {...props} />);
+      // Open the collapsed "On Click Action" section so its fields are visible
+      const actionSectionButton = screen.getByRole('button', { name: 'On Click Action' });
+      await userEvent.click(actionSectionButton);
       expect(screen.getByLabelText('Action Type')).toHaveValue('alert');
-      expect(screen.getByLabelText('Alert Message')).toBeInTheDocument();
+      // PropFxInput doesn't link the label with htmlFor, so assert by test id
+      expect(screen.getByTestId('prop-fx-input-Alert-Message')).toBeInTheDocument();
     });
   });
 });

@@ -48,11 +48,12 @@ const InputRenderer: React.FC<{
       )
   }
 
+  const currentValue = get(dataStore, p.dataStoreKey, '');
   return (
     <input
       type="text"
       placeholder={placeholder}
-      value={get(dataStore, p.dataStoreKey, '')}
+      {...(onUpdateDataStore ? { defaultValue: currentValue } : { value: currentValue })}
       onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
       style={style}
       className={`w-full h-full bg-white text-gray-900 focus:outline-none`}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { safeEval } from './engine';
+import { safeEval } from '@/expressions/engine';
 
 describe('safeEval', () => {
   const scope = {

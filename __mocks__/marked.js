@@ -1,0 +1,1 @@
+exports.marked = (s) => s;

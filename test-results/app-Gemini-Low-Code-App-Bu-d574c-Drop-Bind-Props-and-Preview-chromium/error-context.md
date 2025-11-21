@@ -1,0 +1,210 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "Apps" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+        - text: Apps
+      - heading "Data Binding Test" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - button "Export as React Project" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e15]: Export as React Project
+      - button "Switch to preview mode" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: Preview
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - button "Explorer" [ref=e23] [cursor=pointer]
+        - button "Components" [ref=e24] [cursor=pointer]
+        - button "Data" [ref=e25] [cursor=pointer]
+        - button "State" [ref=e26] [cursor=pointer]
+        - button "Theme" [ref=e27] [cursor=pointer]
+      - region "Components" [ref=e28]:
+        - generic [ref=e29]:
+          - heading "Components" [level=2] [ref=e30]
+          - button "Collapse Components" [expanded] [ref=e31] [cursor=pointer]:
+            - img [ref=e32]
+        - generic "Components" [ref=e34]:
+          - generic [ref=e35]:
+            - generic "Panel component" [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: Panel
+            - generic "Form component" [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e43]: Form
+            - generic "H-Stack component" [ref=e44]:
+              - img [ref=e45]
+              - generic [ref=e47]: H-Stack
+            - generic "V-Stack component" [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e51]: V-Stack
+            - generic "Table component" [ref=e52]:
+              - img [ref=e53]
+              - generic [ref=e56]: Table
+            - generic "Label component" [ref=e57]:
+              - img [ref=e58]
+              - generic [ref=e60]: Label
+            - generic "Input component" [ref=e61]:
+              - img [ref=e62]
+              - generic [ref=e64]: Input
+            - generic "Button component" [ref=e65]:
+              - img [ref=e66]
+              - generic [ref=e68]: Button
+            - generic "Image component" [ref=e69]:
+              - img [ref=e70]
+              - generic [ref=e74]: Image
+            - generic "Textarea component" [ref=e75]:
+              - img [ref=e76]
+              - generic [ref=e77]: Textarea
+            - generic "Select component" [ref=e78]:
+              - img [ref=e79]
+              - generic [ref=e81]: Select
+            - generic "Checkbox component" [ref=e82]:
+              - img [ref=e83]
+              - generic [ref=e86]: Checkbox
+            - generic "Divider component" [ref=e87]:
+              - img [ref=e88]
+              - generic [ref=e89]: Divider
+            - generic "Radio Group component" [ref=e90]:
+              - img [ref=e91]
+              - generic [ref=e94]: Radio Group
+            - generic "Switch component" [ref=e95]:
+              - img [ref=e96]
+              - generic [ref=e99]: Switch
+            - generic "Modal component" [ref=e100]:
+              - img [ref=e101]
+              - generic [ref=e103]: Modal
+    - separator "Resize component panel" [ref=e104]
+    - main [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - img [ref=e108]
+          - generic [ref=e110]: AI
+        - textbox "Describe the app you want to generate with AI" [ref=e111]:
+          - /placeholder: e.g., A user profile card with a V-Stack for name and email
+        - button "Generate app with AI" [disabled] [ref=e112]: Generate
+      - region "Application design canvas" [ref=e113]:
+        - generic "INPUT component" [ref=e114]:
+          - textbox "Text input field" [active] [ref=e115]:
+            - /placeholder: Enter text...
+          - button "Delete Component" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+          - slider "Resize Component" [ref=e119]
+    - separator "Resize properties panel" [ref=e120]
+    - region "Properties" [ref=e121]:
+      - generic [ref=e122]:
+        - generic [ref=e123]:
+          - heading "Input" [level=3] [ref=e124]
+          - paragraph [ref=e125]: "ID: INPUT_1763696178366"
+        - button "Collapse Properties" [expanded] [ref=e126] [cursor=pointer]:
+          - img [ref=e127]
+      - generic "Input" [ref=e129]:
+        - generic [ref=e130]:
+          - button "Layout" [expanded] [ref=e131] [cursor=pointer]:
+            - generic [ref=e132]: Layout
+            - img [ref=e133]
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - generic [ref=e138]: X
+              - spinbutton "X" [ref=e139]: "100"
+            - generic [ref=e140]:
+              - generic [ref=e141]: "Y"
+              - spinbutton "Y" [ref=e142]: "100"
+            - generic [ref=e143]:
+              - generic [ref=e144]: Width
+              - spinbutton "Width" [ref=e145]: "200"
+            - generic [ref=e146]:
+              - generic [ref=e147]: Height
+              - spinbutton "Height" [ref=e148]: "40"
+        - generic [ref=e149]:
+          - button "State" [expanded] [ref=e150] [cursor=pointer]:
+            - generic [ref=e151]: State
+            - img [ref=e152]
+          - generic [ref=e154]:
+            - generic [ref=e155]:
+              - generic [ref=e156]: Disabled
+              - generic [ref=e157]:
+                - textbox "Disabled" [ref=e158]:
+                  - /placeholder: "e.g. {{Table1.selectedRecord == null}}"
+                  - text: "false"
+                - button "fx" [ref=e159] [cursor=pointer]
+            - generic [ref=e160]:
+              - generic [ref=e161]: Hidden
+              - generic [ref=e162]:
+                - textbox "Hidden" [ref=e163]:
+                  - /placeholder: "e.g. {{!showAlert}}"
+                - button "fx" [ref=e164] [cursor=pointer]
+        - generic [ref=e165]:
+          - button "Settings" [expanded] [ref=e166] [cursor=pointer]:
+            - generic [ref=e167]: Settings
+            - img [ref=e168]
+          - generic [ref=e170]:
+            - generic [ref=e171]:
+              - generic [ref=e172]: Placeholder
+              - generic [ref=e173]:
+                - textbox "Placeholder" [ref=e174]: Enter text...
+                - button "fx" [ref=e175] [cursor=pointer]
+            - generic [ref=e176]:
+              - generic [ref=e177]: Data Store Key
+              - textbox "Data Store Key" [ref=e178]:
+                - /placeholder: e.g. selectedRecord.name
+                - text: newInput
+        - generic [ref=e179]:
+          - button "Accessibility" [expanded] [ref=e180] [cursor=pointer]:
+            - generic [ref=e181]: Accessibility
+            - img [ref=e182]
+          - generic [ref=e185]:
+            - generic [ref=e186]: Accessibility Label
+            - textbox "Accessibility Label" [ref=e187]:
+              - /placeholder: A descriptive label for screen readers
+              - text: Text input field
+        - generic [ref=e188]:
+          - button "Styling" [expanded] [ref=e189] [cursor=pointer]:
+            - generic [ref=e190]: Styling
+            - img [ref=e191]
+          - generic [ref=e193]:
+            - generic [ref=e194]:
+              - generic [ref=e195]: Opacity
+              - generic [ref=e196]:
+                - textbox "Opacity" [ref=e197]: "1"
+                - button "fx" [ref=e198] [cursor=pointer]
+            - generic [ref=e199]:
+              - generic [ref=e200]: Shadow
+              - generic [ref=e201]:
+                - textbox "Shadow" [ref=e202]:
+                  - /placeholder: "e.g. 2px 2px 5px #ccc"
+                - button "fx" [ref=e203] [cursor=pointer]
+            - generic [ref=e204]:
+              - generic [ref=e205]: Border Radius
+              - generic [ref=e206]:
+                - textbox "Border Radius" [ref=e207]: "{{theme.radius.default}}"
+                - button "fx" [ref=e208] [cursor=pointer]
+                - button "Open Expression Editor" [ref=e209] [cursor=pointer]:
+                  - img [ref=e210]
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - generic [ref=e214]: Border Width
+                - generic [ref=e215]:
+                  - textbox "Border Width" [ref=e216]: "{{theme.border.width}}"
+                  - button "fx" [ref=e217] [cursor=pointer]
+                  - button "Open Expression Editor" [ref=e218] [cursor=pointer]:
+                    - img [ref=e219]
+              - generic [ref=e221]:
+                - generic [ref=e222]: Style
+                - combobox "Style" [ref=e223]:
+                  - option "None" [selected]
+                  - option "Solid"
+                  - option "Dashed"
+                  - option "Dotted"
+            - generic [ref=e224]:
+              - generic [ref=e225]: Border Color
+              - generic [ref=e226]:
+                - textbox "Border Color" [ref=e227]: "{{THEME.COLORS.BORDER}}"
+                - button "fx" [ref=e228] [cursor=pointer]
+                - button "Open Expression Editor" [ref=e229] [cursor=pointer]:
+                  - img [ref=e230]
+```

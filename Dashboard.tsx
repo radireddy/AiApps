@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { storageService } from './storageService';
+import { storageService } from '@/storageService';
 import { AppMetadata, GlobalTheme, AppTemplate } from './types';
 import { CreateAppModal } from './CreateAppModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';

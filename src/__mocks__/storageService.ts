@@ -1,0 +1,17 @@
+export const storageService = {
+  getAllAppsMetadata: jest.fn(),
+  getApp: jest.fn(),
+  saveApp: jest.fn(),
+  createApp: jest.fn(),
+  deleteApp: jest.fn(),
+  renameApp: jest.fn(),
+  exportSingleApp: jest.fn(),
+  exportAllApps: jest.fn(),
+  importApps: jest.fn(),
+  getAllThemes: jest.fn(),
+  saveTheme: jest.fn(),
+  deleteTheme: jest.fn(),
+  getAllTemplates: jest.fn(),
+  saveTemplate: jest.fn(),
+  deleteTemplate: jest.fn(),
+};

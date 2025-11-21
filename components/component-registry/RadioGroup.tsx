@@ -33,7 +33,7 @@ const RadioGroupRenderer: React.FC<{
       <span id={groupLabelId} className="sr-only">{p.groupLabel}</span>
       {options.map(option => (
         <div key={option} className="flex items-center mb-2">
-          <input
+            <input
             type="radio"
             id={`${component.id}-${option}`}
             name={component.id}
@@ -41,7 +41,7 @@ const RadioGroupRenderer: React.FC<{
             checked={selectedValue === option}
             onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
             className={`mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${isDisabledInEdit ? 'pointer-events-none' : ''}`}
-            disabled={isDisabled}
+            disabled={isDisabledInEdit}
           />
           <label htmlFor={`${component.id}-${option}`} className={`text-gray-800 ${isDisabledInEdit ? 'pointer-events-none' : ''}`}>{option}</label>
         </div>

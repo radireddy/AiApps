@@ -1,16 +1,11 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import { generateAppLayout } from './geminiService';
-import { GoogleGenAI, mockGenerateContent } from '../../__mocks__/@google/genai';
-import { AppDefinition, ComponentType } from '../types';
+import { generateAppLayout } from '@/services/geminiService';
+import { AppDefinition, ComponentType } from 'types';
 
 // FIX: Cast the result of requireActual to 'any' to resolve 'unknown' type errors.
-jest.mock('@google/genai', () => {
-  const mockGenAI = jest.requireActual('../../__mocks__/@google/genai') as any;
-  return {
-    GoogleGenAI: mockGenAI.GoogleGenAI,
-    Type: mockGenAI.Type,
-  };
-});
+// Use the manual mock in __mocks__/@google/genai.ts
+jest.mock('@google/genai');
+const { mockGenerateContent } = jest.requireMock('@google/genai') as { mockGenerateContent: jest.Mock };
 
 const mockCurrentApp: AppDefinition = {
   id: 'app1', name: 'Test App', createdAt: '', lastModifiedAt: '',

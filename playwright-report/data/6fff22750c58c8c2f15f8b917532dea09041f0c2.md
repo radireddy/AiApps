@@ -1,0 +1,158 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button "Apps" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+        - text: Apps
+      - heading "Alignment Test" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - button "Export as React Project" [ref=e12] [cursor=pointer]:
+        - img [ref=e13]
+        - generic [ref=e15]: Export as React Project
+      - button "Switch to preview mode" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: Preview
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - button "Explorer" [ref=e23] [cursor=pointer]
+        - button "Components" [ref=e24] [cursor=pointer]
+        - button "Data" [ref=e25] [cursor=pointer]
+        - button "State" [ref=e26] [cursor=pointer]
+        - button "Theme" [ref=e27] [cursor=pointer]
+      - region "Components" [ref=e28]:
+        - generic [ref=e29]:
+          - heading "Components" [level=2] [ref=e30]
+          - button "Collapse Components" [expanded] [ref=e31] [cursor=pointer]:
+            - img [ref=e32]
+        - generic "Components" [ref=e34]:
+          - generic [ref=e35]:
+            - generic "Panel component" [ref=e36]:
+              - img [ref=e37]
+              - generic [ref=e39]: Panel
+            - generic "Form component" [ref=e40]:
+              - img [ref=e41]
+              - generic [ref=e43]: Form
+            - generic "H-Stack component" [ref=e44]:
+              - img [ref=e45]
+              - generic [ref=e47]: H-Stack
+            - generic "V-Stack component" [ref=e48]:
+              - img [ref=e49]
+              - generic [ref=e51]: V-Stack
+            - generic "Table component" [ref=e52]:
+              - img [ref=e53]
+              - generic [ref=e56]: Table
+            - generic "Label component" [ref=e57]:
+              - img [ref=e58]
+              - generic [ref=e60]: Label
+            - generic "Input component" [ref=e61]:
+              - img [ref=e62]
+              - generic [ref=e64]: Input
+            - generic "Button component" [ref=e65]:
+              - img [ref=e66]
+              - generic [ref=e68]: Button
+            - generic "Image component" [ref=e69]:
+              - img [ref=e70]
+              - generic [ref=e74]: Image
+            - generic "Textarea component" [ref=e75]:
+              - img [ref=e76]
+              - generic [ref=e77]: Textarea
+            - generic "Select component" [ref=e78]:
+              - img [ref=e79]
+              - generic [ref=e81]: Select
+            - generic "Checkbox component" [ref=e82]:
+              - img [ref=e83]
+              - generic [ref=e86]: Checkbox
+            - generic "Divider component" [ref=e87]:
+              - img [ref=e88]
+              - generic [ref=e89]: Divider
+            - generic "Radio Group component" [ref=e90]:
+              - img [ref=e91]
+              - generic [ref=e94]: Radio Group
+            - generic "Switch component" [ref=e95]:
+              - img [ref=e96]
+              - generic [ref=e99]: Switch
+            - generic "Modal component" [ref=e100]:
+              - img [ref=e101]
+              - generic [ref=e103]: Modal
+    - separator "Resize component panel" [ref=e104]
+    - main [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - img [ref=e108]
+          - generic [ref=e110]: AI
+        - textbox "Describe the app you want to generate with AI" [ref=e111]:
+          - /placeholder: e.g., A user profile card with a V-Stack for name and email
+        - button "Generate app with AI" [disabled] [ref=e112]: Generate
+      - region "Application design canvas" [ref=e113]:
+        - generic "LABEL component" [ref=e114]:
+          - generic [ref=e115]: New Label
+          - button "Delete Component" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+        - generic "LABEL component" [ref=e119]:
+          - generic [ref=e120]: New Label
+          - button "Delete Component" [ref=e121] [cursor=pointer]:
+            - img [ref=e122]
+    - separator "Resize properties panel" [ref=e124]
+    - region "Properties":
+      - generic:
+        - generic:
+          - heading "Properties" [level=3]
+        - button "Collapse Properties" [expanded]:
+          - img
+      - generic "Properties":
+        - generic:
+          - paragraph: 2 components selected.
+          - generic:
+            - heading "Align" [level=4]
+            - generic:
+              - generic:
+                - button "Align left edges & stack vertically":
+                  - img
+                - generic: Align left edges & stack vertically
+              - generic:
+                - button "Align horizontal centers & stack vertically":
+                  - img
+                - generic: Align horizontal centers & stack vertically
+              - generic:
+                - button "Align right edges & stack vertically":
+                  - img
+                - generic: Align right edges & stack vertically
+              - generic:
+                - button "Align top edges & stack horizontally":
+                  - img
+                - generic: Align top edges & stack horizontally
+              - generic:
+                - button "Align vertical centers & stack horizontally":
+                  - img
+                - generic: Align vertical centers & stack horizontally
+              - generic:
+                - button "Align bottom edges & stack horizontally":
+                  - img
+                - generic: Align bottom edges & stack horizontally
+          - generic:
+            - heading "Distribute" [level=4]
+            - generic:
+              - generic:
+                - button "Distribute horizontal spacing":
+                  - img
+                - generic: Distribute horizontal spacing
+              - generic:
+                - button "Distribute vertical spacing":
+                  - img
+                - generic: Distribute vertical spacing
+          - generic:
+            - heading "Match Size" [level=4]
+            - generic:
+              - generic:
+                - button "Match width (first selected)":
+                  - img
+                - generic: Match width (first selected)
+              - generic:
+                - button "Match height (first selected)":
+                  - img
+                - generic: Match height (first selected)
+```

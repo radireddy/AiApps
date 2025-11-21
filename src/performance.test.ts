@@ -1,8 +1,8 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
 import { performance } from 'perf_hooks'; // Use Node's performance for more accuracy in Jest
-import { useAppData } from './hooks/useAppData';
-import { AppDefinition, ComponentType, AppVariableType, AppComponent, AppVariable, LabelProps } from './types';
+import { useAppData } from '@/hooks/useAppData';
+import { AppDefinition, ComponentType, AppVariableType, AppComponent, AppVariable, LabelProps } from 'types';
 import '@testing-library/jest-dom';
 
 /**

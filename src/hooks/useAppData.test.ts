@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
-import { useAppData } from './useAppData';
-import { AppDefinition, ComponentType, AppVariableType } from '../types';
+import { useAppData } from '@/hooks/useAppData';
+import { AppDefinition, ComponentType, AppVariableType } from 'types';
 
 const mockAppDef: AppDefinition = {
   id: 'app1', name: 'Test App', createdAt: '', lastModifiedAt: '',

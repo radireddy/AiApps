@@ -26,10 +26,11 @@ const TextareaRenderer: React.FC<{
     borderStyle: p.borderStyle,
     opacity: isDisabled ? 0.6 : 1,
   };
+  const currentValue = get(dataStore, p.dataStoreKey, '');
   return (
     <textarea
       placeholder={p.placeholder}
-      value={get(dataStore, p.dataStoreKey, '')}
+      {...(onUpdateDataStore ? { defaultValue: currentValue } : { value: currentValue })}
       onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
       style={style}
       className={`w-full h-full p-2 bg-white text-gray-900 focus:outline-none resize-none`}
