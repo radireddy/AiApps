@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, jest } from '@jest/globals';
-import { storageService } from './storageService';
-import { AppDefinition, AppTemplate, ComponentType } from './types';
+import { storageService } from '@/storageService';
+import { AppDefinition, AppTemplate, ComponentType } from 'types';
 
 const mockApp: AppDefinition = {
   id: 'app1', name: 'My App', createdAt: '2023-01-01', lastModifiedAt: '2023-01-01',

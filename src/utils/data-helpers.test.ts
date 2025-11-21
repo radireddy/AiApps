@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import { get, set } from './data-helpers';
+import { get, set } from '@/utils/data-helpers';
 
 describe('data-helpers', () => {
   const obj = {

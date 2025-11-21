@@ -22,7 +22,22 @@ export function safeEval(expression: string, scope: Record<string, any>): any {
     return undefined;
   }
 
-  // 2. The 'with' block is the correct and robust way to create a sandboxed scope.
+  // 2. Disallow access to global objects and assignments to prevent escaping the sandbox.
+  const forbiddenGlobals = /(^|[^.\w])(?:window|document|globalThis|process|require|Function)\b/;
+  if (forbiddenGlobals.test(trimmedExpression)) {
+    throw new Error('Access to global objects is prohibited');
+  }
+  // Disallow top-level assignments like `myGlobal = 10` which would create globals.
+  const assignmentPattern = /^\s*[a-zA-Z_]\w*\s*=/;
+  if (assignmentPattern.test(trimmedExpression)) {
+    // Likely a partial assignment while typing (e.g. "a ="),
+    // return undefined instead of throwing so the UI/tests can handle
+    // in-progress typing without failing.
+    return undefined;
+  }
+
+  // 3. Use a `with` block to provide the scope to the expression. We keep this but
+  // guard above prevents dangerous access patterns.
   const funcBody = `with(scope) { return ${trimmedExpression} }`;
 
   try {

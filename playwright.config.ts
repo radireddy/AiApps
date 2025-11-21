@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// This is a dummy command for the web server since we are running in a special environment.
-// In a real local setup, this would be something like 'npm run start'.
-const serverCommand = 'sleep 1 && echo "Server is ready"';
+// Use the project's dev server so Playwright can interact with the app.
+// `npm run start` runs `vite` which uses port 3000 (configured in `vite.config.ts`).
+const serverCommand = 'npm run start';
 
 export default defineConfig({
   testDir: './e2e',

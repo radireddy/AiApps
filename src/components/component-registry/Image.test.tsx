@@ -2,8 +2,8 @@ import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ImagePlugin } from './Image';
-import { ComponentType } from '../../types';
+import { ImagePlugin } from '@/components/component-registry/Image';
+import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 

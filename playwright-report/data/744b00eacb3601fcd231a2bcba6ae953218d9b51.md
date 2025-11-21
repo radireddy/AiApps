@@ -1,0 +1,55 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e6]:
+      - img [ref=e7]
+      - heading "Dashboard" [level=1] [ref=e10]
+      - button "Import Apps" [ref=e12] [cursor=pointer]
+      - button "Export All Apps" [ref=e13] [cursor=pointer]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - heading "My Apps" [level=2] [ref=e16]
+      - generic [ref=e17]:
+        - button "Create New App" [ref=e18] [cursor=pointer]
+        - button [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - heading "Template Source App" [level=3] [ref=e25]
+        - paragraph [ref=e26]: "Modified: 11/21/2025, 9:06:23 AM"
+      - generic [ref=e27]:
+        - button "Edit App" [ref=e28] [cursor=pointer]
+        - button [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+    - generic [ref=e33]:
+      - heading "App Templates" [level=2] [ref=e34]
+      - generic [ref=e36]:
+        - button [ref=e38] [cursor=pointer]:
+          - img [ref=e39]
+        - img "Template Source App Template" [ref=e42]
+        - generic [ref=e43]:
+          - heading "Template Source App Template" [level=3] [ref=e44]
+          - paragraph
+        - button "Use Template" [ref=e46] [cursor=pointer]
+    - generic [ref=e47]:
+      - generic [ref=e48]:
+        - heading "My Themes" [level=2] [ref=e49]
+        - button "Create New Theme" [ref=e50] [cursor=pointer]
+      - generic [ref=e51]:
+        - heading "No themes found" [level=3] [ref=e52]
+        - paragraph [ref=e53]: Create a global theme to easily apply styles across your apps.
+  - dialog "Create App from Template" [ref=e54]:
+    - generic [ref=e55]:
+      - banner [ref=e56]:
+        - heading "Create App from Template" [level=2] [ref=e57]
+        - button "Close" [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+      - main [ref=e61]:
+        - generic [ref=e63] [cursor=pointer]:
+          - img "Template Source App Template" [ref=e65]
+          - generic [ref=e66]:
+            - heading "Template Source App Template" [level=3] [ref=e67]
+            - paragraph
+```

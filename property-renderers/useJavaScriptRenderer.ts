@@ -33,7 +33,11 @@ export function useJavaScriptRenderer<T>(value: T, scope: Record<string, any>, d
     if (value.includes('{{') && value.includes('}}')) {
         const processedString = value.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
             const result = safeEval(expression, scope);
-            return result !== undefined && result !== null ? String(result) : '';
+            // If safeEval returns the raw identifier (a UX aid while typing), or undefined/null,
+            // treat it as an invalid expression inside a template and replace with empty string.
+            if (result === undefined || result === null) return '';
+            if (typeof result === 'string' && result.trim() === expression.trim()) return '';
+            return String(result);
         });
         return processedString as any; // Cast to T, assuming it's a string
     }

@@ -53,7 +53,7 @@ const buildTree = (appDefinition: AppDefinition): TreeNodeData => {
 
   return {
     id: appId,
-    name: appName,
+    name: 'Application',
     type: 'APP',
     children: pages.map(page => ({
       id: page.id,

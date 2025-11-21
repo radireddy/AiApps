@@ -44,8 +44,8 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({ appNam
               <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3}></textarea>
+              <label htmlFor="template-description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea id="template-description" value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3}></textarea>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail</label>

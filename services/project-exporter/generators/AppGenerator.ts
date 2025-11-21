@@ -91,7 +91,13 @@ function App() {
     
     return (
         <main className="w-screen h-screen flex items-center justify-center bg-gray-100">
-            <${mainPageComponent} {...pageProps} />
+            <${mainPageComponent}
+                theme={theme}
+                dataStore={dataStore}
+                updateDataStore={updateDataStore}
+                ${appDef.variables.map(v => `${v.name}={${v.name}}`).join('\n                ')}
+                ${appDef.variables.map(v => `set${toPascalCase(v.name)}={set${toPascalCase(v.name)}}`).join('\n                ')}
+            />
         </main>
     );
 }

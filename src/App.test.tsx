@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import App from './App';
-import { storageService } from './storageService';
+import App from '@/App';
+import { storageService } from '@/storageService';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
 // Mock child components
-jest.mock('./Dashboard', () => ({
+jest.mock('Dashboard', () => ({
   Dashboard: ({ onEditApp, onCreateApp }: any) => (
     <div>
       <h1>Dashboard</h1>
@@ -18,7 +18,7 @@ jest.mock('./Dashboard', () => ({
   ),
 }));
 
-jest.mock('./Editor', () => ({
+jest.mock('Editor', () => ({
   Editor: ({ appId, onBack }: { appId: string, onBack: () => void }) => (
     <div>
       <h1>Editor for {appId}</h1>
@@ -27,7 +27,7 @@ jest.mock('./Editor', () => ({
   ),
 }));
 
-jest.mock('./storageService');
+jest.mock('@/storageService');
 
 describe('App', () => {
   beforeEach(() => {

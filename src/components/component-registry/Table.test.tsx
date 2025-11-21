@@ -2,8 +2,8 @@ import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TablePlugin } from './Table';
-import { ComponentType, ActionHandlers, DataSourceInstance } from '../../types';
+import { TablePlugin } from '@/components/component-registry/Table';
+import { ComponentType, ActionHandlers, DataSourceInstance } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 

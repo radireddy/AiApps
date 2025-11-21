@@ -1,8 +1,8 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { PanelPlugin } from './Panel';
-import { ComponentType } from '../../types';
+import { PanelPlugin } from '@/components/component-registry/Panel';
+import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
@@ -54,7 +54,7 @@ describe('PanelPlugin', () => {
             onOpenExpressionEditor
         };
         render(<PanelProperties {...props} />);
-        expect(screen.getByLabelText('Background Color')).toHaveValue('#FFFFFF');
+        expect(screen.getByLabelText('Background Color')).toHaveValue('#ffffff');
      });
   });
 });

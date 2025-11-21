@@ -2,20 +2,24 @@ import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PropertiesPanel } from './PropertiesPanel';
-import { ComponentType } from '../types';
+import { PropertiesPanel } from '@/components/PropertiesPanel';
+import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
-// Mock the component registry and a dummy properties renderer
-jest.mock('./component-registry/registry', () => ({
-  componentRegistry: {
-    [ComponentType.LABEL]: {
-      properties: ({ component }: any) => <div>Properties for {component.props.text}</div>,
-      paletteConfig: { label: 'Label' },
+// Mock the component registry and a dummy properties renderer.
+// Use a runtime require for `types` inside the factory to avoid circular-init issues.
+jest.mock('components/component-registry/registry', () => {
+  const types = require('types');
+  return {
+    componentRegistry: {
+      [types.ComponentType.LABEL]: {
+        properties: ({ component }: any) => <div>Properties for {component.props.text}</div>,
+        paletteConfig: { label: 'Label' },
+      },
     },
-  },
-}));
+  };
+});
 
 describe('PropertiesPanel', () => {
   const onUpdate = jest.fn();

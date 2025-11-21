@@ -2,12 +2,17 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
-  roots: ['<rootDir>/src'],
+  testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
+  moduleDirectories: ['node_modules', '<rootDir>'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^marked$': '<rootDir>/__mocks__/marked.js',
     // Mock assets if needed, though this project uses CDN
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
+  // Some dependencies ship ESM builds (e.g. `marked`). Allow transforming them.
+  transformIgnorePatterns: ['node_modules/(?!(marked)/)'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: [

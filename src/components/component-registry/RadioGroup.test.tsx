@@ -2,8 +2,8 @@ import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RadioGroupPlugin } from './RadioGroup';
-import { ComponentType } from '../../types';
+import { RadioGroupPlugin } from '@/components/component-registry/RadioGroup';
+import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 

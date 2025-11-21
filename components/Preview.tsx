@@ -62,7 +62,7 @@ export const Preview: React.FC<PreviewProps> = ({ appDefinition, onUpdateDataSto
           maxWidth: '1000px',
         }}
       >
-        <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundColor: evaluationScope.theme.colors.background }}>
+        <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundColor: evaluationScope.theme?.colors?.background || '#ffffff' }}>
             {rootComponents.map(comp => (
               <RenderedComponent
                 key={comp.id}

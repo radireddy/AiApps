@@ -32,14 +32,16 @@ export const PropFxInput: React.FC<{
         setIsFxMode(!isFxMode);
     };
 
+    const inputId = id || `prop-fx-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
     return (
          <div className="mb-3" data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
-            <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
+            <label htmlFor={inputId} className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
             <div className="flex items-center">
                 <input
+                    id={inputId}
                     type={isFxMode ? 'text' : type}
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
+                    {...(onChange ? { defaultValue: type === 'color' && typeof value === 'string' ? value.toUpperCase() : value } : { value: type === 'color' && typeof value === 'string' ? value.toUpperCase() : value })}
+                    onChange={e => onChange(type === 'number' || type === 'range' ? (parseFloat(e.target.value) || 0) : e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-l-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     placeholder={placeholder}
                 />
@@ -76,7 +78,7 @@ export const PropInput: React.FC<{ label: string; value: any; onChange: (val: an
             <input
             id={inputId}
             type={type}
-            value={value}
+            {...(onChange ? { defaultValue: value } : { value })}
             onChange={e => onChange(type === 'number' || type === 'range' ? parseFloat(e.target.value) || 0 : e.target.value)}
             className="w-full bg-gray-50 border border-gray-300 rounded-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             placeholder={placeholder}

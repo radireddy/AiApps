@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { renderHook } from '@testing-library/react';
-import { useJavaScriptRenderer } from './useJavaScriptRenderer';
+import { useJavaScriptRenderer } from '@/property-renderers/useJavaScriptRenderer';
 
 describe('useJavaScriptRenderer', () => {
   const scope = {

@@ -19,7 +19,6 @@ const CheckboxRenderer: React.FC<{
   const p = component.props;
   const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
   const isDisabledInEdit = mode === 'edit' || isDisabled;
-
   return (
     <div className="flex items-center w-full h-full">
       <input
@@ -28,8 +27,8 @@ const CheckboxRenderer: React.FC<{
         checked={!!get(dataStore, p.dataStoreKey)}
         onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.checked)}
         className={`mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${isDisabledInEdit ? 'pointer-events-none' : ''}`}
-        disabled={isDisabled}
-        aria-disabled={isDisabled}
+        disabled={isDisabledInEdit}
+        aria-disabled={isDisabledInEdit}
       />
       <label htmlFor={component.id} className={`text-gray-800 ${isDisabledInEdit ? 'pointer-events-none' : ''} ${isDisabled ? 'opacity-60' : ''}`}>{p.label}</label>
     </div>

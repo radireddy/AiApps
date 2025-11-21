@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Dashboard } from './Dashboard';
-import { storageService } from './storageService';
-import { AppMetadata, AppTemplate } from './types';
+import { Dashboard } from '@/Dashboard';
+import { storageService } from '@/storageService';
+import { AppMetadata, AppTemplate } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
-jest.mock('./storageService');
+jest.mock('@/storageService');
 const mockedStorageService = storageService as jest.Mocked<typeof storageService>;
 
 const mockApps: AppMetadata[] = [
@@ -68,8 +68,10 @@ describe('Dashboard', () => {
     await userEvent.click(screen.getByRole('button', { name: /Create New App/i }).nextElementSibling!);
     await userEvent.click(screen.getByText('Create from Template'));
 
-    expect(await screen.findByRole('heading', { name: 'Create App from Template'})).toBeInTheDocument();
-    expect(screen.getByText('User Profile Template')).toBeInTheDocument();
+    const heading = await screen.findByRole('heading', { name: 'Create App from Template'});
+    const templateModal = heading.closest('div') as HTMLElement;
+    expect(templateModal).toBeInTheDocument();
+    expect(within(templateModal).getByText('User Profile Template')).toBeInTheDocument();
   });
 
   it('should create an app from a template', async () => {
@@ -77,7 +79,9 @@ describe('Dashboard', () => {
     await userEvent.click(screen.getByRole('button', { name: /Create New App/i }).nextElementSibling!);
     await userEvent.click(screen.getByText('Create from Template'));
 
-    await userEvent.click(await screen.findByText('User Profile Template'));
+    const heading = await screen.findByRole('heading', { name: 'Create App from Template'});
+    const templateModal = heading.closest('div') as HTMLElement;
+    await userEvent.click(within(templateModal).getByText('User Profile Template'));
     // TemplateSelectionModal closes, CreateAppModal opens
     await userEvent.type(await screen.findByPlaceholderText('e.g., Customer Dashboard'), 'App From My Template');
     await userEvent.click(screen.getByRole('button', { name: 'Create App' }));
@@ -90,7 +94,7 @@ describe('Dashboard', () => {
     mockedStorageService.deleteApp.mockResolvedValue();
     render(<Dashboard onEditApp={onEditApp} onCreateApp={onCreateApp} />);
     const appCard = await screen.findByText('My First App');
-    const menuButton = appCard.closest('.flex-grow')?.nextElementSibling?.querySelector('button[aria-haspopup!="true"]') as HTMLElement;
+    const menuButton = appCard.closest('.flex-grow')?.nextElementSibling?.querySelector('div.relative button') as HTMLElement;
     
     await userEvent.click(menuButton);
     await userEvent.click(screen.getByText('Delete'));
@@ -109,7 +113,7 @@ describe('Dashboard', () => {
     render(<Dashboard onEditApp={onEditApp} onCreateApp={onCreateApp} />);
 
     const appCard = await screen.findByText('My First App');
-    const menuButton = appCard.closest('.flex-grow')?.nextElementSibling?.querySelector('button[aria-haspopup!="true"]') as HTMLElement;
+    const menuButton = appCard.closest('.flex-grow')?.nextElementSibling?.querySelector('div.relative button') as HTMLElement;
     
     await userEvent.click(menuButton);
     await userEvent.click(screen.getByText('Rename'));
@@ -129,7 +133,7 @@ describe('Dashboard', () => {
     render(<Dashboard onEditApp={onEditApp} onCreateApp={onCreateApp} />);
     
     const appCard = await screen.findByText('My First App');
-    const menuButton = appCard.closest('.flex-grow')?.nextElementSibling?.querySelector('button[aria-haspopup!="true"]') as HTMLElement;
+    const menuButton = appCard.closest('.flex-grow')?.nextElementSibling?.querySelector('div.relative button') as HTMLElement;
     
     await userEvent.click(menuButton);
     await userEvent.click(screen.getByText('Save as Template'));

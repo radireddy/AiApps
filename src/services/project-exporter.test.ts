@@ -1,12 +1,12 @@
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import JSZip from 'jszip';
-import { exportToReactProject } from './project-exporter';
-import { translateExpression } from './project-exporter/utils/expressionTranslator';
-import * as stringUtils from './project-exporter/utils/stringUtils';
-import { generateAppTsx } from './project-exporter/generators/AppGenerator';
-import { generatePageTsx } from './project-exporter/generators/PageGenerator';
-import { AppDefinition, ComponentType, AppVariableType } from '../types';
+import { exportToReactProject } from '@/services/project-exporter';
+import { translateExpression } from '@/services/project-exporter/utils/expressionTranslator';
+import * as stringUtils from '@/services/project-exporter/utils/stringUtils';
+import { generateAppTsx } from '@/services/project-exporter/generators/AppGenerator';
+import { generatePageTsx } from '@/services/project-exporter/generators/PageGenerator';
+import { AppDefinition, ComponentType, AppVariableType } from 'types';
 
 // Mock JSZip
 const mockFile = jest.fn();
