@@ -11,10 +11,90 @@ export const PropFxInput: React.FC<{
     placeholder?: string; 
     id?: string;
     onOpenEditor?: (currentValue: string) => void;
-}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor }) => {
+    propertyKey?: string;
+}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey }) => {
     const isExpression = typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}');
+    const isOpacity = propertyKey === 'opacity';
+
+    // Validation function for opacity
+    const validateOpacityInput = (inputValue: string): boolean => {
+        if (!inputValue) return true; // Allow empty
+        // Allow expressions
+        if (inputValue.startsWith('{{')) return true;
+        // Allow numbers 0-1: matches 0, 0., 0.5, 0.75, 1, 1.0, etc.
+        // Also allows partial input while typing (e.g., "0.", "1.")
+        const opacityRegex = /^(0|0\.\d*|1|1\.0*)$/;
+        return opacityRegex.test(inputValue);
+    };
+
+    // Handle opacity input validation
+    const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = e.target.value;
+        // Allow empty, expressions, or valid opacity values
+        if (!inputValue || inputValue.startsWith('{{') || validateOpacityInput(inputValue)) {
+            // If it's a valid number, parse it; otherwise keep as string (for expressions or partial input)
+            if (inputValue && !inputValue.startsWith('{{')) {
+                const numValue = parseFloat(inputValue);
+                // If it's a complete number (not partial like "0."), clamp it
+                if (!isNaN(numValue) && !inputValue.endsWith('.')) {
+                    // Clamp between 0 and 1
+                    const clampedValue = Math.max(0, Math.min(1, numValue));
+                    onChange(clampedValue);
+                } else {
+                    // Allow partial input while typing (e.g., "0.", "1.")
+                    onChange(inputValue);
+                }
+            } else {
+                onChange(inputValue);
+            }
+        }
+        // If invalid, don't update (prevent invalid input)
+    };
+
+    // Handle keydown for opacity to prevent invalid characters
+    const handleOpacityKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!isOpacity) return;
+        
+        const input = e.currentTarget;
+        const currentValue = input.value;
+        const selectionStart = input.selectionStart || 0;
+        const selectionEnd = input.selectionEnd || 0;
+        const isExpressionMode = currentValue.startsWith('{{');
+        
+        // Allow control keys, backspace, delete, arrow keys, etc.
+        if (e.ctrlKey || e.metaKey || ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Tab', 'Enter', 'Home', 'End'].includes(e.key)) {
+            return;
+        }
+        
+        // If in expression mode, allow all characters
+        if (isExpressionMode || e.key === '{' || e.key === '}') {
+            return;
+        }
+        
+        // For opacity, only allow: digits 0-9, decimal point
+        const allowedChars = /^[0-9.]$/;
+        if (!allowedChars.test(e.key)) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Prevent multiple decimal points
+        if (e.key === '.' && currentValue.includes('.')) {
+            e.preventDefault();
+            return;
+        }
+        
+        // Check if the resulting value would be valid
+        const newValue = currentValue.slice(0, selectionStart) + e.key + currentValue.slice(selectionEnd);
+        if (newValue && !newValue.startsWith('{{') && !validateOpacityInput(newValue)) {
+            e.preventDefault();
+        }
+    };
 
     const inputId = id || `prop-fx-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
+    // Only uppercase hex color values (e.g., #ff0000), not expressions
+    const displayValue = type === 'color' && typeof value === 'string' && !value.startsWith('{{') && value.startsWith('#') ? value.toUpperCase() : value;
+    
     return (
          <div className="mb-2.5" data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
             <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
@@ -22,8 +102,9 @@ export const PropFxInput: React.FC<{
                 <input
                     id={inputId}
                     type={isExpression ? 'text' : type}
-                    {...(onChange ? { defaultValue: type === 'color' && typeof value === 'string' ? value.toUpperCase() : value } : { value: type === 'color' && typeof value === 'string' ? value.toUpperCase() : value })}
-                    onChange={e => onChange(type === 'number' || type === 'range' ? (parseFloat(e.target.value) || 0) : e.target.value)}
+                    value={displayValue}
+                    onChange={isOpacity ? handleOpacityChange : (e => onChange(type === 'number' || type === 'range' ? (parseFloat(e.target.value) || 0) : e.target.value))}
+                    onKeyDown={handleOpacityKeyDown}
                     className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression ? 'rounded-l-md border-r-0' : 'rounded-md'} ${isExpression && onOpenEditor ? '' : ''}`}
                     placeholder={placeholder}
                 />

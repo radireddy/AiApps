@@ -70,6 +70,7 @@ export const StylingGroup: PropertyGroup = {
       key: 'opacity',
       label: 'Opacity',
       type: 'expression',
+      placeholder: 'e.g. 0.5 or {{theme.opacity}}',
     },
     {
       key: 'boxShadow',

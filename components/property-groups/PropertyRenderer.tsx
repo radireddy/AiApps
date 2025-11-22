@@ -95,6 +95,7 @@ export const PropertyRenderer: React.FC<PropertyRendererPropsInternal> = ({
           type={property.inputProps?.type}
           placeholder={property.placeholder}
           onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp(property.key, newVal)) : undefined}
+          propertyKey={property.key}
           {...property.inputProps}
         />
       );
