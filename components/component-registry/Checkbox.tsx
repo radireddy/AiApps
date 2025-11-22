@@ -57,34 +57,13 @@ const CheckboxProperties: React.FC<{
   updateProp: (key: keyof CheckboxProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'checkbox-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'label',
-        label: 'Label',
-        type: 'text',
-      },
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.active',
-      },
-    ],
-  };
-
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    customGroups: [settingsGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'input-value'],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.CHECKBOX }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

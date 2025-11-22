@@ -147,7 +147,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
   } else {
     content = (
       <PropertiesRenderer 
-        component={component}
+        component={{ ...component, type: component.type }}
         updateProp={(key: any, value: any) => onUpdate(component.id, { [key]: value })}
         dataSources={dataSources}
         variables={variables}

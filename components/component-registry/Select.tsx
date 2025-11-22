@@ -67,32 +67,6 @@ const SelectProperties: React.FC<{
   updateProp: (key: keyof SelectProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'select-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'placeholder',
-        label: 'Placeholder',
-        type: 'text',
-      },
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.role',
-      },
-      {
-        key: 'options',
-        label: 'Options (CSV)',
-        type: 'text',
-        placeholder: 'Option 1, Option 2',
-      },
-    ],
-  };
-
   const accessibilityGroup: PropertyGroup = {
     id: 'select-accessibility',
     title: 'Accessibility',
@@ -109,14 +83,13 @@ const SelectProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [settingsGroup, accessibilityGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'input-value', 'data', 'styling'],
+    customGroups: [accessibilityGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.SELECT }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

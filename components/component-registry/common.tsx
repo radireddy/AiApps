@@ -3,6 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BorderProps, ComponentProps } from '../../types';
 import { typography } from '../../constants';
 
+// Helper function to format title - if already in Title Case, return as is; otherwise convert
+const formatTitle = (title: string): string => {
+  // If title already contains spaces and proper capitalization, return as is
+  if (title.includes(' ') && title.split(' ').some(word => word[0] === word[0].toUpperCase())) {
+    return title;
+  }
+  // Split camelCase into words
+  const words = title.replace(/([A-Z])/g, ' $1').trim().split(' ');
+  // Capitalize first letter of each word, lowercase the rest
+  return words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
 export const PropFxInput: React.FC<{ 
     label: string; 
     value: any; 
@@ -222,10 +234,11 @@ export const InlineTextEditor: React.FC<{
 };
 
 export const PropertyGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+    const formattedTitle = formatTitle(title);
     return (
         <div className="border-t border-gray-200 first:border-t-0">
             <div className="px-3 py-2.5">
-                <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>{title}</p>
+                <p className={`${typography.subsection} font-bold text-gray-700 mb-2.5`}>{formattedTitle}</p>
                 <div className="space-y-2.5">
                     {children}
                 </div>
@@ -237,6 +250,7 @@ export const PropertyGroup: React.FC<{ title: string; children: React.ReactNode 
 export const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode, isOpenDefault?: boolean }> = ({ title, children, isOpenDefault = true }) => {
     const [isOpen, setIsOpen] = useState(isOpenDefault);
     const sectionId = `section-content-${title.replace(/\s+/g, '-')}`;
+    const formattedTitle = formatTitle(title);
 
     return (
         <div className="border-b border-gray-200 last:border-b-0">
@@ -246,7 +260,7 @@ export const CollapsibleSection: React.FC<{ title: string; children: React.React
                 aria-expanded={isOpen}
                 aria-controls={sectionId}
             >
-                <span className="uppercase tracking-wide">{title}</span>
+                <span className="font-bold">{formattedTitle}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 transition-transform text-gray-400 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

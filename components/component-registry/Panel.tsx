@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ComponentType, PanelProps, ComponentPlugin } from '../../types';
-import { StylingProps, PropertyGroup, PropFxInput, PropInput, Tooltip } from './common';
+import { PropertyGroup, PropFxInput, PropInput, PropSelect, Tooltip, CollapsibleSection } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps, typography } from '../../constants';
 
@@ -226,8 +226,15 @@ export const PanelProperties: React.FC<{
     <div className="py-1">
       {customPropertyGroups}
       
+      {/* (1) Basic */}
+      <CollapsibleSection title="Basic" isOpenDefault={true}>
+        <PropFxInput label="Hide" value={p.hidden} onChange={val => updateProp('hidden', val)} placeholder="e.g. {{!showAlert}} (use ! to invert: false = visible, true = hidden)" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('hidden', newVal))} />
+        {/* Disabled not shown for panels */}
+      </CollapsibleSection>
+
+      {/* (2) Container Layout Specific */}
       {!hideDirectionSelector && (
-        <PropertyGroup title="Layout">
+        <CollapsibleSection title="Container Layout Specific" isOpenDefault={false}>
           <div className="mb-3">
             <label className={`block ${typography.body} ${typography.medium} text-gray-600 mb-2`}>Direction</label>
             <div className="flex gap-2">
@@ -289,26 +296,46 @@ export const PanelProperties: React.FC<{
               ))}
             </div>
           </div>
-        </PropertyGroup>
+        </CollapsibleSection>
       )}
 
-
-      <PropertyGroup title="Position & Size">
+      {/* (3) Layout And Position */}
+      <CollapsibleSection title="Layout And Position" isOpenDefault={true}>
         <div className="grid grid-cols-2 gap-2.5">
           <PropInput label="X" value={p.x} onChange={val => updateProp('x', val)} type="number" />
           <PropInput label="Y" value={p.y} onChange={val => updateProp('y', val)} type="number" />
           <PropInput label="Width" value={p.width} onChange={val => updateProp('width', val)} type="number" />
           <PropInput label="Height" value={p.height} onChange={val => updateProp('height', val)} type="number" />
-      </div>
-      </PropertyGroup>
+        </div>
+      </CollapsibleSection>
 
-      <PropertyGroup title="Background">
+      {/* (4) Color And Typography */}
+      <CollapsibleSection title="Color And Typography" isOpenDefault={true}>
         <PropFxInput label="Background Color" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
         <PropFxInput label="Background Gradient" value={p.backgroundGradient} onChange={val => updateProp('backgroundGradient', val)} placeholder="e.g. linear-gradient(...)" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundGradient', newVal))} />
-      </PropertyGroup>
+      </CollapsibleSection>
+
+      {/* (5) Styling (includes Border Properties) */}
+      {(p.borderStyle !== undefined || p.opacity !== undefined || p.boxShadow !== undefined || p.backgroundGradient !== undefined) && (
+        <CollapsibleSection title="Styling" isOpenDefault={false}>
+          {/* Border Properties */}
+          {(p.borderStyle !== undefined) && (
+            <>
+              <PropFxInput label="Border Radius" value={p.borderRadius} onChange={val => updateProp('borderRadius', val)} type="number" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderRadius', newVal))} />
+              <PropFxInput label="Border Width" value={p.borderWidth} onChange={val => updateProp('borderWidth', val)} type="number" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderWidth', newVal))} />
+              <div className="grid grid-cols-2 gap-2.5">
+                <PropFxInput label="Border Color" value={p.borderColor} onChange={val => updateProp('borderColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderColor', newVal))} />
+                <PropSelect label="Border Style" value={p.borderStyle} onChange={val => updateProp('borderStyle', val)} options={[{value: 'none', label:'None'}, {value: 'solid', label: 'Solid'}, {value: 'dashed', label: 'Dashed'}, {value: 'dotted', label: 'Dotted'}]} />
+              </div>
+            </>
+          )}
+          {/* Styling Properties */}
+          <PropFxInput label="Opacity" value={p.opacity} onChange={val => updateProp('opacity', val)} placeholder="e.g. 0.5 or {{theme.opacity}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('opacity', newVal))} />
+          <PropFxInput label="Shadow" value={p.boxShadow} onChange={val => updateProp('boxShadow', val)} placeholder="e.g. 2px 2px 5px #ccc" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('boxShadow', newVal))} />
+        </CollapsibleSection>
+      )}
 
       {additionalPropertyGroups}
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
     </div>
   );
 };

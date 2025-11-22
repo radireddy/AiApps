@@ -65,26 +65,6 @@ const TextareaProperties: React.FC<{
   updateProp: (key: keyof TextareaProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'textarea-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'placeholder',
-        label: 'Placeholder',
-        type: 'text',
-      },
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.bio',
-      },
-    ],
-  };
-
   const accessibilityGroup: PropertyGroup = {
     id: 'textarea-accessibility',
     title: 'Accessibility',
@@ -101,14 +81,13 @@ const TextareaProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [settingsGroup, accessibilityGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'input-value', 'styling'],
+    customGroups: [accessibilityGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.TEXTAREA }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

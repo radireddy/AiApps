@@ -1,9 +1,7 @@
-import { PropertyGroup, PropertyDefinition, PropertyGroupRendererProps } from './types';
+import { PropertyGroup, PropertyDefinition } from './types';
 import { ComponentProps, BorderProps } from '../../types';
 import { ComponentType } from '../../types';
 import { shouldShowProperty, ComponentTypeGroups } from './component-helpers';
-import { PropInput, PropFxInput, PropSelect } from '../component-registry/common';
-import React from 'react';
 
 /**
  * (1) Basic Properties
@@ -11,16 +9,16 @@ import React from 'react';
  */
 export const BasicPropertiesGroup: PropertyGroup = {
   id: 'basic',
-  title: 'Basic',
+  title: 'Basic Properties',
   order: 1,
   collapsible: true,
   defaultCollapsed: false,
   properties: [
     {
       key: 'hidden',
-      label: 'Hide',
+      label: 'Visible',
       type: 'expression',
-      placeholder: 'e.g. {{!showAlert}} (use ! to invert: false = visible, true = hidden)',
+      placeholder: 'e.g. {{!showAlert}} (false = visible, true = hidden)',
       condition: (props: ComponentProps, context?: Record<string, any>) => {
         // Show for all components - visibility is always available
         return true;
@@ -28,22 +26,11 @@ export const BasicPropertiesGroup: PropertyGroup = {
     },
     {
       key: 'disabled',
-      label: 'Disabled',
+      label: 'Enabled / Disabled',
       type: 'expression',
       placeholder: 'e.g. {{table1.selectedRecord == null}}',
       condition: (props: ComponentProps, context?: Record<string, any>) => {
-        // Don't show for panel/container components
-        const componentType = context?.componentType;
-        if (componentType && [
-          ComponentType.PANEL,
-          ComponentType.FORM,
-          ComponentType.H_STACK,
-          ComponentType.V_STACK,
-          ComponentType.MODAL,
-        ].includes(componentType)) {
-          return false;
-        }
-        // Show for all other components
+        // Show for all components - disabled is always available
         return true;
       },
     },
@@ -57,71 +44,19 @@ export const BasicPropertiesGroup: PropertyGroup = {
         return shouldShowProperty(ComponentTypeGroups.TOOLTIP_COMPONENTS, context);
       },
     },
-    // Text content properties moved here
-    {
-      key: 'text',
-      label: 'Text',
-      type: 'expression',
-      condition: (props: ComponentProps, context?: Record<string, any>) => {
-        return shouldShowProperty(ComponentTypeGroups.TEXT_CONTENT_COMPONENTS, context) || 'text' in props;
-      },
-    },
-    {
-      key: 'placeholder',
-      label: 'Placeholder',
-      type: 'text',
-      condition: (props: ComponentProps, context?: Record<string, any>) => {
-        return shouldShowProperty(ComponentTypeGroups.PLACEHOLDER_COMPONENTS, context) || 'placeholder' in props;
-      },
-    },
-    // Content properties (component-specific like textRenderer)
-    {
-      key: 'textRenderer',
-      label: 'Text Renderer',
-      type: 'select',
-      options: [
-        { value: 'javascript', label: 'JavaScript Expression' },
-        { value: 'markdown', label: 'Markdown' },
-        { value: 'literal', label: 'Plain Text' },
-      ],
-      condition: (props: ComponentProps, context?: Record<string, any>) => {
-        return shouldShowProperty([ComponentType.LABEL], context) || 'textRenderer' in props;
-      },
-    },
   ],
 };
 
 /**
- * Custom renderer for Layout & Position group
- * Shows X/Y and Width/Height in grid rows
- */
-const LayoutPositionGroupRenderer: React.FC<PropertyGroupRendererProps> = ({ group, rendererProps }) => {
-  const { props, updateProp } = rendererProps;
-  const p = props as any;
-  
-  return (
-    <div className="mb-2.5">
-      <div className="grid grid-cols-2 gap-2.5">
-        <PropInput label="X" value={p.x} onChange={val => updateProp('x', val)} type="number" />
-        <PropInput label="Y" value={p.y} onChange={val => updateProp('y', val)} type="number" />
-        <PropInput label="Width" value={p.width} onChange={val => updateProp('width', val)} type="number" />
-        <PropInput label="Height" value={p.height} onChange={val => updateProp('height', val)} type="number" />
-      </div>
-    </div>
-  );
-};
-
-/**
- * (3) Layout & Position
+ * (2) Layout & Position
  * Controls arrangement and spacing.
  */
 export const LayoutPositionGroup: PropertyGroup = {
   id: 'layout-position',
-  title: 'Layout And Position',
-  order: 3,
+  title: 'Layout & Position',
+  order: 2,
   collapsible: true,
   defaultCollapsed: false,
-  customGroupRenderer: LayoutPositionGroupRenderer,
   properties: [
     {
       key: 'x',
@@ -208,13 +143,13 @@ export const LayoutPositionGroup: PropertyGroup = {
 };
 
 /**
- * (4) Color & Typography
+ * (3) Color & Typography
  * Styling inbound to theming systems.
  */
 export const ColorTypographyGroup: PropertyGroup = {
   id: 'color-typography',
-  title: 'Color And Typography',
-  order: 4,
+  title: 'Color & Typography',
+  order: 3,
   collapsible: true,
   defaultCollapsed: false,
   properties: [
@@ -261,7 +196,6 @@ export const ColorTypographyGroup: PropertyGroup = {
       label: 'Font Size',
       type: 'expression',
       inputProps: { type: 'number' },
-      placeholder: 'e.g. 16 or {{theme.font.size}}',
       condition: (props: ComponentProps, context?: Record<string, any>) => {
         return shouldShowProperty(ComponentTypeGroups.TEXT_BASED, context) || 'fontSize' in props;
       },
@@ -295,112 +229,97 @@ export const ColorTypographyGroup: PropertyGroup = {
   ],
 };
 
-// Border Properties merged into StylingPropertiesGroup below
-
-// Text Content Properties merged into BasicPropertiesGroup above
-
 /**
- * Custom renderer for Input & Value Properties group
- * Shows Min, Max, and Max Length in the same row to save space
+ * (4) Border Properties
+ * Reusable across many components.
  */
-const InputValueGroupRenderer: React.FC<PropertyGroupRendererProps> = ({ group, rendererProps }) => {
-  const { props, updateProp, onOpenExpressionEditor, context } = rendererProps;
-  const p = props as any;
-  
-  // Filter visible properties
-  const visibleProperties = group.properties.filter(prop => {
-    if (prop.condition) {
-      return prop.condition(props, context);
-    }
-    return true;
-  });
-
-  // Separate properties
-  const dataStoreKeyProp = visibleProperties.find(p => p.key === 'dataStoreKey');
-  const defaultValueProp = visibleProperties.find(p => p.key === 'defaultValue');
-  const patternProp = visibleProperties.find(p => p.key === 'pattern');
-  const inputTypeProp = visibleProperties.find(p => p.key === 'inputType');
-  const minProp = visibleProperties.find(p => p.key === 'min');
-  const maxProp = visibleProperties.find(p => p.key === 'max');
-  const maxLengthProp = visibleProperties.find(p => p.key === 'maxLength');
-
-  return (
-    <div>
-      {dataStoreKeyProp && (
-        <PropInput
-          label={dataStoreKeyProp.label}
-          value={p[dataStoreKeyProp.key] ?? ''}
-          onChange={val => updateProp(dataStoreKeyProp.key, val)}
-          placeholder={dataStoreKeyProp.placeholder}
-        />
-      )}
-      {defaultValueProp && (
-        <PropFxInput
-          label={defaultValueProp.label}
-          value={p[defaultValueProp.key] ?? ''}
-          onChange={val => updateProp(defaultValueProp.key, val)}
-          onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp(defaultValueProp.key, newVal)) : undefined}
-        />
-      )}
-      {patternProp && (
-        <PropInput
-          label={patternProp.label}
-          value={p[patternProp.key] ?? ''}
-          onChange={val => updateProp(patternProp.key, val)}
-          placeholder={patternProp.placeholder}
-        />
-      )}
-      {inputTypeProp && (
-        <PropSelect
-          label={inputTypeProp.label}
-          value={p[inputTypeProp.key] ?? inputTypeProp.defaultValue}
-          onChange={val => updateProp(inputTypeProp.key, val)}
-          options={typeof inputTypeProp.options === 'function' ? inputTypeProp.options(context) : (inputTypeProp.options || [])}
-        />
-      )}
-      {(minProp || maxProp || maxLengthProp) && (
-        <div className="grid grid-cols-3 gap-2.5">
-          {maxLengthProp && (
-            <PropInput
-              label={maxLengthProp.label}
-              value={p[maxLengthProp.key] ?? 0}
-              onChange={val => updateProp(maxLengthProp.key, val)}
-              type="number"
-            />
-          )}
-          {minProp && (
-            <PropInput
-              label={minProp.label}
-              value={p[minProp.key] ?? 0}
-              onChange={val => updateProp(minProp.key, val)}
-              type="number"
-            />
-          )}
-          {maxProp && (
-            <PropInput
-              label={maxProp.label}
-              value={p[maxProp.key] ?? 0}
-              onChange={val => updateProp(maxProp.key, val)}
-              type="number"
-            />
-          )}
-        </div>
-      )}
-    </div>
-  );
+export const BorderPropertiesGroup: PropertyGroup = {
+  id: 'border',
+  title: 'Border Properties',
+  order: 4,
+  collapsible: true,
+  defaultCollapsed: true,
+  condition: (props: ComponentProps) => {
+    const borderProps = props as BorderProps;
+    return borderProps.borderStyle !== undefined;
+  },
+  properties: [
+    {
+      key: 'borderColor',
+      label: 'Border Color',
+      type: 'expression',
+      inputProps: { type: 'color' },
+    },
+    {
+      key: 'borderWidth',
+      label: 'Border Width',
+      type: 'expression',
+      inputProps: { type: 'number' },
+    },
+    {
+      key: 'borderRadius',
+      label: 'Border Radius',
+      type: 'expression',
+      inputProps: { type: 'number' },
+    },
+    {
+      key: 'borderStyle',
+      label: 'Border Style',
+      type: 'select',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'solid', label: 'Solid' },
+        { value: 'dashed', label: 'Dashed' },
+        { value: 'dotted', label: 'Dotted' },
+      ],
+    },
+  ],
 };
 
 /**
- * (5) Input Form and Validation Properties
- * For fields accepting user input, merged with form validation.
+ * (5) Text Content Properties
+ * Only for components that display text.
  */
-export const InputValueGroup: PropertyGroup = {
-  id: 'input-value',
-  title: 'Input Form And Validation',
+export const TextContentGroup: PropertyGroup = {
+  id: 'text-content',
+  title: 'Text Content Properties',
   order: 5,
   collapsible: true,
   defaultCollapsed: false,
-  customGroupRenderer: InputValueGroupRenderer,
+  condition: (props: ComponentProps, context?: Record<string, any>) => {
+    return shouldShowProperty(ComponentTypeGroups.TEXT_CONTENT_COMPONENTS, context) || 
+           shouldShowProperty(ComponentTypeGroups.PLACEHOLDER_COMPONENTS, context);
+  },
+  properties: [
+    {
+      key: 'text',
+      label: 'Text',
+      type: 'expression',
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        return shouldShowProperty(ComponentTypeGroups.TEXT_CONTENT_COMPONENTS, context) || 'text' in props;
+      },
+    },
+    {
+      key: 'placeholder',
+      label: 'Placeholder',
+      type: 'text',
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        return shouldShowProperty(ComponentTypeGroups.PLACEHOLDER_COMPONENTS, context) || 'placeholder' in props;
+      },
+    },
+  ],
+};
+
+/**
+ * (6) Input & Value Properties
+ * For fields accepting user input.
+ */
+export const InputValueGroup: PropertyGroup = {
+  id: 'input-value',
+  title: 'Input & Value Properties',
+  order: 6,
+  collapsible: true,
+  defaultCollapsed: false,
   condition: (props: ComponentProps, context?: Record<string, any>) => {
     return shouldShowProperty(ComponentTypeGroups.INPUT_COMPONENTS, context);
   },
@@ -477,9 +396,89 @@ export const InputValueGroup: PropertyGroup = {
   ],
 };
 
-// Form & Validation Properties merged into InputValueGroup above
-// Event Properties merged into Button's actionGroup (custom group)
-// Table's rowSelectAction is in its custom group
+/**
+ * (7) Form & Validation Properties
+ * Only for form elements.
+ */
+export const FormValidationGroup: PropertyGroup = {
+  id: 'form-validation',
+  title: 'Form & Validation Properties',
+  order: 7,
+  collapsible: true,
+  defaultCollapsed: true,
+  condition: (props: ComponentProps, context?: Record<string, any>) => {
+    return shouldShowProperty(ComponentTypeGroups.FORM_COMPONENTS, context);
+  },
+  properties: [
+    // required - needs to be added if not present
+    {
+      key: 'required',
+      label: 'Required',
+      type: 'expression',
+      placeholder: 'e.g. {{true}}',
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        return shouldShowProperty(ComponentTypeGroups.FORM_COMPONENTS, context);
+      },
+    },
+    // errorMessage - needs to be added if not present
+    {
+      key: 'errorMessage',
+      label: 'Error Message',
+      type: 'text',
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        return shouldShowProperty(ComponentTypeGroups.FORM_COMPONENTS, context);
+      },
+    },
+  ],
+};
+
+/**
+ * (8) Event Properties
+ * Action triggers.
+ */
+export const EventPropertiesGroup: PropertyGroup = {
+  id: 'events',
+  title: 'Event Properties',
+  order: 8,
+  collapsible: true,
+  defaultCollapsed: true,
+  properties: [
+    // onClick - Button actions are handled via actionType, but we can show action-related props
+    {
+      key: 'actionType',
+      label: 'On Click Action',
+      type: 'select',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'alert', label: 'Show Alert' },
+        { value: 'updateData', label: 'Update Data Store' },
+        { value: 'updateVariable', label: 'Update Variable' },
+        { value: 'executeCode', label: 'Execute Code' },
+        { value: 'createRecord', label: 'Create Record' },
+        { value: 'updateRecord', label: 'Update Record' },
+        { value: 'deleteRecord', label: 'Delete Record' },
+        { value: 'navigate', label: 'Navigate' },
+      ],
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        return shouldShowProperty([ComponentType.BUTTON], context) || 'actionType' in props;
+      },
+    },
+    // onChange - handled via dataStoreKey for inputs
+    // onSelect - handled via rowSelectAction for Table
+    {
+      key: 'rowSelectAction',
+      label: 'On Select Action',
+      type: 'select',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'updateDataStore', label: 'Update Data Store' },
+      ],
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        return shouldShowProperty([ComponentType.TABLE], context) || 'rowSelectAction' in props;
+      },
+    },
+  ],
+};
 
 /**
  * (9) Data Properties
@@ -487,7 +486,7 @@ export const InputValueGroup: PropertyGroup = {
  */
 export const DataPropertiesGroup: PropertyGroup = {
   id: 'data',
-  title: 'Data',
+  title: 'Data Properties',
   order: 9,
   collapsible: true,
   defaultCollapsed: true,
@@ -530,7 +529,7 @@ export const DataPropertiesGroup: PropertyGroup = {
  */
 export const MediaPropertiesGroup: PropertyGroup = {
   id: 'media',
-  title: 'Media',
+  title: 'Media Properties',
   order: 10,
   collapsible: true,
   defaultCollapsed: false,
@@ -574,16 +573,15 @@ export const MediaPropertiesGroup: PropertyGroup = {
 };
 
 /**
- * (2) Container / Layout-Specific
+ * (11) Container / Layout-Specific
  * Only for layout components.
- * Moved to top (order 2)
  */
 export const ContainerLayoutGroup: PropertyGroup = {
   id: 'container-layout',
-  title: 'Container Layout Specific',
-  order: 2,
+  title: 'Container / Layout-Specific',
+  order: 11,
   collapsible: true,
-  defaultCollapsed: false,
+  defaultCollapsed: true,
   condition: (props: ComponentProps, context?: Record<string, any>) => {
     return shouldShowProperty(ComponentTypeGroups.CONTAINER_COMPONENTS, context);
   },
@@ -652,68 +650,16 @@ export const ContainerLayoutGroup: PropertyGroup = {
 };
 
 /**
- * (6) Styling Properties
- * Visual styling properties including borders (merged from Border Properties).
+ * (12) Styling Properties (Opacity, Shadow)
+ * Visual styling properties that don't fit in other categories.
  */
 export const StylingPropertiesGroup: PropertyGroup = {
   id: 'styling',
   title: 'Styling',
-  order: 6,
+  order: 12,
   collapsible: true,
   defaultCollapsed: true,
-  condition: (props: ComponentProps) => {
-    // Show if component has any styling or border properties
-    const borderProps = props as BorderProps;
-    return 'opacity' in props || 'boxShadow' in props || 'backgroundGradient' in props || borderProps.borderStyle !== undefined;
-  },
   properties: [
-    // Border properties merged here
-    {
-      key: 'borderColor',
-      label: 'Border Color',
-      type: 'expression',
-      inputProps: { type: 'color' },
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    {
-      key: 'borderWidth',
-      label: 'Border Width',
-      type: 'expression',
-      inputProps: { type: 'number' },
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    {
-      key: 'borderRadius',
-      label: 'Border Radius',
-      type: 'expression',
-      inputProps: { type: 'number' },
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    {
-      key: 'borderStyle',
-      label: 'Border Style',
-      type: 'select',
-      options: [
-        { value: 'none', label: 'None' },
-        { value: 'solid', label: 'Solid' },
-        { value: 'dashed', label: 'Dashed' },
-        { value: 'dotted', label: 'Dotted' },
-      ],
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    // Styling properties
     {
       key: 'opacity',
       label: 'Opacity',
@@ -743,12 +689,16 @@ export const StylingPropertiesGroup: PropertyGroup = {
  */
 export const basePropertyGroups: PropertyGroup[] = [
   BasicPropertiesGroup,
-  ContainerLayoutGroup, // Moved to top (order 2)
   LayoutPositionGroup,
   ColorTypographyGroup,
-  InputValueGroup, // Merged with FormValidationGroup
-  StylingPropertiesGroup, // Merged with BorderPropertiesGroup
+  BorderPropertiesGroup,
+  TextContentGroup,
+  InputValueGroup,
+  FormValidationGroup,
+  EventPropertiesGroup,
   DataPropertiesGroup,
   MediaPropertiesGroup,
+  ContainerLayoutGroup,
+  StylingPropertiesGroup,
 ];
 

@@ -91,26 +91,7 @@ const InputProperties: React.FC<{
   updateProp: (key: keyof InputProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'input-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'placeholder',
-        label: 'Placeholder',
-        type: 'expression',
-      },
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.name',
-      },
-    ],
-  };
-
+  // Settings group removed - placeholder moved to text-content, dataStoreKey moved to input-value
   const accessibilityGroup: PropertyGroup = {
     id: 'input-accessibility',
     title: 'Accessibility',
@@ -127,14 +108,13 @@ const InputProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [settingsGroup, accessibilityGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'input-value', 'styling'],
+    customGroups: [accessibilityGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.INPUT }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

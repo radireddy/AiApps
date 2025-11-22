@@ -1,5 +1,5 @@
 import React from 'react';
-import { PropertyGroup, PropertyRendererProps } from './types';
+import { PropertyGroup, PropertyRendererProps, PropertyGroupRendererProps as PropertyGroupRendererPropsType } from './types';
 import { PropertyGroup as PropertyGroupComponent, CollapsibleSection } from '../component-registry/common';
 import { PropertyRenderer } from './PropertyRenderer';
 
@@ -18,6 +18,26 @@ export const PropertyGroupRenderer: React.FC<PropertyGroupRendererProps> = ({
   group,
   rendererProps,
 }) => {
+  // If group has a custom renderer, use it (wrapped in collapsible section if needed)
+  if (group.customGroupRenderer) {
+    const content = <group.customGroupRenderer group={group} rendererProps={rendererProps} />;
+    if (group.collapsible) {
+      return (
+        <CollapsibleSection
+          title={group.title}
+          isOpenDefault={!group.defaultCollapsed}
+        >
+          {content}
+        </CollapsibleSection>
+      );
+    }
+    return (
+      <PropertyGroupComponent title={group.title}>
+        {content}
+      </PropertyGroupComponent>
+    );
+  }
+
   // Filter properties based on their conditions
   const visibleProperties = group.properties.filter(prop => {
     if (prop.condition) {

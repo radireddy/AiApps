@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { ComponentType, FormProps, ComponentPlugin } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropFxInput } from './common';
-import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
+import { PanelRenderer, PanelProperties } from './Panel';
 import { commonStylingProps } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -13,36 +12,31 @@ const FormRenderer: React.FC<{
   children: React.ReactNode;
   evaluationScope: Record<string, any>;
 }> = ({ component, children, evaluationScope }) => {
-  const p = component.props;
-  const style = {
-    backgroundColor: useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
-    background: useJavaScriptRenderer(p.backgroundGradient, evaluationScope, '') || useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
-    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
-    borderStyle: p.borderStyle,
-    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
-    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
-  };
-  return <div style={style} className="w-full h-full relative">{children}</div>;
+  // Form uses the same renderer as Panel since FormProps extends PanelProps
+  return (
+    <PanelRenderer
+      component={component as any}
+      children={children}
+      evaluationScope={evaluationScope}
+    />
+  );
 };
 
 const FormProperties: React.FC<{
-  component: { props: FormProps };
+  component: { id?: string; props: FormProps };
   updateProp: (key: keyof FormProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
-}> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const p = component.props;
+  arrangeChildren?: (panelId: string | undefined, opts: { direction?: string; justifyContent?: string; alignItems?: string }) => void;
+}> = ({ component, updateProp, onOpenExpressionEditor, arrangeChildren }) => {
+  // Form uses the same properties as Panel since FormProps extends PanelProps
+  // All groups will be collapsible through PanelProperties
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <CollapsibleSection title="Background">
-        <PropFxInput label="Background Color" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
-        {/* FIX: Corrected prop name from `onOpenExpressionEditor` to `onOpenEditor` to match the PropFxInput component's definition. */}
-        <PropFxInput label="Background Gradient" value={p.backgroundGradient} onChange={val => updateProp('backgroundGradient', val)} placeholder="e.g. linear-gradient(...)" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundGradient', newVal))} />
-      </CollapsibleSection>
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-    </>
+    <PanelProperties
+      component={component as any}
+      updateProp={updateProp as any}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+      arrangeChildren={arrangeChildren}
+    />
   );
 };
 

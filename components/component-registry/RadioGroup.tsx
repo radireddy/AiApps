@@ -72,27 +72,6 @@ const RadioGroupProperties: React.FC<{
   updateProp: (key: keyof RadioGroupProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'radiogroup-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.role',
-      },
-      {
-        key: 'options',
-        label: 'Options (CSV)',
-        type: 'text',
-        placeholder: 'Option 1, Option 2',
-      },
-    ],
-  };
-
   const accessibilityGroup: PropertyGroup = {
     id: 'radiogroup-accessibility',
     title: 'Accessibility',
@@ -109,13 +88,13 @@ const RadioGroupProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    customGroups: [settingsGroup, accessibilityGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'input-value', 'data'],
+    customGroups: [accessibilityGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.RADIO_GROUP }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

@@ -30,46 +30,14 @@ const ImageProperties: React.FC<{
   updateProp: (key: keyof ImageProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'image-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'src',
-        label: 'Image URL',
-        type: 'text',
-      },
-      {
-        key: 'alt',
-        label: 'Alt Text',
-        type: 'text',
-      },
-      {
-        key: 'objectFit',
-        label: 'Object Fit',
-        type: 'select',
-        options: [
-          { value: 'cover', label: 'Cover' },
-          { value: 'contain', label: 'Contain' },
-          { value: 'fill', label: 'Fill' },
-          { value: 'none', label: 'None' },
-          { value: 'scale-down', label: 'Scale Down' },
-        ],
-      },
-    ],
-  };
-
+  // Settings group removed - properties are in media base group
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [settingsGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'media', 'styling'],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.IMAGE }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

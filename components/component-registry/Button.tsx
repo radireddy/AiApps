@@ -198,31 +198,8 @@ const ButtonProperties: React.FC<{
     { value: 'navigate', label: 'Navigate' },
   ];
 
-  const contentGroup: PropertyGroup = {
-    id: 'button-content',
-    title: 'Content',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'text',
-        label: 'Text',
-        type: 'expression',
-      },
-      {
-        key: 'backgroundColor',
-        label: 'Background',
-        type: 'expression',
-        inputProps: { type: 'color' },
-      },
-      {
-        key: 'textColor',
-        label: 'Text Color',
-        type: 'expression',
-        inputProps: { type: 'color' },
-      },
-    ],
-  };
+  // Text, backgroundColor, and textColor are now in base groups (text-content and color-typography)
+  // No need for contentGroup
 
   const actionGroup: PropertyGroup = {
     id: 'button-action',
@@ -304,16 +281,18 @@ const ButtonProperties: React.FC<{
     ],
   };
 
+  // Rename actionGroup to "Events" to merge with events
+  actionGroup.title = 'Events';
+  actionGroup.id = 'button-events';
+  
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [contentGroup, actionGroup],
-    groupOrder: ['layout', 'state', 'button-content', 'button-action', 'border', 'styling'],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'styling'],
+    customGroups: [actionGroup], // Event properties merged here
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.BUTTON }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}
