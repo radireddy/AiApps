@@ -149,36 +149,94 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
    * Automatically initializes related data store keys if configured in default props.
    */
   const addComponent = useCallback((type: ComponentType, position: { x: number; y: number }, parentId: string | null = null, pageId: string) => {
-  const componentPlugin = componentRegistry[type];
-  if (!componentPlugin) return;
+    const componentPlugin = componentRegistry[type];
+    if (!componentPlugin) return;
+      setAppDefinitionState(prev => {
+        const newComp: AppComponent = {
+          id: `${type}_${Date.now()}`,
+          type,
+          props: {
+            ...componentPlugin.paletteConfig.defaultProps,
+            ...position,
+          } as ComponentProps,
+          parentId,
+          pageId,
+        };
 
-  const newComponent: AppComponent = {
-    id: `${type}_${Date.now()}`,
-    type,
-    props: {
-    ...componentPlugin.paletteConfig.defaultProps,
-    ...position,
-    } as ComponentProps,
-    parentId,
-    pageId,
-  };
-    
-  let newDataStore = { ...dataStore };
-  const props = newComponent.props as any;
-  if (props.dataStoreKey && !get(newDataStore, props.dataStoreKey)) {
-    let defaultValue: any = '';
-    if (type === ComponentType.CHECKBOX || type === ComponentType.SWITCH) {
-      defaultValue = false;
-    }
-     newDataStore = set(newDataStore, props.dataStoreKey, defaultValue);
-  }
+        let newDataStore = { ...prev.dataStore };
+        const props = newComp.props as any;
+        if (props.dataStoreKey && !get(newDataStore, props.dataStoreKey)) {
+          let defaultValue: any = '';
+          if (type === ComponentType.CHECKBOX || type === ComponentType.SWITCH) {
+            defaultValue = false;
+          }
+          newDataStore = set(newDataStore, props.dataStoreKey, defaultValue);
+        }
 
-  setAppDefinitionState(prev => ({
-    ...prev,
-    components: [...prev.components, newComponent],
-    dataStore: newDataStore
-  }));
-  }, [dataStore]);
+        // Auto-position within parent using the freshest prev state
+        if (parentId) {
+          const parent = prev.components.find(c => c.id === parentId);
+          if (parent) {
+            const parentProps: any = parent.props as any;
+            const existingChildren = prev.components.filter(c => c.parentId === parentId && c.pageId === pageId);
+            const GAP = 10;
+
+            // Build an array including the new component and compute positions for all children
+            const allChildren = [...existingChildren, newComp];
+
+            if ((parentProps.direction || 'horizontal') === 'horizontal') {
+              // compute positions left-to-right
+              let currentX = 0;
+              const arranged = allChildren.map((c, idx) => {
+                const w = (c.props as any).width || 0;
+                const h = (c.props as any).height || 0;
+                const y = Math.max(0, Math.floor(((parentProps.height || 0) - h) / 2));
+                const x = currentX;
+                currentX += w + GAP;
+                return { id: c.id, x, y };
+              });
+
+              (newComp.props as any).x = arranged.find(a => a.id === newComp.id)!.x;
+              (newComp.props as any).y = arranged.find(a => a.id === newComp.id)!.y;
+
+              (newComp as any)._arranged = arranged.reduce((m, a) => { m[a.id] = { x: a.x, y: a.y }; return m; }, {} as Record<string, any>);
+            } else {
+              // vertical stacking
+              let currentY = 0;
+              const arranged = allChildren.map((c) => {
+                const w = (c.props as any).width || 0;
+                const h = (c.props as any).height || 0;
+                const x = Math.max(0, Math.floor(((parentProps.width || 0) - w) / 2));
+                const y = currentY;
+                currentY += h + GAP;
+                return { id: c.id, x, y };
+              });
+              (newComp.props as any).x = arranged.find(a => a.id === newComp.id)!.x;
+              (newComp.props as any).y = arranged.find(a => a.id === newComp.id)!.y;
+              (newComp as any)._arranged = arranged.reduce((m, a) => { m[a.id] = { x: a.x, y: a.y }; return m; }, {} as Record<string, any>);
+            }
+          }
+        }
+
+        // If we computed arranged positions, apply them to existing children before returning
+        let finalComponents = [...prev.components];
+        const arrangedMap = (newComp as any)._arranged as Record<string, { x: number; y: number }> | undefined;
+        if (arrangedMap) {
+          finalComponents = finalComponents.map(c => {
+            if (c.parentId === parentId && arrangedMap[c.id]) {
+              return { ...c, props: { ...c.props, ...(arrangedMap[c.id]) } };
+            }
+            return c;
+          });
+        }
+
+        return {
+          ...prev,
+          components: [...finalComponents, newComp],
+          dataStore: newDataStore,
+        };
+      });
+    }, [dataStore]);
 
   const updateComponent = useCallback((id: string, newProps: Partial<ComponentProps>) => {
   setAppDefinitionState(prev => ({
@@ -518,6 +576,87 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     }
     }, [selectedComponentIds, components, updateComponents]);
 
+    const arrangeContainerChildren = useCallback((panelId: string, opts: { direction?: string; justifyContent?: string; alignItems?: string }) => {
+      const parent = appDefinition.components.find(c => c.id === panelId);
+      if (!parent) return;
+      const panelProps: any = parent.props;
+      const direction = (opts.direction as any) || panelProps.direction || 'horizontal';
+      const justify = (opts.justifyContent as any) || panelProps.justifyContent || 'start';
+      const align = (opts.alignItems as any) || panelProps.alignItems || 'center';
+
+      const children = appDefinition.components.filter(c => c.parentId === panelId && c.pageId === parent.pageId);
+      if (children.length === 0) return;
+
+      const updates: Array<{ id: string; props: Partial<ComponentProps> }> = [];
+      const GAP = 10;
+
+      if (direction === 'horizontal') {
+        const containerWidth = panelProps.width || 0;
+        const containerHeight = panelProps.height || 0;
+        const totalWidth = children.reduce((s, c) => s + ((c.props as any).width || 0), 0);
+        let gap = GAP;
+        if (justify === 'space-between' && children.length > 1) {
+          gap = (containerWidth - totalWidth) / (children.length - 1);
+          if (!isFinite(gap) || gap < 0) gap = GAP;
+        }
+
+        const totalWithGaps = totalWidth + gap * (children.length - 1);
+        let startX = 0;
+        if (justify === 'center') startX = Math.max(0, Math.floor((containerWidth - totalWithGaps) / 2));
+        else if (justify === 'end') startX = Math.max(0, Math.floor(containerWidth - totalWithGaps));
+
+        const sorted = [...children].sort((a, b) => (a.props as any).x - (b.props as any).x);
+        let currentX = startX;
+        for (const c of sorted) {
+          const cp: any = c.props;
+          let newY = 0;
+          if (align === 'center') newY = Math.floor((containerHeight - (cp.height || 0)) / 2);
+          else if (align === 'end') newY = Math.max(0, (containerHeight - (cp.height || 0)));
+          const propsUpdate: any = { x: Math.max(0, Math.floor(currentX)), y: Math.max(0, Math.floor(newY)) };
+          if (align === 'stretch') {
+            propsUpdate.y = 0;
+            propsUpdate.height = containerHeight;
+          }
+          updates.push({ id: c.id, props: propsUpdate });
+          currentX += (cp.width || 0) + gap;
+        }
+      } else {
+        const containerWidth = panelProps.width || 0;
+        const containerHeight = panelProps.height || 0;
+        const totalHeight = children.reduce((s, c) => s + ((c.props as any).height || 0), 0);
+        let gap = GAP;
+        if (justify === 'space-between' && children.length > 1) {
+          gap = (containerHeight - totalHeight) / (children.length - 1);
+          if (!isFinite(gap) || gap < 0) gap = GAP;
+        }
+
+        const totalWithGaps = totalHeight + gap * (children.length - 1);
+        let startY = 0;
+        if (justify === 'center') startY = Math.max(0, Math.floor((containerHeight - totalWithGaps) / 2));
+        else if (justify === 'end') startY = Math.max(0, Math.floor(containerHeight - totalWithGaps));
+
+        const sorted = [...children].sort((a, b) => (a.props as any).y - (b.props as any).y);
+        let currentY = startY;
+        for (const c of sorted) {
+          const cp: any = c.props;
+          let newX = 0;
+          if (align === 'center') newX = Math.floor((containerWidth - (cp.width || 0)) / 2);
+          else if (align === 'end') newX = Math.max(0, (containerWidth - (cp.width || 0)));
+          const propsUpdate: any = { x: Math.max(0, Math.floor(newX)), y: Math.max(0, Math.floor(currentY)) };
+          if (align === 'stretch') {
+            propsUpdate.x = 0;
+            propsUpdate.width = containerWidth;
+          }
+          updates.push({ id: c.id, props: propsUpdate });
+          currentY += (cp.height || 0) + gap;
+        }
+      }
+
+      if (updates.length > 0) {
+        updateComponents(updates as any);
+      }
+    }, [appDefinition.components, updateComponents]);
+
   // --- DYNAMIC DATA ACTIONS ---
   const handleCreateRecord = useCallback(async (dataSourceName: string, newRecord: any) => {
   const instance = appDefinition.dataSources.find(ds => ds.id === dataSourceName);
@@ -646,6 +785,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   reparentComponent,
   selectPage,
     alignAndDistribute,
+    arrangeContainerChildren,
     // Expose lower-level handlers expected by tests
     handleUpdateVariable,
   };

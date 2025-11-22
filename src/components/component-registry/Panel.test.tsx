@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PanelPlugin } from '@/components/component-registry/Panel';
 import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
@@ -55,6 +55,124 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         expect(screen.getByLabelText('Background Color')).toHaveValue('#ffffff');
+     });
+
+     it('should call arrangeChildren when direction is changed from horizontal to vertical', () => {
+        const updateProp = jest.fn();
+        const onOpenExpressionEditor = jest.fn();
+        const arrangeChildren = jest.fn();
+        const props = {
+            component: {
+                id: 'panel1',
+                props: {
+                    direction: 'horizontal',
+                    backgroundColor: '#FFFFFF'
+                } as any
+            },
+            updateProp,
+            onOpenExpressionEditor,
+            arrangeChildren
+        };
+        render(<PanelProperties {...props} />);
+        
+        // Find and click the vertical direction button
+        const verticalButton = screen.getByLabelText('Direction: Vertical');
+        fireEvent.click(verticalButton);
+        
+        // Verify updateProp was called with the new direction
+        expect(updateProp).toHaveBeenCalledWith('direction', 'vertical');
+        
+        // Verify arrangeChildren was called with the new direction
+        expect(arrangeChildren).toHaveBeenCalledWith('panel1', { direction: 'vertical' });
+     });
+
+     it('should call arrangeChildren when direction is changed from vertical to horizontal', () => {
+        const updateProp = jest.fn();
+        const onOpenExpressionEditor = jest.fn();
+        const arrangeChildren = jest.fn();
+        const props = {
+            component: {
+                id: 'panel1',
+                props: {
+                    direction: 'vertical',
+                    backgroundColor: '#FFFFFF'
+                } as any
+            },
+            updateProp,
+            onOpenExpressionEditor,
+            arrangeChildren
+        };
+        render(<PanelProperties {...props} />);
+        
+        // Find and click the horizontal direction button
+        const horizontalButton = screen.getByLabelText('Direction: Horizontal');
+        fireEvent.click(horizontalButton);
+        
+        // Verify updateProp was called with the new direction
+        expect(updateProp).toHaveBeenCalledWith('direction', 'horizontal');
+        
+        // Verify arrangeChildren was called with the new direction
+        expect(arrangeChildren).toHaveBeenCalledWith('panel1', { direction: 'horizontal' });
+     });
+
+     it('should call arrangeChildren when justifyContent is changed', () => {
+        const updateProp = jest.fn();
+        const onOpenExpressionEditor = jest.fn();
+        const arrangeChildren = jest.fn();
+        const props = {
+            component: {
+                id: 'panel1',
+                props: {
+                    direction: 'horizontal',
+                    justifyContent: 'start',
+                    backgroundColor: '#FFFFFF'
+                } as any
+            },
+            updateProp,
+            onOpenExpressionEditor,
+            arrangeChildren
+        };
+        render(<PanelProperties {...props} />);
+        
+        // Find and click the center justify button
+        const centerButton = screen.getByLabelText('Justify: Center');
+        fireEvent.click(centerButton);
+        
+        // Verify updateProp was called
+        expect(updateProp).toHaveBeenCalledWith('justifyContent', 'center');
+        
+        // Verify arrangeChildren was called with the new justifyContent
+        expect(arrangeChildren).toHaveBeenCalledWith('panel1', { justifyContent: 'center' });
+     });
+
+     it('should call arrangeChildren when alignItems is changed', () => {
+        const updateProp = jest.fn();
+        const onOpenExpressionEditor = jest.fn();
+        const arrangeChildren = jest.fn();
+        const props = {
+            component: {
+                id: 'panel1',
+                props: {
+                    direction: 'horizontal',
+                    alignItems: 'center',
+                    backgroundColor: '#FFFFFF'
+                } as any
+            },
+            updateProp,
+            onOpenExpressionEditor,
+            arrangeChildren
+        };
+        render(<PanelProperties {...props} />);
+        
+        // Find and click the stretch align button
+        const stretchButton = screen.getByLabelText('Align: Stretch');
+        fireEvent.click(stretchButton);
+        
+        // Verify updateProp was called
+        expect(updateProp).toHaveBeenCalledWith('alignItems', 'stretch');
+        
+        // Verify arrangeChildren was called with the new alignItems
+        expect(arrangeChildren).toHaveBeenCalledWith('panel1', { alignItems: 'stretch' });
      });
   });
 });
