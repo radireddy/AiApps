@@ -723,9 +723,23 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, [components, currentPageId]);
 
 
+  // Create theme with lowercase aliases for consistency
+  const themeWithLowercaseAliases = useMemo(() => {
+    const theme = appDefinition.theme;
+    return {
+      ...theme,
+      colors: {
+        ...theme.colors,
+        // Add lowercase aliases for camelCase properties
+        onprimary: theme.colors.onPrimary,
+        onsecondary: theme.colors.onSecondary,
+      },
+    };
+  }, [appDefinition.theme]);
+
   // --- EXPRESSION EVALUATION SCOPE ---
   const evaluationScope = useMemo(() => {
-  const scope = { console, theme: appDefinition.theme, ...dataStore, ...dataSourceContents, ...variableState };
+  const scope = { console, theme: themeWithLowercaseAliases, ...dataStore, ...dataSourceContents, ...variableState };
   components.forEach(c => {
     const props = c.props as any;
     if (props.dataStoreKey) {
@@ -750,7 +764,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   });
 
   return scope;
-  }, [appDefinition.theme, dataStore, components, dataSourceContents, variableState]);
+  }, [themeWithLowercaseAliases, dataStore, components, dataSourceContents, variableState]);
 
   const memoizedAppDefinition = useMemo(() => (appDefinition), [appDefinition]);
 
