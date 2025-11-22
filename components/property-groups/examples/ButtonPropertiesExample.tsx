@@ -130,7 +130,7 @@ export function createButtonPropertyConfig(
         key: 'newRecordData',
         label: 'New Record Object',
         type: 'expression',
-        placeholder: '{{ { name: InputName.value } }}',
+        placeholder: '{{ { name: inputName.value } }}',
         condition: (props) => (props as ButtonProps).actionType === 'createRecord',
       },
       {

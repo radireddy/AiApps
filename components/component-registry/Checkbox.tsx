@@ -17,20 +17,37 @@ const CheckboxRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
-  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
-  const isDisabledInEdit = mode === 'edit' || isDisabled;
+  // Evaluate disabled property - handle both boolean and string values correctly
+  const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const isDisabled = (() => {
+    if (typeof disabledValue === 'string') {
+      const lower = disabledValue.toLowerCase().trim();
+      return lower === 'true' || lower === '1';
+    }
+    return !!disabledValue;
+  })();
+  // In edit mode, allow interaction for selection; in preview mode, disable if needed
+  const isDisabledInPreview = mode === 'preview' && isDisabled;
+  // Evaluate opacity and boxShadow
+  const opacityValue = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
+  const boxShadowValue = useJavaScriptRenderer(p.boxShadow, evaluationScope, '');
+  // Calculate final opacity: use component opacity, but reduce if disabled
+  const finalOpacity = isDisabled ? 0.6 : (typeof opacityValue === 'number' ? opacityValue : (typeof opacityValue === 'string' && opacityValue.trim() ? parseFloat(opacityValue) || 1 : 1));
+  // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
+  const pointerEventsStyle = mode === 'edit' && isDisabled ? { pointerEvents: 'none' as const } : {};
+  
   return (
-    <div className="flex items-center w-full h-full">
+    <div className="flex items-center w-full h-full" style={{ ...pointerEventsStyle, opacity: finalOpacity, boxShadow: boxShadowValue || undefined }}>
       <input
         type="checkbox"
         id={component.id}
         checked={!!get(dataStore, p.dataStoreKey)}
         onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.checked)}
-        className={`mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${isDisabledInEdit ? 'pointer-events-none' : ''}`}
-        disabled={isDisabledInEdit}
-        aria-disabled={isDisabledInEdit}
+        className={`mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${isDisabledInPreview ? 'pointer-events-none' : ''}`}
+        disabled={isDisabledInPreview}
+        aria-disabled={isDisabledInPreview}
       />
-      <label htmlFor={component.id} className={`text-gray-800 ${isDisabledInEdit ? 'pointer-events-none' : ''} ${isDisabled ? 'opacity-60' : ''}`}>{p.label}</label>
+      <label htmlFor={component.id} className={`text-gray-800 ${isDisabledInPreview ? 'pointer-events-none' : ''} ${isDisabled ? 'opacity-60' : ''}`}>{p.label}</label>
     </div>
   );
 };

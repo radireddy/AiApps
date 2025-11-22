@@ -46,7 +46,7 @@ export const StateGroup: PropertyGroup = {
       key: 'disabled',
       label: 'Disabled',
       type: 'expression',
-      placeholder: 'e.g. {{Table1.selectedRecord == null}}',
+      placeholder: 'e.g. {{table1.selectedRecord == null}}',
     },
     {
       key: 'hidden',

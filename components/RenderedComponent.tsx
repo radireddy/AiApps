@@ -63,7 +63,16 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const ComponentRenderer = plugin.renderer;
   const isSelected = selectedComponentIds.includes(component.id);
   
-  const isHidden = !!useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
+  // Evaluate hidden property - handle both boolean and string values correctly
+  // String values like "true", "false", "1", "0" should be converted to booleans
+  const hiddenValue = useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
+  const isHidden = (() => {
+    if (typeof hiddenValue === 'string') {
+      const lower = hiddenValue.toLowerCase().trim();
+      return lower === 'true' || lower === '1';
+    }
+    return !!hiddenValue;
+  })();
 
   // Exit inline editing when component is deselected
   useEffect(() => {
@@ -211,6 +220,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
 
 
   const p = component.props;
+  
   const componentStyle: React.CSSProperties = {
     position: 'absolute',
     left: p.x,
@@ -218,7 +228,13 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     width: p.width,
     height: p.height,
     zIndex: plugin.isContainer ? 0 : (isSelected ? 10 : 1),
-    display: isHidden ? 'none' : 'block',
+    // In edit mode, show hidden components with reduced opacity so they're still selectable
+    // In preview mode, hide them completely
+    display: isHidden && mode === 'preview' ? 'none' : 'block',
+    // Apply opacity only for hidden state in edit mode
+    // Regular opacity and boxShadow are handled by individual component renderers
+    opacity: isHidden && mode === 'edit' ? 0.3 : undefined,
+    pointerEvents: isHidden && mode === 'edit' ? 'auto' : undefined, // Ensure hidden components are still clickable in edit mode
   };
 
   const selectionClass = isSelected && mode === 'edit' ? 'outline outline-2 outline-blue-500 outline-offset-2' : '';

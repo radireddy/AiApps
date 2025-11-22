@@ -17,21 +17,37 @@ const SwitchRenderer: React.FC<{
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
   const isChecked = !!get(dataStore, p.dataStoreKey);
-  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
-  const isDisabledInEdit = mode === 'edit' || isDisabled;
+  // Evaluate disabled property - handle both boolean and string values correctly
+  const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const isDisabled = (() => {
+    if (typeof disabledValue === 'string') {
+      const lower = disabledValue.toLowerCase().trim();
+      return lower === 'true' || lower === '1';
+    }
+    return !!disabledValue;
+  })();
+  // In edit mode, allow interaction for selection; in preview mode, disable if needed
+  const isDisabledInPreview = mode === 'preview' && isDisabled;
+  // Evaluate opacity and boxShadow
+  const opacityValue = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
+  const boxShadowValue = useJavaScriptRenderer(p.boxShadow, evaluationScope, '');
+  // Calculate final opacity: use component opacity, but reduce if disabled
+  const finalOpacity = isDisabled ? 0.6 : (typeof opacityValue === 'number' ? opacityValue : (typeof opacityValue === 'string' && opacityValue.trim() ? parseFloat(opacityValue) || 1 : 1));
+  // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
+  const pointerEventsStyle = mode === 'edit' && isDisabled ? { pointerEvents: 'none' as const } : {};
 
   return (
-    <div className={`flex items-center w-full h-full ${isDisabled ? 'opacity-60' : ''}`}>
-      <label id={`${component.id}-label`} className={`text-gray-800 mr-3 flex-shrink-0 ${isDisabledInEdit ? 'pointer-events-none' : ''}`}>{p.label}</label>
+    <div className="flex items-center w-full h-full" style={{ ...pointerEventsStyle, opacity: finalOpacity, boxShadow: boxShadowValue || undefined }}>
+      <label id={`${component.id}-label`} className={`text-gray-800 mr-3 flex-shrink-0 ${isDisabledInPreview ? 'pointer-events-none' : ''}`}>{p.label}</label>
       <button
         type="button"
         role="switch"
         aria-checked={isChecked}
         aria-labelledby={`${component.id}-label`}
-        aria-disabled={isDisabledInEdit}
+        aria-disabled={isDisabledInPreview}
         onClick={() => onUpdateDataStore?.(p.dataStoreKey, !isChecked)}
-        className={`${isChecked ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isDisabledInEdit ? 'pointer-events-none' : ''}`}
-        disabled={isDisabledInEdit}
+        className={`${isChecked ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isDisabledInPreview ? 'pointer-events-none' : ''}`}
+        disabled={isDisabledInPreview}
       >
         <span className={`${isChecked ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`} aria-hidden="true"/>
       </button>

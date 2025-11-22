@@ -13,7 +13,9 @@ const DividerRenderer: React.FC<{
 }> = ({ component, evaluationScope }) => {
   const p = component.props;
   const color = useJavaScriptRenderer(p.color, evaluationScope, '#d1d5db');
-  return <div style={{ backgroundColor: color, opacity: p.opacity }} className="w-full h-full"></div>;
+  const opacity = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
+  const boxShadow = useJavaScriptRenderer(p.boxShadow, evaluationScope, '');
+  return <div style={{ backgroundColor: color, opacity: typeof opacity === 'number' ? opacity : (typeof opacity === 'string' ? parseFloat(opacity) || 1 : 1), boxShadow: boxShadow || undefined }} className="w-full h-full"></div>;
 };
 
 const DividerProperties: React.FC<{

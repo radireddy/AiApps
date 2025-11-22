@@ -53,7 +53,7 @@ export const PropInput: React.FC<{ label: string; value: any; onChange: (val: an
             <input
             id={inputId}
             type={type}
-            {...(onChange ? { defaultValue: value } : { value })}
+            value={type === 'number' ? (value !== undefined && value !== null ? value : '') : (value ?? '')}
             onChange={e => onChange(type === 'number' || type === 'range' ? parseFloat(e.target.value) || 0 : e.target.value)}
             className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
             placeholder={placeholder}
@@ -215,7 +215,7 @@ export const StateProps: React.FC<{
 }> = ({ props, updateProp, onOpenExpressionEditor }) => {
     return (
     <PropertyGroup title="State">
-        <PropFxInput label="Disabled" value={props.disabled} onChange={val => updateProp('disabled', val)} placeholder="e.g. {{Table1.selectedRecord == null}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('disabled', newVal))} />
+        <PropFxInput label="Disabled" value={props.disabled} onChange={val => updateProp('disabled', val)} placeholder="e.g. {{table1.selectedRecord == null}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('disabled', newVal))} />
         <PropFxInput label="Hidden" value={props.hidden} onChange={val => updateProp('hidden', val)} placeholder="e.g. {{!showAlert}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('hidden', newVal))} />
     </PropertyGroup>
 )};

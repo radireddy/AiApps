@@ -18,13 +18,32 @@ const SelectRenderer: React.FC<{
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
   const options = p.options.split(',').map(opt => opt.trim());
-  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
-  const style = {
+  // Evaluate disabled property - handle both boolean and string values correctly
+  const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const isDisabled = (() => {
+    if (typeof disabledValue === 'string') {
+      const lower = disabledValue.toLowerCase().trim();
+      return lower === 'true' || lower === '1';
+    }
+    return !!disabledValue;
+  })();
+  // In edit mode, allow interaction for selection; in preview mode, disable if needed
+  const isDisabledInPreview = mode === 'preview' && isDisabled;
+  // Evaluate opacity and boxShadow
+  const opacityValue = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
+  const boxShadowValue = useJavaScriptRenderer(p.boxShadow, evaluationScope, '');
+  // Calculate final opacity: use component opacity, but reduce if disabled
+  const finalOpacity = isDisabled ? 0.6 : (typeof opacityValue === 'number' ? opacityValue : (typeof opacityValue === 'string' && opacityValue.trim() ? parseFloat(opacityValue) || 1 : 1));
+  
+  const style: React.CSSProperties = {
     borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
     borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
     borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: isDisabled ? 0.6 : 1,
+    opacity: finalOpacity,
+    boxShadow: boxShadowValue || undefined,
+    // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
+    pointerEvents: (mode === 'edit' && isDisabled ? 'none' : 'auto') as React.CSSProperties['pointerEvents'],
   };
 
   return (
@@ -33,8 +52,8 @@ const SelectRenderer: React.FC<{
       onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
       style={style}
       className={`w-full h-full p-2 bg-white text-gray-900 focus:outline-none ${mode === 'edit' ? 'pointer-events-none' : ''}`}
-      disabled={isDisabled}
-      aria-disabled={isDisabled}
+      disabled={isDisabledInPreview}
+      aria-disabled={isDisabledInPreview}
       aria-label={p.accessibilityLabel || p.placeholder}
     >
       <option value="" disabled>{p.placeholder}</option>

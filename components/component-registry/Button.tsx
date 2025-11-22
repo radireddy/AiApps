@@ -48,9 +48,18 @@ const ButtonRenderer: React.FC<{
   
   // Evaluate dynamic properties for rendering
   const text = useJavaScriptRenderer(p.text, evaluationScope, '');
-  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  // Evaluate disabled property - handle both boolean and string values correctly
+  const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const isDisabled = (() => {
+    if (typeof disabledValue === 'string') {
+      const lower = disabledValue.toLowerCase().trim();
+      return lower === 'true' || lower === '1';
+    }
+    return !!disabledValue;
+  })();
   const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#4f46e5');
   const textColor = useJavaScriptRenderer(p.textColor, evaluationScope, '#FFFFFF');
+  const opacityValue = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
   
   const handleButtonClick = () => {
     if (mode === 'preview' && !isDisabled) {
@@ -116,26 +125,41 @@ const ButtonRenderer: React.FC<{
     }
   };
 
-  const style = {
+  const borderRadius = useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px');
+  const borderWidth = useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px');
+  const borderColor = useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb');
+  
+  // In edit mode, allow interaction for selection; in preview mode, disable if needed
+  const isDisabledInPreview = mode === 'preview' && isDisabled;
+  
+  // Evaluate boxShadow
+  const boxShadowValue = useJavaScriptRenderer(p.boxShadow, evaluationScope, '');
+  // Calculate final opacity: use component opacity, but reduce if disabled
+  const finalOpacity = isDisabled ? 0.6 : (typeof opacityValue === 'number' ? opacityValue : (typeof opacityValue === 'string' && opacityValue.trim() ? parseFloat(opacityValue) || 1 : 1));
+  
+  const style: React.CSSProperties = {
     backgroundColor,
     color: textColor,
-    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
+    borderRadius,
+    borderWidth,
+    borderColor,
     borderStyle: p.borderStyle,
-    opacity: isDisabled ? 0.6 : useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    opacity: finalOpacity,
+    boxShadow: boxShadowValue || undefined,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
+    pointerEvents: (mode === 'edit' && isDisabled ? 'none' : 'auto') as React.CSSProperties['pointerEvents'],
   };
-
+  
   return (
     <button
       onClick={handleButtonClick}
       style={style}
       className="w-full h-full font-semibold transition-opacity hover:opacity-90"
-      disabled={isDisabled}
-      aria-disabled={isDisabled}
+      disabled={isDisabledInPreview}
+      aria-disabled={isDisabledInPreview}
     >
       {isEditingInline && onCommitInlineEdit ? (
         <InlineTextEditor
@@ -268,7 +292,7 @@ const ButtonProperties: React.FC<{
         key: 'newRecordData',
         label: 'New Record Object',
         type: 'expression',
-        placeholder: '{{ { name: InputName.value } }}',
+        placeholder: '{{ { name: inputName.value } }}',
         condition: (props) => (props as ButtonProps).actionType === 'createRecord',
       },
       {
