@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { BorderProps, ComponentProps } from '../../types';
+import { typography } from '../../constants';
 
 export const PropFxInput: React.FC<{ 
     label: string; 
