@@ -140,16 +140,38 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   /**
    * Adds a new component to the canvas.
    * Automatically initializes related data store keys if configured in default props.
+   * 
+   * Note: H_STACK and V_STACK are shortcuts that create PANEL components with
+   * horizontal or vertical direction respectively.
    */
   const addComponent = useCallback((type: ComponentType, position: { x: number; y: number }, parentId: string | null = null, pageId: string) => {
-    const componentPlugin = componentRegistry[type];
+    // Convert H_STACK and V_STACK to PANEL with appropriate direction
+    let actualType = type;
+    let directionOverride: 'horizontal' | 'vertical' | undefined;
+    
+    if (type === ComponentType.H_STACK) {
+      actualType = ComponentType.PANEL;
+      directionOverride = 'horizontal';
+    } else if (type === ComponentType.V_STACK) {
+      actualType = ComponentType.PANEL;
+      directionOverride = 'vertical';
+    }
+    
+    const componentPlugin = componentRegistry[actualType];
     if (!componentPlugin) return;
         setAppDefinitionState(prev => {
+            const defaultProps = { ...componentPlugin.paletteConfig.defaultProps };
+            
+            // Override direction if this is a stack shortcut
+            if (directionOverride) {
+              defaultProps.direction = directionOverride;
+            }
+            
             const newComp: AppComponent = {
-                id: `${type}_${Date.now()}`,
-                type,
+                id: `${actualType}_${Date.now()}`,
+                type: actualType,
                 props: {
-                    ...componentPlugin.paletteConfig.defaultProps,
+                    ...defaultProps,
                     ...position,
                 } as ComponentProps,
                 parentId,

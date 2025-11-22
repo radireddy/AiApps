@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { ComponentPlugin, ComponentType } from '../types';
 import { componentRegistry } from './component-registry/registry';
+import { typography } from '../constants';
 
 interface ComponentPaletteProps {
   width: number;
@@ -25,7 +26,7 @@ const PaletteItem: React.FC<{ componentPlugin: ComponentPlugin }> = ({ component
       data-testid={`palette-item-${componentPlugin.type}`}
     >
       {componentPlugin.paletteConfig.icon}
-      <span className="text-xs font-semibold mt-1">{componentPlugin.paletteConfig.label}</span>
+      <span className={`${typography.label} ${typography.medium} mt-1`}>{componentPlugin.paletteConfig.label}</span>
     </div>
   );
 };
@@ -101,7 +102,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ width, isCol
   return (
     <aside style={{ width: `${width}px` }} className="bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-hidden" role="region" aria-label="Components">
       <div className="flex items-center justify-between p-3 border-b border-gray-200">
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider px-1" id="components-heading">Components</h2>
+        <h2 className={`${typography.section} ${typography.bold} text-gray-500 uppercase tracking-wider px-1`} id="components-heading">Components</h2>
         <button 
             onClick={onToggleCollapse} 
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-800" 
@@ -125,7 +126,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ width, isCol
                 aria-expanded={isOpen}
                 aria-controls={`palette-${cat}`}
               >
-                <span className="text-sm font-medium text-gray-600">{cat}</span>
+                <span className={`${typography.subsection} ${typography.semibold} text-gray-600`}>{cat}</span>
                 <svg className={`h-4 w-4 text-gray-500 transform transition-transform ${isOpen ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
                   <path d="M6 4l8 6-8 6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

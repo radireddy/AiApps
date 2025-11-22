@@ -22,6 +22,7 @@ import { storageService } from '@/storageService';
 import { ThemePanel } from './ThemePanel';
 import { TreeView } from './components/TreeView';
 import { exportToReactProject } from './services/projectExporter';
+import { typography } from './constants';
 
 const MIN_PANEL_WIDTH = 240;
 const MAX_PANEL_WIDTH = 500;
@@ -347,21 +348,21 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     <div className="flex flex-col h-screen font-sans bg-gray-100 text-gray-800">
       <header role="banner" className="flex items-center justify-between px-4 h-14 bg-white border-b border-gray-200 z-10 shrink-0">
         <div className="flex items-center gap-4">
-            <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900">
+            <button onClick={onBack} className={`flex items-center gap-2 ${typography.body} ${typography.semibold} text-gray-600 hover:text-gray-900`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 Apps
             </button>
             <div className="w-px h-6 bg-gray-200"></div>
-            <h1 className="text-lg font-semibold text-gray-800">{appDefinition.name}</h1>
+            <h1 className={`${typography.heading} ${typography.semibold} text-gray-800`}>{appDefinition.name}</h1>
         </div>
         <div className="flex items-center gap-4">
           {mode === 'edit' && (
             <button
               onClick={handleExportAsReactProject}
               disabled={isExporting}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className={`flex items-center gap-2 px-4 py-2 ${typography.body} ${typography.semibold} text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all disabled:bg-gray-300 disabled:cursor-not-allowed`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -372,7 +373,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
           <button
             onClick={() => setMode(mode === 'edit' ? 'preview' : 'edit')}
             aria-label={`Switch to ${mode === 'edit' ? 'preview' : 'editor'} mode`}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
+            className={`flex items-center gap-2 px-4 py-2 ${typography.body} ${typography.semibold} text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all`}
           >
             {mode === 'edit' ? (
               <>
@@ -397,11 +398,11 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
         <div className="flex-grow flex overflow-hidden" role="main">
             <div className={`bg-white border-r border-gray-200 flex flex-col shrink-0 ${isLeftPanelCollapsed ? 'w-12' : ''}`} style={{ width: isLeftPanelCollapsed ? undefined : `${leftPanelWidth}px` }}>
                 <div className="flex border-b border-gray-200">
-                    <button onClick={() => setActiveLeftPanel('explorer')} className={`flex-1 p-3 text-xs font-semibold uppercase tracking-wider ${activeLeftPanel === 'explorer' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Explorer</button>
-                    <button onClick={() => setActiveLeftPanel('components')} className={`flex-1 p-3 text-xs font-semibold uppercase tracking-wider ${activeLeftPanel === 'components' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Components</button>
-                    <button onClick={() => setActiveLeftPanel('data')} className={`flex-1 p-3 text-xs font-semibold uppercase tracking-wider ${activeLeftPanel === 'data' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Data</button>
-                    <button onClick={() => setActiveLeftPanel('state')} className={`flex-1 p-3 text-xs font-semibold uppercase tracking-wider ${activeLeftPanel === 'state' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>State</button>
-                    <button onClick={() => setActiveLeftPanel('theme')} className={`flex-1 p-3 text-xs font-semibold uppercase tracking-wider ${activeLeftPanel === 'theme' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Theme</button>
+                    <button onClick={() => setActiveLeftPanel('explorer')} className={`flex-1 p-3 ${typography.label} ${typography.semibold} uppercase tracking-wider ${activeLeftPanel === 'explorer' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Explorer</button>
+                    <button onClick={() => setActiveLeftPanel('components')} className={`flex-1 p-3 ${typography.label} ${typography.semibold} uppercase tracking-wider ${activeLeftPanel === 'components' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Components</button>
+                    <button onClick={() => setActiveLeftPanel('data')} className={`flex-1 p-3 ${typography.label} ${typography.semibold} uppercase tracking-wider ${activeLeftPanel === 'data' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Data</button>
+                    <button onClick={() => setActiveLeftPanel('state')} className={`flex-1 p-3 ${typography.label} ${typography.semibold} uppercase tracking-wider ${activeLeftPanel === 'state' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>State</button>
+                    <button onClick={() => setActiveLeftPanel('theme')} className={`flex-1 p-3 ${typography.label} ${typography.semibold} uppercase tracking-wider ${activeLeftPanel === 'theme' ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>Theme</button>
                 </div>
                 {renderLeftPanel()}
             </div>

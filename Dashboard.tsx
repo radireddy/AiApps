@@ -8,6 +8,7 @@ import { ImportConfirmationModal } from './ImportConfirmationModal';
 import { ThemeEditorModal } from './ThemeEditorModal';
 import { SaveAsTemplateModal } from './components/SaveAsTemplateModal';
 import { TemplateSelectionModal } from './components/TemplateSelectionModal';
+import { typography } from './constants';
 
 
 interface DashboardProps {
@@ -44,13 +45,13 @@ const AppCard: React.FC<{
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow flex flex-col">
       <div className="p-5 flex-grow">
-        <h3 className="text-lg font-bold text-gray-800 mb-2 truncate">{app.name}</h3>
-        <p className="text-sm text-gray-500">
+        <h3 className={`${typography.group} ${typography.bold} text-gray-800 mb-2 truncate`}>{app.name}</h3>
+        <p className={`${typography.body} text-gray-500`}>
           Modified: {new Date(app.lastModifiedAt).toLocaleString()}
         </p>
       </div>
       <div className="border-t border-gray-200 p-3 flex justify-between items-center bg-gray-50">
-        <button onClick={onEdit} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">
+        <button onClick={onEdit} className={`px-4 py-2 ${typography.body} ${typography.semibold} text-white bg-blue-600 rounded-md hover:bg-blue-700`}>
           Edit App
         </button>
         <div className="relative" ref={menuRef}>
@@ -61,10 +62,10 @@ const AppCard: React.FC<{
           </button>
           {isMenuOpen && (
             <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10 py-1">
-              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onRename); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Rename</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onSaveAsTemplate); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Save as Template</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onExport); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Export</a>
-              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onDelete); }} className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Delete</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onRename); }} className={`block px-4 py-2 ${typography.body} text-gray-700 hover:bg-gray-100`}>Rename</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onSaveAsTemplate); }} className={`block px-4 py-2 ${typography.body} text-gray-700 hover:bg-gray-100`}>Save as Template</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onExport); }} className={`block px-4 py-2 ${typography.body} text-gray-700 hover:bg-gray-100`}>Export</a>
+              <a href="#" onClick={(e) => { e.preventDefault(); handleActionClick(onDelete); }} className={`block px-4 py-2 ${typography.body} text-red-600 hover:bg-red-50`}>Delete</a>
             </div>
           )}
         </div>
@@ -88,11 +89,11 @@ const TemplateCard: React.FC<{
             <img src={template.imageUrl} alt={template.name} className="w-full h-full object-cover" />
         </div>
         <div className="p-5 flex-grow flex flex-col">
-            <h3 className="text-lg font-bold text-gray-800 mb-2 truncate">{template.name}</h3>
-            <p className="text-sm text-gray-500 flex-grow">{template.description}</p>
+            <h3 className={`${typography.group} ${typography.bold} text-gray-800 mb-2 truncate`}>{template.name}</h3>
+            <p className={`${typography.body} text-gray-500 flex-grow`}>{template.description}</p>
         </div>
         <div className="border-t border-gray-200 p-3 bg-gray-50">
-            <button onClick={onUse} className="w-full px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700">
+            <button onClick={onUse} className={`w-full px-4 py-2 ${typography.body} ${typography.semibold} text-white bg-blue-600 rounded-md hover:bg-blue-700`}>
                 Use Template
             </button>
         </div>
@@ -288,28 +289,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
                 <path d="M7 15C5.34315 15 4 16.3431 4 18V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V18C20 16.3431 18.6569 15 17 15H7Z" fill="#a5b4fc"/>
                 <path d="M16.5 3H7.5C6.67157 3 6 3.67157 6 4.5V15H18V4.5C18 3.67157 17.3284 3 16.5 3Z" fill="#4f46e5"/>
               </svg>
-              <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+              <h1 className={`${typography.title} ${typography.bold} text-gray-900`}>Dashboard</h1>
               <div className="w-px h-6 bg-gray-200 ml-2"></div>
-              <button onClick={handleImportClick} className="ml-2 px-3 py-1.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">Import Apps</button>
-              <button onClick={handleExportAll} className="px-3 py-1.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200">Export All Apps</button>
+              <button onClick={handleImportClick} className={`ml-2 px-3 py-1.5 ${typography.body} ${typography.semibold} text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200`}>Import Apps</button>
+              <button onClick={handleExportAll} className={`px-3 py-1.5 ${typography.body} ${typography.semibold} text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200`}>Export All Apps</button>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" style={{ display: 'none' }} />
             </div>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">My Apps</h2>
+            <h2 className={`${typography.heading} ${typography.semibold} text-gray-800`}>My Apps</h2>
              <div className="relative inline-flex shadow-sm rounded-md" ref={createDropdownRef}>
                 <button
                     type="button"
-                    className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-l-md hover:bg-blue-700 focus:z-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className={`px-4 py-2 ${typography.body} ${typography.semibold} text-white bg-blue-600 rounded-l-md hover:bg-blue-700 focus:z-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                     onClick={() => { setSelectedTemplate(null); setIsCreateModalOpen(true); }}
                 >
                     Create New App
                 </button>
                 <button
                     type="button"
-                    className="px-2 py-2 text-sm font-semibold text-white bg-blue-600 rounded-r-md hover:bg-blue-700 focus:z-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 border-l border-blue-500"
+                    className={`px-2 py-2 ${typography.body} ${typography.semibold} text-white bg-blue-600 rounded-r-md hover:bg-blue-700 focus:z-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 border-l border-blue-500`}
                     onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
                     aria-haspopup="true"
                     aria-expanded={isCreateDropdownOpen}
@@ -321,7 +322,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
                 {isCreateDropdownOpen && (
                     <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
                         <div className="py-1" role="menu" aria-orientation="vertical">
-                            <a href="#" onClick={(e) => { e.preventDefault(); setIsTemplateSelectionOpen(true); setIsCreateDropdownOpen(false); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                            <a href="#" onClick={(e) => { e.preventDefault(); setIsTemplateSelectionOpen(true); setIsCreateDropdownOpen(false); }} className={`block px-4 py-2 ${typography.body} text-gray-700 hover:bg-gray-100`} role="menuitem">
                                 Create from Template
                             </a>
                         </div>
@@ -347,14 +348,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
           </div>
         ) : (
           <div className="text-center py-16 px-6 border-2 border-dashed border-gray-300 rounded-lg">
-            <h3 className="text-xl font-semibold text-gray-800">No applications found</h3>
+            <h3 className={`${typography.heading} ${typography.semibold} text-gray-800`}>No applications found</h3>
             <p className="mt-2 text-gray-500">Get started by creating your first application.</p>
           </div>
         )}
         
         {/* Templates Section */}
         <div className="mt-16">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">App Templates</h2>
+            <h2 className={`${typography.heading} ${typography.semibold} text-gray-800 mb-6`}>App Templates</h2>
             {isLoading ? (
                 <p>Loading templates...</p>
             ) : templates.length > 0 ? (
@@ -370,7 +371,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
                 </div>
             ) : (
                  <div className="text-center py-16 px-6 border-2 border-dashed border-gray-300 rounded-lg">
-                    <h3 className="text-xl font-semibold text-gray-800">No templates found</h3>
+                    <h3 className={`${typography.heading} ${typography.semibold} text-gray-800`}>No templates found</h3>
                     <p className="mt-2 text-gray-500">Save an existing app as a template to get started.</p>
                 </div>
             )}
@@ -379,8 +380,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
 
         <div className="mt-16">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-semibold text-gray-800">My Themes</h2>
-                <button onClick={() => { setThemeToEdit(null); setIsThemeEditorOpen(true); }} className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">
+                <h2 className={`${typography.heading} ${typography.semibold} text-gray-800`}>My Themes</h2>
+                <button onClick={() => { setThemeToEdit(null); setIsThemeEditorOpen(true); }} className={`px-4 py-2 ${typography.body} ${typography.semibold} text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm`}>
                     Create New Theme
                 </button>
             </div>
@@ -391,13 +392,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
                             <li key={theme.id} className="px-6 py-4 flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
                                   <span className="font-semibold text-gray-800">{theme.name}</span>
-                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${theme.type === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                  <span className={`${typography.caption} ${typography.bold} px-2 py-0.5 rounded-full ${theme.type === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'}`}>
                                     {theme.type}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <button onClick={() => { setThemeToEdit(theme); setIsThemeEditorOpen(true); }} className="text-sm font-medium text-blue-600 hover:text-blue-800">Edit</button>
-                                    <button onClick={() => handleDeleteTheme(theme.id)} className="text-sm font-medium text-red-600 hover:text-red-800">Delete</button>
+                                    <button onClick={() => { setThemeToEdit(theme); setIsThemeEditorOpen(true); }} className={`${typography.body} ${typography.medium} text-blue-600 hover:text-blue-800`}>Edit</button>
+                                    <button onClick={() => handleDeleteTheme(theme.id)} className={`${typography.body} ${typography.medium} text-red-600 hover:text-red-800`}>Delete</button>
                                 </div>
                             </li>
                         ))}
@@ -405,7 +406,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
                 </div>
             ) : (
                  <div className="text-center py-16 px-6 border-2 border-dashed border-gray-300 rounded-lg">
-                    <h3 className="text-xl font-semibold text-gray-800">No themes found</h3>
+                    <h3 className={`${typography.heading} ${typography.semibold} text-gray-800`}>No themes found</h3>
                     <p className="mt-2 text-gray-500">Create a global theme to easily apply styles across your apps.</p>
                 </div>
             )}

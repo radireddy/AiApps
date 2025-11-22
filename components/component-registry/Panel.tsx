@@ -3,15 +3,29 @@ import React from 'react';
 import { ComponentType, PanelProps, ComponentPlugin } from '../../types';
 import { StylingProps, PropertyGroup, PropFxInput, PropInput, Tooltip } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
-import { commonStylingProps } from '../../constants';
+import { commonStylingProps, typography } from '../../constants';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
-const PanelRenderer: React.FC<{
+/**
+ * Base Panel Renderer
+ * This is the core rendering logic for Panel and all Panel-based components.
+ * It can be extended or customized by child components.
+ */
+export const PanelRenderer: React.FC<{
   component: { props: PanelProps };
   children: React.ReactNode;
   evaluationScope: Record<string, any>;
-}> = ({ component, children, evaluationScope }) => {
+  /**
+   * Optional custom direction override. If provided, this will override the prop direction.
+   * Useful for components like H-Stack and V-Stack that have fixed directions.
+   */
+  directionOverride?: 'horizontal' | 'vertical';
+  /**
+   * Optional custom style extensions. Allows child components to add additional styles.
+   */
+  styleExtensions?: React.CSSProperties;
+}> = ({ component, children, evaluationScope, directionOverride, styleExtensions = {} }) => {
   const p = component.props;
   const style = {
     backgroundColor: useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
@@ -22,8 +36,11 @@ const PanelRenderer: React.FC<{
     borderStyle: p.borderStyle,
     opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
+    ...styleExtensions,
   };
-  const direction = useJavaScriptRenderer(p.direction, evaluationScope, 'horizontal');
+  
+  // Use directionOverride if provided, otherwise use prop direction
+  const direction = directionOverride || useJavaScriptRenderer(p.direction, evaluationScope, 'horizontal');
   const justify = useJavaScriptRenderer(p.justifyContent, evaluationScope, 'start');
   const align = useJavaScriptRenderer(p.alignItems, evaluationScope, 'center');
 
@@ -58,12 +75,36 @@ const PanelRenderer: React.FC<{
   return <div style={{ ...style, ...layoutStyle }} className="w-full h-full relative">{children}</div>;
 };
 
-const PanelProperties: React.FC<{
+/**
+ * Base Panel Properties Component
+ * This provides the property editing UI for Panel and can be extended by child components.
+ */
+export const PanelProperties: React.FC<{
   component: { id?: string; props: PanelProps };
   updateProp: (key: keyof PanelProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
   arrangeChildren?: (panelId: string | undefined, opts: { direction?: string; justifyContent?: string; alignItems?: string }) => void;
-}> = ({ component, updateProp, onOpenExpressionEditor, arrangeChildren }) => {
+  /**
+   * If true, hides the direction selector (useful for components with fixed direction like H-Stack/V-Stack)
+   */
+  hideDirectionSelector?: boolean;
+  /**
+   * Optional custom property groups to add before the default ones
+   */
+  customPropertyGroups?: React.ReactNode;
+  /**
+   * Optional custom property groups to add after the default ones
+   */
+  additionalPropertyGroups?: React.ReactNode;
+}> = ({ 
+  component, 
+  updateProp, 
+  onOpenExpressionEditor, 
+  arrangeChildren,
+  hideDirectionSelector = false,
+  customPropertyGroups,
+  additionalPropertyGroups,
+}) => {
   const p = component.props;
   const dir = p.direction || 'horizontal';
   const justify = p.justifyContent || 'start';
@@ -183,69 +224,74 @@ const PanelProperties: React.FC<{
 
   return (
     <div className="py-1">
-      <PropertyGroup title="Layout">
-        <div className="mb-3">
-          <label className="block text-[11px] font-medium text-gray-600 mb-2">Direction</label>
-          <div className="flex gap-2">
-            <Tooltip text="Arrange horizontally">
-              <button 
-                onClick={() => { updateProp('direction', 'horizontal'); if (arrangeChildren) arrangeChildren(component.id, { direction: 'horizontal' }); }} 
-                className={`p-2 rounded-md border transition-colors ${dir === 'horizontal' ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
-                aria-pressed={dir === 'horizontal'} 
-                aria-label="Set direction to horizontal"
-              >
-                {HorizontalDirectionIcon}
-              </button>
-            </Tooltip>
-            <Tooltip text="Arrange vertically">
-              <button 
-                onClick={() => { updateProp('direction', 'vertical'); if (arrangeChildren) arrangeChildren(component.id, { direction: 'vertical' }); }} 
-                className={`p-2 rounded-md border transition-colors ${dir === 'vertical' ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
-                aria-pressed={dir === 'vertical'} 
-                aria-label="Set direction to vertical"
-              >
-                {VerticalDirectionIcon}
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <label className="block text-[11px] font-medium text-gray-600 mb-2">{dir === 'horizontal' ? 'Justify' : 'Justify'}</label>
-          <div className="flex gap-2">
-            {JustifyOptions.map(opt => (
-              <Tooltip key={opt.value} text={opt.description || opt.title}>
+      {customPropertyGroups}
+      
+      {!hideDirectionSelector && (
+        <PropertyGroup title="Layout">
+          <div className="mb-3">
+            <label className={`block ${typography.body} ${typography.medium} text-gray-600 mb-2`}>Direction</label>
+            <div className="flex gap-2">
+              <Tooltip text="Arrange horizontally">
                 <button 
-                  onClick={() => { updateProp('justifyContent', opt.value as any); if (arrangeChildren) arrangeChildren(component.id, { justifyContent: opt.value }); }} 
-                  className={`p-2 rounded-md border transition-colors ${justify === opt.value ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
-                  aria-pressed={justify === opt.value} 
-                  aria-label={`Justify content: ${opt.title} - ${opt.description || ''}`}
+                  onClick={() => { updateProp('direction', 'horizontal'); if (arrangeChildren) arrangeChildren(component.id, { direction: 'horizontal' }); }} 
+                  className={`p-2 rounded-md border transition-colors ${dir === 'horizontal' ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
+                  aria-pressed={dir === 'horizontal'} 
+                  aria-label="Set direction to horizontal"
                 >
-                  {opt.icon}
+                  {HorizontalDirectionIcon}
                 </button>
               </Tooltip>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-0">
-          <label className="block text-[11px] font-medium text-gray-600 mb-2">{dir === 'horizontal' ? 'Align' : 'Align'}</label>
-          <div className="flex gap-2">
-            {AlignOptions.map(opt => (
-              <Tooltip key={opt.value} text={opt.description || opt.title}>
+              <Tooltip text="Arrange vertically">
                 <button 
-                  onClick={() => { updateProp('alignItems', opt.value as any); if (arrangeChildren) arrangeChildren(component.id, { alignItems: opt.value }); }} 
-                  className={`p-2 rounded-md border transition-colors ${align === opt.value ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
-                  aria-pressed={align === opt.value} 
-                  aria-label={`Align items: ${opt.title} - ${opt.description || ''}`}
+                  onClick={() => { updateProp('direction', 'vertical'); if (arrangeChildren) arrangeChildren(component.id, { direction: 'vertical' }); }} 
+                  className={`p-2 rounded-md border transition-colors ${dir === 'vertical' ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
+                  aria-pressed={dir === 'vertical'} 
+                  aria-label="Set direction to vertical"
                 >
-                  {opt.icon}
+                  {VerticalDirectionIcon}
                 </button>
               </Tooltip>
-            ))}
+            </div>
           </div>
-        </div>
-      </PropertyGroup>
+
+          <div className="mb-3">
+            <label className={`block ${typography.body} ${typography.medium} text-gray-600 mb-2`}>Justify</label>
+            <div className="flex gap-2">
+              {JustifyOptions.map(opt => (
+                <Tooltip key={opt.value} text={opt.description || opt.title}>
+                  <button 
+                    onClick={() => { updateProp('justifyContent', opt.value as any); if (arrangeChildren) arrangeChildren(component.id, { justifyContent: opt.value }); }} 
+                    className={`p-2 rounded-md border transition-colors ${justify === opt.value ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
+                    aria-pressed={justify === opt.value} 
+                    aria-label={`Justify content: ${opt.title} - ${opt.description || ''}`}
+                  >
+                    {opt.icon}
+                  </button>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-0">
+            <label className={`block ${typography.body} ${typography.medium} text-gray-600 mb-2`}>Align</label>
+            <div className="flex gap-2">
+              {AlignOptions.map(opt => (
+                <Tooltip key={opt.value} text={opt.description || opt.title}>
+                  <button 
+                    onClick={() => { updateProp('alignItems', opt.value as any); if (arrangeChildren) arrangeChildren(component.id, { alignItems: opt.value }); }} 
+                    className={`p-2 rounded-md border transition-colors ${align === opt.value ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200 hover:bg-gray-50'}`} 
+                    aria-pressed={align === opt.value} 
+                    aria-label={`Align items: ${opt.title} - ${opt.description || ''}`}
+                  >
+                    {opt.icon}
+                  </button>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+        </PropertyGroup>
+      )}
+
 
       <PropertyGroup title="Position & Size">
         <div className="grid grid-cols-2 gap-2.5">
@@ -253,7 +299,7 @@ const PanelProperties: React.FC<{
           <PropInput label="Y" value={p.y} onChange={val => updateProp('y', val)} type="number" />
           <PropInput label="Width" value={p.width} onChange={val => updateProp('width', val)} type="number" />
           <PropInput label="Height" value={p.height} onChange={val => updateProp('height', val)} type="number" />
-        </div>
+      </div>
       </PropertyGroup>
 
       <PropertyGroup title="Background">
@@ -261,28 +307,118 @@ const PanelProperties: React.FC<{
         <PropFxInput label="Background Gradient" value={p.backgroundGradient} onChange={val => updateProp('backgroundGradient', val)} placeholder="e.g. linear-gradient(...)" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundGradient', newVal))} />
       </PropertyGroup>
 
+      {additionalPropertyGroups}
       <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
     </div>
   );
 };
 
-export const PanelPlugin: ComponentPlugin = {
-  type: ComponentType.PANEL,
-  isContainer: true,
-  paletteConfig: {
-    label: 'Panel',
-    icon: React.createElement('svg', { style: iconStyle, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" }, React.createElement('path', { d: "M4 4H20V20H4V4Z", stroke: "currentColor", strokeWidth: "2", strokeLinejoin: "round" })),
-    defaultProps: {
-      ...commonStylingProps,
-      width: 300,
-      height: 200,
-      backgroundColor: '{{theme.colors.surface}}',
-      backgroundGradient: '',
-      direction: 'horizontal',
-      justifyContent: 'start',
-      alignItems: 'center',
+/**
+ * Factory function to create Panel-based component plugins
+ * This follows the Factory Pattern for easy extensibility
+ * 
+ * @param config Configuration for the Panel-based component
+ * @returns A ComponentPlugin that extends Panel functionality
+ */
+export function createPanelPlugin<T extends PanelProps = PanelProps>(config: {
+  type: ComponentType;
+  label: string;
+  icon: React.ReactElement;
+  defaultProps: Partial<T>;
+  /**
+   * Optional fixed direction. If provided, the direction selector will be hidden.
+   */
+  fixedDirection?: 'horizontal' | 'vertical';
+  /**
+   * Optional custom renderer. If not provided, uses the base PanelRenderer.
+   */
+  customRenderer?: ComponentPlugin['renderer'];
+  /**
+   * Optional custom properties component. If not provided, uses the base PanelProperties.
+   */
+  customProperties?: ComponentPlugin['properties'];
+  /**
+   * Optional style extensions for the renderer
+   */
+  styleExtensions?: React.CSSProperties;
+  /**
+   * Optional custom property groups
+   */
+  customPropertyGroups?: React.ReactNode;
+  additionalPropertyGroups?: React.ReactNode;
+}): ComponentPlugin {
+  const {
+    type,
+    label,
+    icon,
+    defaultProps,
+    fixedDirection,
+    customRenderer,
+    customProperties,
+    styleExtensions,
+    customPropertyGroups,
+    additionalPropertyGroups,
+  } = config;
+
+  // Create renderer - use custom if provided, otherwise use base with direction override
+  // The renderer receives: component, mode, dataStore, onUpdateDataStore, actions, isEditingInline, onCommitInlineEdit, evaluationScope, children
+  const renderer: ComponentPlugin['renderer'] = customRenderer || ((props: any) => (
+    <PanelRenderer
+      component={props.component as { props: PanelProps }}
+      children={props.children}
+      evaluationScope={props.evaluationScope}
+      directionOverride={fixedDirection}
+      styleExtensions={styleExtensions}
+    />
+  ));
+
+  // Create properties - use custom if provided, otherwise use base with direction hidden if fixed
+  // The properties receives: component, updateProp, dataSources, variables, evaluationScope, onOpenExpressionEditor, arrangeChildren
+  const properties: ComponentPlugin['properties'] = customProperties || ((props: any) => (
+    <PanelProperties
+      component={props.component as { id?: string; props: PanelProps }}
+      updateProp={props.updateProp as any}
+      onOpenExpressionEditor={props.onOpenExpressionEditor}
+      arrangeChildren={props.arrangeChildren}
+      hideDirectionSelector={!!fixedDirection}
+      customPropertyGroups={customPropertyGroups}
+      additionalPropertyGroups={additionalPropertyGroups}
+    />
+  ));
+
+  return {
+    type,
+    isContainer: true,
+    paletteConfig: {
+      label,
+      icon,
+      defaultProps: {
+        ...commonStylingProps,
+        ...defaultProps,
+        // Set direction if fixed
+        ...(fixedDirection && { direction: fixedDirection }),
+      } as Partial<T>,
     },
+    renderer,
+    properties,
+  };
+}
+
+/**
+ * Base Panel Plugin
+ * This is the standard Panel component that can be configured with any direction.
+ */
+export const PanelPlugin: ComponentPlugin = createPanelPlugin({
+  type: ComponentType.PANEL,
+  label: 'Panel',
+  icon: React.createElement('svg', { style: iconStyle, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" }, React.createElement('path', { d: "M4 4H20V20H4V4Z", stroke: "currentColor", strokeWidth: "2", strokeLinejoin: "round" })),
+  defaultProps: {
+    width: 300,
+    height: 200,
+    backgroundColor: '{{theme.colors.surface}}',
+    backgroundGradient: '',
+    direction: 'horizontal',
+    justifyContent: 'start',
+    alignItems: 'center',
   },
-  renderer: PanelRenderer,
-  properties: PanelProperties,
-};
+});

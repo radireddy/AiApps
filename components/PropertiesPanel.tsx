@@ -4,6 +4,7 @@ import { AppComponent, ComponentProps, DataSourceInstance, AppVariable } from '.
 import { componentRegistry } from './component-registry/registry';
 import { AlignAction } from '../hooks/useAppData';
 import { Tooltip } from './component-registry/common';
+import { typography } from '../constants';
 
 interface PropertiesPanelProps {
   components: AppComponent[];
@@ -64,12 +65,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
     content = (
       <div className="px-3 py-3">
         <div className="mb-3">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Selection</p>
-          <p className="text-[11px] text-gray-700">{selectedComponentIds.length} components selected</p>
+          <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-1`}>Selection</p>
+          <p className={`${typography.body} text-gray-700`}>{selectedComponentIds.length} components selected</p>
         </div>
         
         <div className="border-t border-gray-200 pt-3 mt-3">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Align</p>
+          <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>Align</p>
           <div className="grid grid-cols-6 gap-1.5">
             <Tooltip text="Align left edges & stack vertically">
                 <AlignButton action="align-left" tooltip="Align left edges & stack vertically" onAlign={onAlignAndDistribute}>
@@ -105,7 +106,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
         </div>
         
         <div className="border-t border-gray-200 pt-3 mt-3">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Distribute</p>
+          <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>Distribute</p>
           <div className="grid grid-cols-6 gap-1.5">
             <Tooltip text="Distribute horizontal spacing">
                 <AlignButton action="distribute-h" tooltip="Distribute horizontal spacing" onAlign={onAlignAndDistribute}>
@@ -121,7 +122,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
         </div>
         
         <div className="border-t border-gray-200 pt-3 mt-3">
-             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Match Size</p>
+             <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>Match Size</p>
              <div className="grid grid-cols-6 gap-1.5">
                 <Tooltip text="Match width (first selected)">
                     <AlignButton action="match-width" tooltip="Match width (first selected)" onAlign={onAlignAndDistribute}>
@@ -140,7 +141,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
   } else if (!component || !PropertiesRenderer) {
     content = (
       <div className="px-3 py-8 text-center">
-        <p className="text-[11px] text-gray-400">Select a component to see its properties</p>
+        <p className={typography.body + ' text-gray-400'}>Select a component to see its properties</p>
       </div>
     );
   } else {
@@ -162,11 +163,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
        <div className="border-b border-gray-200">
         <div className="flex items-center justify-between px-3 py-2.5">
           <div>
-            <h3 id="properties-heading" className="text-[11px] font-semibold text-gray-900">
+            <h3 id="properties-heading" className={`${typography.section} ${typography.semibold} text-gray-900`}>
               {component && plugin ? plugin.paletteConfig.label.toUpperCase() : 'PROPERTIES'}
             </h3>
             {component && (
-              <p className="text-[10px] text-gray-500 mt-0.5">{component.id}</p>
+              <p className={`${typography.caption} text-gray-500 mt-0.5`}>{component.id}</p>
             )}
           </div>
           <button 
@@ -184,7 +185,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
           <div className="flex border-t border-gray-200">
             <button
               onClick={() => setActiveTab('display')}
-              className={`flex-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${
+              className={`flex-1 px-3 py-1.5 ${typography.label} ${typography.medium} transition-colors ${
                 activeTab === 'display'
                   ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/50'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -194,7 +195,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
             </button>
             <button
               onClick={() => setActiveTab('advanced')}
-              className={`flex-1 px-3 py-1.5 text-[10px] font-medium transition-colors ${
+              className={`flex-1 px-3 py-1.5 ${typography.label} ${typography.medium} transition-colors ${
                 activeTab === 'advanced'
                   ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/50'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'

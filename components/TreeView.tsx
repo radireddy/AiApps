@@ -2,6 +2,7 @@ import React, { useState, useMemo, memo, useEffect } from 'react';
 import { AppDefinition, AppPage, AppComponent } from '../types';
 import { componentRegistry } from './component-registry/registry';
 import { getIconForType } from './TreeViewIcons';
+import { typography } from '../constants';
 
 interface TreeViewProps {
   isCollapsed: boolean;
@@ -108,7 +109,7 @@ const TreeNode: React.FC<{
                 <span className="w-4 mr-1 flex-shrink-0"></span>
             )}
             <span className="mr-2 flex-shrink-0">{getIconForType(node.type, node.componentType)}</span>
-            <span className="text-sm font-medium truncate" title={label}>{label}</span>
+            <span className={`${typography.label} ${typography.medium} truncate`} title={label}>{label}</span>
         </div>
       </div>
       {isExpanded && node.children.map(child => (
@@ -172,7 +173,7 @@ export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollaps
       return (
         <aside className="bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-hidden" role="region" aria-label="Explorer">
           <div className="flex items-center justify-between p-3 border-b border-gray-200">
-            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider px-1" id="explorer-heading">Explorer</h2>
+            <h2 className={`${typography.section} ${typography.bold} text-gray-500 uppercase tracking-wider px-1`} id="explorer-heading">Explorer</h2>
             <button 
                 onClick={onToggleCollapse} 
                 className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-800" 

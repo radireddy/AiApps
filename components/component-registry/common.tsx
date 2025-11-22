@@ -17,14 +17,14 @@ export const PropFxInput: React.FC<{
     const inputId = id || `prop-fx-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
     return (
          <div className="mb-2.5" data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className="block text-[11px] font-medium text-gray-600 mb-1">{label}</label>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
             <div className="flex items-center">
                 <input
                     id={inputId}
                     type={isExpression ? 'text' : type}
                     {...(onChange ? { defaultValue: type === 'color' && typeof value === 'string' ? value.toUpperCase() : value } : { value: type === 'color' && typeof value === 'string' ? value.toUpperCase() : value })}
                     onChange={e => onChange(type === 'number' || type === 'range' ? (parseFloat(e.target.value) || 0) : e.target.value)}
-                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 text-[11px] text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression ? 'rounded-l-md border-r-0' : 'rounded-md'} ${isExpression && onOpenEditor ? '' : ''}`}
+                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression ? 'rounded-l-md border-r-0' : 'rounded-md'} ${isExpression && onOpenEditor ? '' : ''}`}
                     placeholder={placeholder}
                 />
                 {isExpression && onOpenEditor && (
@@ -49,13 +49,13 @@ export const PropInput: React.FC<{ label: string; value: any; onChange: (val: an
     const inputId = id || `prop-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
     return (
         <div className="mb-2.5" data-testid={`prop-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className="block text-[11px] font-medium text-gray-600 mb-1">{label}</label>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
             <input
             id={inputId}
             type={type}
             {...(onChange ? { defaultValue: value } : { value })}
             onChange={e => onChange(type === 'number' || type === 'range' ? parseFloat(e.target.value) || 0 : e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-[11px] text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7"
+            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
             placeholder={placeholder}
             {...rest}
             />
@@ -67,12 +67,12 @@ export const PropSelect: React.FC<{ label: string; value: any; onChange: (val: a
     const selectId = id || `prop-select-${label.replace(/\s+/g, '-').toLowerCase()}`;
     return (
         <div className="mb-2.5">
-            <label htmlFor={selectId} className="block text-[11px] font-medium text-gray-600 mb-1">{label}</label>
+            <label htmlFor={selectId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
             <select
             id={selectId}
             value={value}
             onChange={e => onChange(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-md px-2 py-1 text-[11px] text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7"
+            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
             >
                 {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
@@ -144,7 +144,7 @@ export const PropertyGroup: React.FC<{ title: string; children: React.ReactNode 
     return (
         <div className="border-t border-gray-200 first:border-t-0">
             <div className="px-3 py-2.5">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">{title}</p>
+                <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>{title}</p>
                 <div className="space-y-2.5">
                     {children}
                 </div>
@@ -161,7 +161,7 @@ export const CollapsibleSection: React.FC<{ title: string; children: React.React
         <div className="border-b border-gray-200 last:border-b-0">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex justify-between items-center text-left font-medium text-gray-700 text-[10px] hover:bg-gray-50 px-3 py-2 rounded-md transition-colors"
+                className={`w-full flex justify-between items-center text-left ${typography.medium} text-gray-700 ${typography.subsection} hover:bg-gray-50 px-3 py-2 rounded-md transition-colors`}
                 aria-expanded={isOpen}
                 aria-controls={sectionId}
             >
