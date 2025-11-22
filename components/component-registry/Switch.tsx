@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { ComponentType, SwitchProps, ComponentPlugin } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps } from './common';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -44,16 +44,38 @@ const SwitchProperties: React.FC<{
   updateProp: (key: keyof SwitchProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const p = component.props;
+  const settingsGroup: PropertyGroup = {
+    id: 'switch-settings',
+    title: 'Settings',
+    order: 3,
+    collapsible: true,
+    properties: [
+      {
+        key: 'label',
+        label: 'Label',
+        type: 'text',
+      },
+      {
+        key: 'dataStoreKey',
+        label: 'Data Store Key',
+        type: 'text',
+        placeholder: 'e.g. selectedRecord.active',
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout', 'state'],
+    customGroups: [settingsGroup],
+  };
+
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <StateProps props={{...p, id: component.id}} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-      <CollapsibleSection title="Settings">
-        <PropInput label="Label" value={p.label} onChange={val => updateProp('label', val)} />
-        <PropInput label="Data Store Key" value={p.dataStoreKey} onChange={val => updateProp('dataStoreKey', val)} placeholder="e.g. selectedRecord.active"/>
-      </CollapsibleSection>
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+    />
   );
 };
 

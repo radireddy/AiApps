@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { ComponentType, ButtonProps, ComponentPlugin, ActionHandlers, ButtonActionType, DataSourceInstance, AppVariable } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, StateProps, PropFxInput, InlineTextEditor } from './common';
+import { InlineTextEditor } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { safeEval } from '../../expressions/engine';
 import { commonStylingProps } from '../../constants';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 // Common icon style
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -161,8 +162,6 @@ const ButtonProperties: React.FC<{
   variables: AppVariable[];
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, dataSources, variables, onOpenExpressionEditor }) => {
-  const p = component.props;
-  
   const actionOptions: { value: ButtonActionType, label: string }[] = [
     { value: 'none', label: 'None' },
     { value: 'alert', label: 'Show Alert' },
@@ -174,60 +173,128 @@ const ButtonProperties: React.FC<{
     { value: 'deleteRecord', label: 'Delete Record' },
     { value: 'navigate', label: 'Navigate' },
   ];
-  
-  const dataSourceOptions = dataSources.map(ds => ({ value: ds.id, label: ds.id }));
-  const variableOptions = variables.map(v => ({ value: v.name, label: v.name }));
+
+  const contentGroup: PropertyGroup = {
+    id: 'button-content',
+    title: 'Content',
+    order: 3,
+    collapsible: true,
+    properties: [
+      {
+        key: 'text',
+        label: 'Text',
+        type: 'expression',
+      },
+      {
+        key: 'backgroundColor',
+        label: 'Background',
+        type: 'expression',
+        inputProps: { type: 'color' },
+      },
+      {
+        key: 'textColor',
+        label: 'Text Color',
+        type: 'expression',
+        inputProps: { type: 'color' },
+      },
+    ],
+  };
+
+  const actionGroup: PropertyGroup = {
+    id: 'button-action',
+    title: 'On Click Action',
+    order: 4,
+    collapsible: true,
+    defaultCollapsed: true,
+    properties: [
+      {
+        key: 'actionType',
+        label: 'Action Type',
+        type: 'select',
+        options: actionOptions,
+      },
+      {
+        key: 'actionAlertMessage',
+        label: 'Alert Message',
+        type: 'expression',
+        condition: (props) => (props as ButtonProps).actionType === 'alert',
+      },
+      {
+        key: 'actionUpdateKey',
+        label: 'Data Store Key',
+        type: 'text',
+        placeholder: 'e.g. selectedUser',
+        condition: (props) => (props as ButtonProps).actionType === 'updateData',
+      },
+      {
+        key: 'actionUpdateValue',
+        label: 'New Value',
+        type: 'expression',
+        placeholder: 'e.g. {{ { id: 1 } }}',
+        condition: (props) => (props as ButtonProps).actionType === 'updateData',
+      },
+      {
+        key: 'actionCodeToExecute',
+        label: 'Code to Execute',
+        type: 'expression',
+        placeholder: '{{ (() => { /* code */ })() }}',
+        condition: (props) => (props as ButtonProps).actionType === 'executeCode',
+      },
+      {
+        key: 'actionVariableName',
+        label: 'Variable to Update',
+        type: 'select',
+        options: () => variables.map(v => ({ value: v.name, label: v.name })),
+        condition: (props) => (props as ButtonProps).actionType === 'updateVariable',
+      },
+      {
+        key: 'actionVariableValue',
+        label: 'New Value',
+        type: 'expression',
+        placeholder: 'e.g. {{!isLoading}}',
+        condition: (props) => (props as ButtonProps).actionType === 'updateVariable',
+      },
+      {
+        key: 'dataSourceName',
+        label: 'Data Source',
+        type: 'select',
+        options: () => dataSources.map(ds => ({ value: ds.id, label: ds.id })),
+        condition: (props) => {
+          const actionType = (props as ButtonProps).actionType;
+          return actionType === 'createRecord' || actionType === 'updateRecord' || actionType === 'deleteRecord';
+        },
+      },
+      {
+        key: 'newRecordData',
+        label: 'New Record Object',
+        type: 'expression',
+        placeholder: '{{ { name: InputName.value } }}',
+        condition: (props) => (props as ButtonProps).actionType === 'createRecord',
+      },
+      {
+        key: 'actionNavigatePageId',
+        label: 'Page ID',
+        type: 'text',
+        condition: (props) => (props as ButtonProps).actionType === 'navigate',
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout', 'state'],
+    extendedGroups: ['border', 'styling'],
+    customGroups: [contentGroup, actionGroup],
+    groupOrder: ['layout', 'state', 'button-content', 'button-action', 'border', 'styling'],
+  };
 
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <StateProps props={{...p, id: component.id}} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-      <CollapsibleSection title="Content">
-        <PropFxInput label="Text" value={p.text} onChange={val => updateProp('text', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('text', newVal))} />
-        <div className="grid grid-cols-2 gap-2">
-          <PropFxInput label="Background" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
-          <PropFxInput label="Text Color" value={p.textColor} onChange={val => updateProp('textColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('textColor', newVal))} />
-        </div>
-      </CollapsibleSection>
-      <CollapsibleSection title="On Click Action" isOpenDefault={false}>
-        <PropSelect label="Action Type" value={p.actionType} onChange={val => updateProp('actionType', val)} options={actionOptions} />
-        
-        {p.actionType === 'alert' && <PropFxInput label="Alert Message" value={p.actionAlertMessage} onChange={val => updateProp('actionAlertMessage', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionAlertMessage', newVal))} />}
-        
-        {p.actionType === 'updateData' && (
-            <>
-                <PropInput label="Data Store Key" value={p.actionUpdateKey} onChange={val => updateProp('actionUpdateKey', val)} placeholder="e.g. selectedUser" />
-                <PropFxInput label="New Value" value={p.actionUpdateValue} onChange={val => updateProp('actionUpdateValue', val)} placeholder="e.g. {{ { id: 1 } }}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionUpdateValue', newVal))} />
-            </>
-        )}
-
-        {p.actionType === 'executeCode' && (
-            <PropFxInput 
-                label="Code to Execute" 
-                value={p.actionCodeToExecute} 
-                onChange={val => updateProp('actionCodeToExecute', val)} 
-                placeholder="{{ (() => { /* code */ })() }}" 
-                onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionCodeToExecute', newVal))} 
-            />
-        )}
-        
-        {p.actionType === 'updateVariable' && (
-            <>
-                <PropSelect label="Variable to Update" value={p.actionVariableName} onChange={val => updateProp('actionVariableName', val)} options={variableOptions} />
-                <PropFxInput label="New Value" value={p.actionVariableValue} onChange={val => updateProp('actionVariableValue', val)} placeholder="e.g. {{!isLoading}}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('actionVariableValue', newVal))} />
-            </>
-        )}
-
-        {(p.actionType === 'createRecord' || p.actionType === 'updateRecord' || p.actionType === 'deleteRecord') && (
-            <PropSelect label="Data Source" value={p.dataSourceName} onChange={val => updateProp('dataSourceName', val)} options={dataSourceOptions} />
-        )}
-        {p.actionType === 'createRecord' && (
-            <PropFxInput label="New Record Object" value={p.newRecordData} onChange={val => updateProp('newRecordData', val)} placeholder="{{ { name: InputName.value } }}" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('newRecordData', newVal))} />
-        )}
-
-      </CollapsibleSection>
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+      context={{ dataSources, variables }}
+    />
   );
 };
 

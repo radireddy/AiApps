@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { ComponentType, DividerProps, ComponentPlugin } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropFxInput } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -21,14 +21,34 @@ const DividerProperties: React.FC<{
   updateProp: (key: keyof DividerProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const p = component.props;
+  const stylingGroup: PropertyGroup = {
+    id: 'divider-styling',
+    title: 'Styling',
+    order: 2,
+    collapsible: true,
+    properties: [
+      {
+        key: 'color',
+        label: 'Color',
+        type: 'expression',
+        inputProps: { type: 'color' },
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout'],
+    extendedGroups: ['styling'],
+    customGroups: [stylingGroup],
+  };
+
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <CollapsibleSection title="Styling">
-        <PropFxInput label="Color" value={p.color} onChange={val => updateProp('color', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('color', newVal))} />
-      </CollapsibleSection>
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+    />
   );
 };
 

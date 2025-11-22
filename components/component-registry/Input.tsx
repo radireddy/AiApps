@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { ComponentType, InputProps, ComponentPlugin } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps, PropFxInput, InlineTextEditor } from './common';
+import { InlineTextEditor } from './common';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -69,20 +70,54 @@ const InputProperties: React.FC<{
   updateProp: (key: keyof InputProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const p = component.props;
+  const settingsGroup: PropertyGroup = {
+    id: 'input-settings',
+    title: 'Settings',
+    order: 3,
+    collapsible: true,
+    properties: [
+      {
+        key: 'placeholder',
+        label: 'Placeholder',
+        type: 'expression',
+      },
+      {
+        key: 'dataStoreKey',
+        label: 'Data Store Key',
+        type: 'text',
+        placeholder: 'e.g. selectedRecord.name',
+      },
+    ],
+  };
+
+  const accessibilityGroup: PropertyGroup = {
+    id: 'input-accessibility',
+    title: 'Accessibility',
+    order: 4,
+    collapsible: true,
+    properties: [
+      {
+        key: 'accessibilityLabel',
+        label: 'Accessibility Label',
+        type: 'text',
+        placeholder: 'A descriptive label for screen readers',
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout', 'state'],
+    extendedGroups: ['border', 'styling'],
+    customGroups: [settingsGroup, accessibilityGroup],
+  };
+
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <StateProps props={{...p, id: component.id}} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-      <CollapsibleSection title="Settings">
-        <PropFxInput label="Placeholder" value={p.placeholder} onChange={val => updateProp('placeholder', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('placeholder', newVal))} />
-        <PropInput label="Data Store Key" value={p.dataStoreKey} onChange={val => updateProp('dataStoreKey', val)} placeholder="e.g. selectedRecord.name" />
-      </CollapsibleSection>
-      <CollapsibleSection title="Accessibility">
-        <PropInput label="Accessibility Label" value={p.accessibilityLabel} onChange={val => updateProp('accessibilityLabel', val)} placeholder="A descriptive label for screen readers" />
-      </CollapsibleSection>
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+    />
   );
 };
 

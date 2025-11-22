@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { ComponentType, ImageProps, ComponentPlugin } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, StateProps } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -30,18 +30,50 @@ const ImageProperties: React.FC<{
   updateProp: (key: keyof ImageProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const p = component.props;
+  const settingsGroup: PropertyGroup = {
+    id: 'image-settings',
+    title: 'Settings',
+    order: 3,
+    collapsible: true,
+    properties: [
+      {
+        key: 'src',
+        label: 'Image URL',
+        type: 'text',
+      },
+      {
+        key: 'alt',
+        label: 'Alt Text',
+        type: 'text',
+      },
+      {
+        key: 'objectFit',
+        label: 'Object Fit',
+        type: 'select',
+        options: [
+          { value: 'cover', label: 'Cover' },
+          { value: 'contain', label: 'Contain' },
+          { value: 'fill', label: 'Fill' },
+          { value: 'none', label: 'None' },
+          { value: 'scale-down', label: 'Scale Down' },
+        ],
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout', 'state'],
+    extendedGroups: ['border', 'styling'],
+    customGroups: [settingsGroup],
+  };
+
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <StateProps props={{...p, id: component.id}} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-      <CollapsibleSection title="Settings">
-        <PropInput label="Image URL" value={p.src} onChange={val => updateProp('src', val)} />
-        <PropInput label="Alt Text" value={p.alt} onChange={val => updateProp('alt', val)} />
-        <PropSelect label="Object Fit" value={p.objectFit} onChange={val => updateProp('objectFit', val)} options={[{value: 'cover', label: 'Cover'}, {value: 'contain', label: 'Contain'}, {value: 'fill', label: 'Fill'}, {value: 'none', label: 'None'}, {value: 'scale-down', label: 'Scale Down'}]} />
-      </CollapsibleSection>
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+    />
   );
 };
 

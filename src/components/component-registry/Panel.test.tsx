@@ -76,7 +76,7 @@ describe('PanelPlugin', () => {
         render(<PanelProperties {...props} />);
         
         // Find and click the vertical direction button
-        const verticalButton = screen.getByLabelText('Direction: Vertical');
+        const verticalButton = screen.getByLabelText('Set direction to vertical');
         fireEvent.click(verticalButton);
         
         // Verify updateProp was called with the new direction
@@ -105,7 +105,7 @@ describe('PanelPlugin', () => {
         render(<PanelProperties {...props} />);
         
         // Find and click the horizontal direction button
-        const horizontalButton = screen.getByLabelText('Direction: Horizontal');
+        const horizontalButton = screen.getByLabelText('Set direction to horizontal');
         fireEvent.click(horizontalButton);
         
         // Verify updateProp was called with the new direction
@@ -135,7 +135,7 @@ describe('PanelPlugin', () => {
         render(<PanelProperties {...props} />);
         
         // Find and click the center justify button
-        const centerButton = screen.getByLabelText('Justify: Center');
+        const centerButton = screen.getByLabelText('Justify content: Center - Center items');
         fireEvent.click(centerButton);
         
         // Verify updateProp was called
@@ -165,7 +165,7 @@ describe('PanelPlugin', () => {
         render(<PanelProperties {...props} />);
         
         // Find and click the stretch align button
-        const stretchButton = screen.getByLabelText('Align: Stretch');
+        const stretchButton = screen.getByLabelText('Align items: Stretch - Stretch items to fill space');
         fireEvent.click(stretchButton);
         
         // Verify updateProp was called

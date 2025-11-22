@@ -2,10 +2,10 @@
 
 import React, { useMemo } from 'react';
 import { ComponentType, TableProps, ComponentPlugin, ActionHandlers, DataSourceInstance } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { get } from '../../utils/data-helpers';
 import { commonStylingProps } from '../../constants';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -85,24 +85,66 @@ const TableProperties: React.FC<{
   dataSources: DataSourceInstance[];
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, dataSources, onOpenExpressionEditor }) => {
-  const p = component.props;
-  const dataSourceOptions = dataSources.map(ds => ({ value: ds.id, label: ds.id }));
+  const dataGroup: PropertyGroup = {
+    id: 'table-data',
+    title: 'Data',
+    order: 2,
+    collapsible: true,
+    properties: [
+      {
+        key: 'dataSourceName',
+        label: 'Data Source',
+        type: 'select',
+        options: () => dataSources.map(ds => ({ value: ds.id, label: ds.id })),
+      },
+      {
+        key: 'columns',
+        label: 'Columns',
+        type: 'text',
+        placeholder: 'Header:key,Header2:key2',
+      },
+    ],
+  };
+
+  const rowSelectGroup: PropertyGroup = {
+    id: 'table-row-select',
+    title: 'On Row Select',
+    order: 3,
+    collapsible: true,
+    properties: [
+      {
+        key: 'rowSelectAction',
+        label: 'Action',
+        type: 'select',
+        options: [
+          { value: 'none', label: 'None' },
+          { value: 'updateDataStore', label: 'Update Data Store' },
+        ],
+      },
+      {
+        key: 'selectedRecordKey',
+        label: 'Selected Record Key',
+        type: 'text',
+        placeholder: 'e.g. selectedRecord',
+        condition: (props) => (props as TableProps).rowSelectAction === 'updateDataStore',
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout'],
+    extendedGroups: ['border', 'styling'],
+    customGroups: [dataGroup, rowSelectGroup],
+  };
 
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <CollapsibleSection title="Data">
-        <PropSelect label="Data Source" value={p.dataSourceName} onChange={val => updateProp('dataSourceName', val)} options={dataSourceOptions} />
-        <PropInput label="Columns" value={p.columns} onChange={val => updateProp('columns', val)} placeholder="Header:key,Header2:key2" />
-      </CollapsibleSection>
-      <CollapsibleSection title="On Row Select">
-         <PropSelect label="Action" value={p.rowSelectAction} onChange={val => updateProp('rowSelectAction', val)} options={[{value: 'none', label: 'None'}, {value: 'updateDataStore', label: 'Update Data Store'}]} />
-         {p.rowSelectAction === 'updateDataStore' && (
-            <PropInput label="Selected Record Key" value={p.selectedRecordKey} onChange={val => updateProp('selectedRecordKey', val)} placeholder="e.g. selectedRecord"/>
-         )}
-      </CollapsibleSection>
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+      context={{ dataSources }}
+    />
   );
 };
 

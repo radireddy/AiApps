@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { ComponentType, LabelProps, ComponentPlugin, PropertyRendererType } from '../../types';
-import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, StateProps, PropFxInput, InlineTextEditor } from './common';
+import { InlineTextEditor } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 import { propertyRendererRegistry } from '../../property-renderers/registry';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -73,35 +74,108 @@ const LabelProperties: React.FC<{
   updateProp: (key: keyof LabelProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const p = component.props;
   const rendererOptions: { value: PropertyRendererType, label: string }[] = [
       { value: 'javascript', label: 'JavaScript Expression' },
       { value: 'markdown', label: 'Markdown' },
       { value: 'literal', label: 'Plain Text' },
   ];
 
+  const contentGroup: PropertyGroup = {
+    id: 'label-content',
+    title: 'Content',
+    order: 3,
+    collapsible: true,
+    properties: [
+      {
+        key: 'textRenderer',
+        label: 'Text Renderer',
+        type: 'select',
+        options: rendererOptions,
+      },
+      {
+        key: 'text',
+        label: 'Text',
+        type: 'expression',
+      },
+    ],
+  };
+
+  const typographyGroup: PropertyGroup = {
+    id: 'label-typography',
+    title: 'Typography',
+    order: 4,
+    collapsible: true,
+    properties: [
+      {
+        key: 'fontSize',
+        label: 'Font Size',
+        type: 'expression',
+        inputProps: { type: 'number' },
+      },
+      {
+        key: 'color',
+        label: 'Text Color',
+        type: 'expression',
+        inputProps: { type: 'color' },
+      },
+      {
+        key: 'fontWeight',
+        label: 'Font Weight',
+        type: 'select',
+        options: [
+          { value: 'normal', label: 'Normal' },
+          { value: 'bold', label: 'Bold' },
+        ],
+      },
+      {
+        key: 'textAlign',
+        label: 'Text Align',
+        type: 'select',
+        options: [
+          { value: 'left', label: 'Left' },
+          { value: 'center', label: 'Center' },
+          { value: 'right', label: 'Right' },
+        ],
+      },
+      {
+        key: 'fontFamily',
+        label: 'Font Family',
+        type: 'expression',
+        placeholder: 'Inter, sans-serif',
+      },
+    ],
+  };
+
+  const backgroundGroup: PropertyGroup = {
+    id: 'label-background',
+    title: 'Background',
+    order: 5,
+    collapsible: true,
+    defaultCollapsed: true,
+    properties: [
+      {
+        key: 'backgroundColor',
+        label: 'Background Color',
+        type: 'expression',
+        inputProps: { type: 'color' },
+      },
+    ],
+  };
+
+  const config: PropertyConfig = {
+    baseGroups: ['layout', 'state'],
+    extendedGroups: ['border', 'styling'],
+    customGroups: [contentGroup, typographyGroup, backgroundGroup],
+    groupOrder: ['layout', 'state', 'label-content', 'label-typography', 'label-background', 'border', 'styling'],
+  };
+
   return (
-    <>
-      <LayoutProps props={p} updateProp={updateProp} />
-      <StateProps props={{...p, id: component.id}} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-      <CollapsibleSection title="Content">
-          <PropSelect label="Text Renderer" value={p.textRenderer} onChange={val => updateProp('textRenderer', val)} options={rendererOptions} />
-          <PropFxInput label="Text" value={p.text} onChange={val => updateProp('text', val)} onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('text', newVal))} />
-      </CollapsibleSection>
-      <CollapsibleSection title="Typography">
-          <div className="grid grid-cols-2 gap-2">
-              <PropFxInput label="Font Size" value={p.fontSize} onChange={val => updateProp('fontSize', val)} type="number" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('fontSize', newVal))} />
-              <PropFxInput label="Text Color" value={p.color} onChange={val => updateProp('color', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('color', newVal))} />
-          </div>
-          <PropSelect label="Font Weight" value={p.fontWeight} onChange={val => updateProp('fontWeight', val)} options={[{value: 'normal', label: 'Normal'}, {value: 'bold', label: 'Bold'}]} />
-          <PropSelect label="Text Align" value={p.textAlign} onChange={val => updateProp('textAlign', val)} options={[{value: 'left', label: 'Left'}, {value: 'center', label: 'Center'}, {value: 'right', label: 'Right'}]} />
-          <PropFxInput label="Font Family" value={p.fontFamily} onChange={val => updateProp('fontFamily', val)} placeholder="Inter, sans-serif" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('fontFamily', newVal))}/>
-      </CollapsibleSection>
-       <CollapsibleSection title="Background" isOpenDefault={false}>
-          <PropFxInput label="Background Color" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
-      </CollapsibleSection>
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
-    </>
+    <BasePropertiesRenderer
+      component={component}
+      updateProp={updateProp}
+      config={config}
+      onOpenExpressionEditor={onOpenExpressionEditor}
+    />
   );
 };
 

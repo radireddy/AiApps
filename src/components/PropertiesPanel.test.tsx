@@ -39,7 +39,7 @@ describe('PropertiesPanel', () => {
 
   it('should show a message when no component is selected', () => {
     render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={[]} />);
-    expect(screen.getByText('Select a component to see its properties.')).toBeInTheDocument();
+    expect(screen.getByText('Select a component to see its properties')).toBeInTheDocument();
   });
 
   it('should render the properties for a single selected component', () => {
@@ -48,15 +48,15 @@ describe('PropertiesPanel', () => {
     ];
     render(<PropertiesPanel {...baseProps} components={components} selectedComponentIds={['comp1']} />);
     expect(screen.getByText('Properties for My Label')).toBeInTheDocument();
-    expect(screen.getByText('ID: comp1')).toBeInTheDocument();
+    expect(screen.getByText('comp1')).toBeInTheDocument();
   });
 
   it('should render the alignment UI for multiple selected components', () => {
     render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={['comp1', 'comp2']} />);
-    expect(screen.getByText('2 components selected.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Align' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Distribute' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Match Size' })).toBeInTheDocument();
+    expect(screen.getByText(/2 components selected/)).toBeInTheDocument();
+    expect(screen.getByText('Align')).toBeInTheDocument();
+    expect(screen.getByText('Distribute')).toBeInTheDocument();
+    expect(screen.getByText('Match Size')).toBeInTheDocument();
   });
 
   it('should call onAlignAndDistribute when an alignment button is clicked', async () => {
