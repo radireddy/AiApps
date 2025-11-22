@@ -77,6 +77,25 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
       await togglePointerInterceptors(page, false);
     }
   };
+  // Helper: ensure a palette category is expanded (accordion changed behavior)
+  const openPaletteCategory = async (page: any, category: string) => {
+    try {
+      // Ensure the Components palette is visible/active
+      try {
+        await page.getByRole('button', { name: 'Components' }).click();
+      } catch (e) {
+        // ignore if there's no toggle (already visible)
+      }
+
+      const btn = page.getByRole('button', { name: category });
+      await btn.waitFor({ state: 'visible', timeout: 2000 });
+      await btn.click();
+      // brief pause for accordion animation
+      await page.waitForTimeout(120);
+    } catch (e) {
+      // ignore — tests will fail later if the category truly isn't present
+    }
+  };
   test.beforeEach(async ({ page }) => {
     // Start V8 code coverage collection (optional)
     if (COLLECT_COVERAGE) {
@@ -183,6 +202,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     const canvas = page.getByTestId('canvas');
 
     // Drag and drop an Input component
+    await openPaletteCategory(page, 'Input');
     await resilientDragToCanvas(page, page.getByTestId('palette-item-INPUT'), canvas, { x: 100, y: 100 });
     
     // Configure the Input
@@ -192,6 +212,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     await page.getByTestId('prop-input-Data Store Key').locator('input').fill('userName');
     
     // Drag and drop a Label component
+    await openPaletteCategory(page, 'Display');
     await resilientDragToCanvas(page, page.getByTestId('palette-item-LABEL'), canvas, { x: 100, y: 200 });
     
     // Configure the Label
@@ -201,6 +222,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     await page.getByTestId('prop-fx-input-Text').locator('input').fill(`{{ 'Hello, ' + (userName || 'World') }}`);
 
     // Drag and drop a Button component
+    await openPaletteCategory(page, 'Display');
     await resilientDragToCanvas(page, page.getByTestId('palette-item-BUTTON'), canvas, { x: 100, y: 300 });
 
     // Configure the Button
@@ -282,6 +304,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
       /* ignore */
     }
     
+    await openPaletteCategory(page, 'Input');
     await resilientDragToCanvas(page, page.getByTestId('palette-item-INPUT'), page.getByTestId('canvas'), { x: 50, y: 50 });
     await expect(page.getByLabel('INPUT component')).toBeVisible();
 
@@ -425,6 +448,7 @@ test.describe('Gemini Low-Code App Builder E2E Tests', () => {
     const canvas = page.getByTestId('canvas');
 
     // Drag three labels to arbitrary positions
+    await openPaletteCategory(page, 'Display');
     await resilientDragToCanvas(page, page.getByTestId('palette-item-LABEL'), canvas, { x: 50, y: 50 });
     await resilientDragToCanvas(page, page.getByTestId('palette-item-LABEL'), canvas, { x: 200, y: 150 });
     await resilientDragToCanvas(page, page.getByTestId('palette-item-LABEL'), canvas, { x: 120, y: 250 });

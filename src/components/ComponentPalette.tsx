@@ -1,5 +1,5 @@
-import React from 'react';
-import { ComponentPlugin } from '@/types';
+import React, { useState, useMemo } from 'react';
+import { ComponentPlugin, ComponentType } from '@/types';
 import { componentRegistry } from '@/components/component-registry/registry';
 
 interface ComponentPaletteProps {
@@ -30,6 +30,56 @@ const PaletteItem: React.FC<{ componentPlugin: ComponentPlugin }> = ({ component
 };
 
 export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ width, isCollapsed, onToggleCollapse }) => {
+  const [expandedCategory, setExpandedCategory] = useState<string>('Input');
+
+  const categories = useMemo(() => [
+    'Input',
+    'Display',
+    'Media',
+    'Layout',
+    'Icons',
+    'Other',
+  ], []);
+
+  const getCategoryFor = (plugin: ComponentPlugin) => {
+    switch (plugin.type) {
+      case ComponentType.INPUT:
+      case ComponentType.TEXTAREA:
+      case ComponentType.SELECT:
+      case ComponentType.CHECKBOX:
+      case ComponentType.RADIO_GROUP:
+      case ComponentType.SWITCH:
+        return 'Input';
+      case ComponentType.LABEL:
+      case ComponentType.BUTTON:
+      case ComponentType.TABLE:
+        return 'Display';
+      case ComponentType.IMAGE:
+        return 'Media';
+      case ComponentType.PANEL:
+      case ComponentType.H_STACK:
+      case ComponentType.V_STACK:
+      case ComponentType.FORM:
+      case ComponentType.MODAL:
+        return 'Layout';
+      case ComponentType.DIVIDER:
+        return 'Icons';
+      default:
+        return 'Other';
+    }
+  };
+
+  const grouped = useMemo(() => {
+    const map: Record<string, ComponentPlugin[]> = {};
+    categories.forEach(c => (map[c] = []));
+    Object.values(componentRegistry).forEach(plugin => {
+      const c = getCategoryFor(plugin);
+      if (!map[c]) map[c] = [];
+      map[c].push(plugin);
+    });
+    return map;
+  }, [categories]);
+
   if (isCollapsed) {
     return (
       <aside className="w-10 bg-white border-r border-gray-200 flex flex-col items-center py-3 shrink-0" role="region" aria-label="Components">
@@ -62,12 +112,35 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ width, isCol
           </svg>
         </button>
       </div>
-      <div className="p-3 overflow-y-auto" aria-labelledby="components-heading">
-        <div className="grid grid-cols-2 gap-2">
-          {Object.values(componentRegistry).map(plugin => (
-            <PaletteItem key={plugin.type} componentPlugin={plugin} />
-          ))}
-        </div>
+      <div className="p-2 overflow-y-auto" aria-labelledby="components-heading">
+        {categories.map(cat => {
+          const items = grouped[cat] || [];
+          const isOpen = expandedCategory === cat;
+          return (
+            <div key={cat} className="mb-2">
+              <button
+                onClick={() => setExpandedCategory(isOpen ? '' : cat)}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-50"
+                aria-expanded={isOpen}
+                aria-controls={`palette-${cat}`}
+              >
+                <span className="text-sm font-medium text-gray-600">{cat}</span>
+                <svg className={`h-4 w-4 text-gray-500 transform transition-transform ${isOpen ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 4l8 6-8 6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              {isOpen && (
+                <div id={`palette-${cat}`} className="mt-2 px-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {items.map(plugin => (
+                      <PaletteItem key={plugin.type} componentPlugin={plugin} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </aside>
   );
