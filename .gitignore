@@ -28,3 +28,11 @@ playwright-report/
 test-results/
 **/playwright-report/
 **/test-results/
+
+# Coverage outputs
+coverage/
+.nyc_output/
+coverage-final.json
+lcov.info
+**/coverage/
+**/.nyc_output/
