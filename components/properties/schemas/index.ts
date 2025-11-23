@@ -18,6 +18,8 @@ import { selectSchema } from './select';
 import { checkboxSchema } from './checkbox';
 import { radioGroupSchema } from './radioGroup';
 import { switchSchema } from './switch';
+import { imageSchema } from './image';
+import { tableSchema } from './table';
 
 // Register all schemas
 // Components using metadata-driven system will use SmartLayoutRenderer to preserve original UX with efficient layouts
@@ -34,4 +36,6 @@ export function registerAllPropertySchemas(): void {
   registerPropertySchema(checkboxSchema); // ✅ Checkbox uses metadata backend
   registerPropertySchema(radioGroupSchema); // ✅ RadioGroup uses metadata backend
   registerPropertySchema(switchSchema); // ✅ Switch uses metadata backend
+  registerPropertySchema(imageSchema); // ✅ Image uses metadata backend
+  registerPropertySchema(tableSchema); // ✅ Table uses metadata backend
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PropertiesPanelCore } from '../../components/properties/PropertiesPanelCore';
 import { ComponentType } from 'types';
 import { registerAllPropertySchemas } from '../../components/properties/schemas';
@@ -115,7 +116,8 @@ describe('PropertiesPanelCore - Label Component', () => {
     expect(screen.getByLabelText('Text Renderer')).toBeInTheDocument();
   });
 
-  it('should display Typography properties for Label component', () => {
+  it('should display Typography properties for Label component', async () => {
+    const user = userEvent.setup();
     const components = [
       { 
         id: 'label1', 
@@ -141,8 +143,15 @@ describe('PropertiesPanelCore - Label Component', () => {
       />
     );
     
-    // Check that Typography group exists
-    expect(screen.getByText('Typography')).toBeInTheDocument();
+    // Click on the Styles tab to see Typography group
+    const stylesTab = screen.getByRole('tab', { name: /Styles/i });
+    expect(stylesTab).toBeInTheDocument();
+    await user.click(stylesTab);
+    
+    // Wait for Typography group to appear after tab switch
+    await waitFor(() => {
+      expect(screen.getByText('Typography')).toBeInTheDocument();
+    });
     
     // Check that typography properties are visible
     expect(screen.getByLabelText('Font Size')).toBeInTheDocument();
@@ -551,5 +560,200 @@ describe('PropertiesPanelCore - Group Ordering', () => {
     expect(DEFAULT_GROUP_ORDER['Basic']).toBe(0);
     expect(DEFAULT_GROUP_ORDER['Layout']).toBe(1);
     expect(DEFAULT_GROUP_ORDER['State']).toBe(2);
+  });
+});
+
+describe('PropertiesPanelCore - Property Tabs', () => {
+  const onUpdate = jest.fn();
+  const onOpenExpressionEditor = jest.fn();
+  const baseProps = {
+    onUpdate,
+    dataSources: [],
+    variables: [],
+    evaluationScope: {},
+    onOpenExpressionEditor,
+    onArrangeContainerChildren: jest.fn(),
+  };
+
+  it('should display all registered tabs', () => {
+    const components = [
+      { 
+        id: 'input1', 
+        type: ComponentType.INPUT, 
+        props: { 
+          placeholder: 'Enter text',
+          dataStoreKey: 'user.name',
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 40,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['input1']} 
+      />
+    );
+    
+    // Verify all tabs are displayed
+    expect(screen.getByRole('tab', { name: 'General' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Styles' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Events' })).toBeInTheDocument();
+  });
+
+  it('should show styling properties in Styles tab', async () => {
+    const user = userEvent.setup();
+    const components = [
+      { 
+        id: 'input1', 
+        type: ComponentType.INPUT, 
+        props: { 
+          placeholder: 'Enter text',
+          dataStoreKey: 'user.name',
+          opacity: 1,
+          boxShadow: '2px 2px 5px #ccc',
+          borderRadius: '4px',
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderColor: '#e5e7eb',
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 40,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['input1']} 
+      />
+    );
+    
+    // Click on the Styles tab
+    const stylesTab = screen.getByRole('tab', { name: 'Styles' });
+    expect(stylesTab).toBeInTheDocument();
+    await user.click(stylesTab);
+    
+    // Wait for Styling group to appear
+    await waitFor(() => {
+      expect(screen.getByText('Styling')).toBeInTheDocument();
+    });
+    
+    // Verify styling properties are visible in Styles tab
+    expect(screen.getByLabelText('Opacity')).toBeInTheDocument();
+    expect(screen.getByLabelText('Shadow')).toBeInTheDocument();
+    expect(screen.getByLabelText('Border Radius')).toBeInTheDocument();
+    expect(screen.getByLabelText('Border Width')).toBeInTheDocument();
+    expect(screen.getByLabelText('Border Style')).toBeInTheDocument();
+    expect(screen.getByLabelText('Border Color')).toBeInTheDocument();
+  });
+
+  it('should switch between tabs correctly', async () => {
+    const user = userEvent.setup();
+    const components = [
+      { 
+        id: 'input1', 
+        type: ComponentType.INPUT, 
+        props: { 
+          placeholder: 'Enter text',
+          dataStoreKey: 'user.name',
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 40,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['input1']} 
+      />
+    );
+    
+    // Initially, General tab should be active
+    const generalTab = screen.getByRole('tab', { name: 'General' });
+    expect(generalTab).toHaveAttribute('aria-selected', 'true');
+    
+    // Verify General tab content is visible
+    expect(screen.getByText('Layout')).toBeInTheDocument();
+    expect(screen.getByText('State')).toBeInTheDocument();
+    
+    // Click on Styles tab
+    const stylesTab = screen.getByRole('tab', { name: 'Styles' });
+    await user.click(stylesTab);
+    
+    // Verify Styles tab is now active
+    await waitFor(() => {
+      expect(stylesTab).toHaveAttribute('aria-selected', 'true');
+    });
+    
+    // Verify General tab is no longer active
+    expect(generalTab).toHaveAttribute('aria-selected', 'false');
+    
+    // Verify Styles tab content is visible
+    await waitFor(() => {
+      expect(screen.getByText('Styling')).toBeInTheDocument();
+    });
+    
+    // Click back on General tab
+    await user.click(generalTab);
+    
+    // Verify General tab is active again
+    await waitFor(() => {
+      expect(generalTab).toHaveAttribute('aria-selected', 'true');
+    });
+    
+    // Verify General tab content is visible again
+    expect(screen.getByText('Layout')).toBeInTheDocument();
+  });
+
+  it('should not show styling properties in General tab', () => {
+    const components = [
+      { 
+        id: 'input1', 
+        type: ComponentType.INPUT, 
+        props: { 
+          placeholder: 'Enter text',
+          dataStoreKey: 'user.name',
+          opacity: 1,
+          borderWidth: '1px',
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 40,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['input1']} 
+      />
+    );
+    
+    // General tab should be active by default
+    const generalTab = screen.getByRole('tab', { name: 'General' });
+    expect(generalTab).toHaveAttribute('aria-selected', 'true');
+    
+    // Styling properties should NOT be visible in General tab
+    expect(screen.queryByLabelText('Opacity')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Border Width')).not.toBeInTheDocument();
+    expect(screen.queryByText('Styling')).not.toBeInTheDocument();
+    
+    // But Layout and State groups should be visible
+    expect(screen.getByText('Layout')).toBeInTheDocument();
+    expect(screen.getByText('State')).toBeInTheDocument();
   });
 });

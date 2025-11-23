@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { AppComponent, ComponentProps, DataSourceInstance, AppVariable, ComponentType } from '../../types';
 import { ComponentPropertySchema, PropertyMetadata, PropertyContext } from './metadata';
 import { propertyRegistry } from './registry';
-import { SmartLayoutRenderer } from './renderers/SmartLayoutRenderer';
+import { PropertyTabs } from './PropertyTabs';
 
 interface PropertiesPanelCoreProps {
   components: AppComponent[];
@@ -225,13 +225,13 @@ export const PropertiesPanelCore: React.FC<PropertiesPanelCoreProps> = ({
     );
   }
 
-  // Use smart layout renderer - preserves original UX with efficient space usage
+  // Use PropertyTabs to show tabs and organize properties by tab
+  // This will show all registered tabs (General, Styles, Events, etc.)
   return (
-    <SmartLayoutRenderer
-      schema={{
-        ...schema,
-        properties: visibleProperties,
-      }}
+    <PropertyTabs
+      tabs={schema.tabs || []}
+      groups={schema.groups || []}
+      properties={visibleProperties}
       context={context}
       onUpdate={handleUpdate}
       onOpenExpressionEditor={onOpenExpressionEditor}
