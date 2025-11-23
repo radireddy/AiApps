@@ -218,7 +218,16 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     width: p.width,
     height: p.height,
     zIndex: plugin.isContainer ? 0 : (isSelected ? 10 : 1),
-    display: isHidden ? 'none' : 'block',
+    // In edit mode, use visibility/opacity instead of display:none so components remain selectable
+    // In preview mode, use display:none to truly hide the component
+    ...(isHidden && mode === 'edit' 
+      ? { visibility: 'hidden', pointerEvents: 'auto' as const } 
+      : isHidden 
+        ? { display: 'none' } 
+        : {}),
+    // In edit mode, always allow pointer events on the wrapper so components can be selected
+    // even when disabled. The inner component may be disabled, but the wrapper should be clickable.
+    ...(mode === 'edit' ? { pointerEvents: 'auto' as const } : {}),
   };
 
   const selectionClass = isSelected && mode === 'edit' ? 'outline outline-2 outline-blue-500 outline-offset-2' : '';

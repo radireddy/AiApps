@@ -37,13 +37,67 @@ describe('ButtonPlugin', () => {
       expect(screen.getByRole('button', { name: 'Click Me' })).toBeInTheDocument();
     });
 
-    it('should be disabled based on an expression', () => {
+    it('should be disabled when disabled prop is boolean true', () => {
+      const component = {
+        ...baseComponent,
+        props: { ...baseComponent.props, disabled: true },
+      };
+      render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
+      expect(screen.getByRole('button')).toBeDisabled();
+    });
+
+    it('should NOT be disabled when disabled prop is boolean false', () => {
+      const component = {
+        ...baseComponent,
+        props: { ...baseComponent.props, disabled: false },
+      };
+      render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
+      expect(screen.getByRole('button')).not.toBeDisabled();
+    });
+
+    it('should be disabled when disabled prop is string "true"', () => {
+      const component = {
+        ...baseComponent,
+        props: { ...baseComponent.props, disabled: 'true' },
+      };
+      render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
+      expect(screen.getByRole('button')).toBeDisabled();
+    });
+
+    it('should NOT be disabled when disabled prop is string "false"', () => {
+      const component = {
+        ...baseComponent,
+        props: { ...baseComponent.props, disabled: 'false' },
+      };
+      render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
+      expect(screen.getByRole('button')).not.toBeDisabled();
+    });
+
+    it('should be disabled based on an expression that evaluates to true', () => {
       const component = {
         ...baseComponent,
         props: { ...baseComponent.props, disabled: '{{ 1 === 1 }}' },
       };
       render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
       expect(screen.getByRole('button')).toBeDisabled();
+    });
+
+    it('should NOT be disabled based on an expression that evaluates to false', () => {
+      const component = {
+        ...baseComponent,
+        props: { ...baseComponent.props, disabled: '{{ 1 === 2 }}' },
+      };
+      render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
+      expect(screen.getByRole('button')).not.toBeDisabled();
+    });
+
+    it('should NOT be disabled when disabled prop is undefined', () => {
+      const component = {
+        ...baseComponent,
+        props: { ...baseComponent.props, disabled: undefined },
+      };
+      render(<ButtonRenderer component={component} mode="preview" evaluationScope={{}} />);
+      expect(screen.getByRole('button')).not.toBeDisabled();
     });
 
     it('should trigger an alert action on click', () => {

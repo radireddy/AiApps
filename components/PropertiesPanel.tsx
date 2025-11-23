@@ -1,9 +1,14 @@
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AppComponent, ComponentProps, DataSourceInstance, AppVariable } from '../types';
 import { componentRegistry } from './component-registry/registry';
 import { AlignAction } from '../hooks/useAppData';
 import { Tooltip } from './component-registry/common';
+import { propertyRegistry } from './properties/registry';
+import { PropertyTabs } from './properties/PropertyTabs';
+import { PropertyMetadata, PropertyContext } from './properties/metadata';
+import { ComponentType } from '../types';
+// Import schemas to register them
+import './properties/schemas';
 
 interface PropertiesPanelProps {
   components: AppComponent[];
@@ -31,9 +36,22 @@ const AlignButton: React.FC<{ action: AlignAction; tooltip: string; onAlign: (ac
     );
 };
 
-export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, selectedComponentIds, onUpdate, width, isCollapsed, onToggleCollapse, dataSources, variables, evaluationScope, onOpenExpressionEditor, onAlignAndDistribute }) => {
+export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ 
+  components, 
+  selectedComponentIds, 
+  onUpdate, 
+  width, 
+  isCollapsed, 
+  onToggleCollapse, 
+  dataSources, 
+  variables, 
+  evaluationScope, 
+  onOpenExpressionEditor, 
+  onAlignAndDistribute 
+}) => {
   const isSingleSelection = selectedComponentIds.length === 1;
-  const component = isSingleSelection ? components.find(c => c.id === selectedComponentIds[0]) : null;
+  const selectedComponents = components.filter(c => selectedComponentIds.includes(c.id));
+  const component = isSingleSelection ? selectedComponents[0] : null;
   const plugin = component ? componentRegistry[component.type] : null;
   
   const commonPanelClasses = "bg-white border-l border-gray-200 flex flex-col shrink-0";
@@ -55,10 +73,135 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
     );
   }
 
-  const PropertiesRenderer = plugin?.properties;
-  
+  // Get property schema for selected component(s)
+  const schema = useMemo(() => {
+    if (selectedComponents.length === 0) return null;
+    
+    // For multi-select, find common schema or use first component's schema
+    const componentTypes = selectedComponents.map(c => c.type);
+    const uniqueTypes = [...new Set(componentTypes)];
+    
+    if (uniqueTypes.length === 1) {
+      return propertyRegistry[uniqueTypes[0]];
+    }
+    
+    // Multi-type selection - use first component's schema but filter to common properties
+    return propertyRegistry[uniqueTypes[0]] || null;
+  }, [selectedComponents]);
+
+  // Check if we should use the old properties renderer (for backward compatibility)
+  const useLegacyRenderer = useMemo(() => {
+    if (!component || !plugin) return false;
+    // Use legacy renderer if no schema is registered for this component type
+    return !propertyRegistry[component.type] && !!plugin.properties;
+  }, [component, plugin]);
+
+  // Filter properties based on selection
+  const visibleProperties = useMemo(() => {
+    if (!schema) return [];
+    
+    if (isSingleSelection) {
+      // Single selection - show all applicable properties
+      return schema.properties.filter(prop => {
+        if (prop.applicableTo === 'all') return true;
+        if (Array.isArray(prop.applicableTo)) {
+          return prop.applicableTo.includes(component!.type);
+        }
+        return true;
+      });
+    } else {
+      // Multi-selection - only show properties with multiEditSupport !== 'none'
+      const componentTypes = selectedComponents.map(c => c.type);
+      return schema.properties.filter(prop => {
+        // Check if property is common to all selected component types
+        if (prop.applicableTo === 'all') {
+          return prop.multiEditSupport !== 'none';
+        }
+        if (Array.isArray(prop.applicableTo)) {
+          const isCommon = componentTypes.every(type => prop.applicableTo!.includes(type));
+          return isCommon && prop.multiEditSupport !== 'none';
+        }
+        return false;
+      });
+    }
+  }, [schema, isSingleSelection, selectedComponents, component]);
+
+  // Get property value(s) - returns mixed indicator if values differ
+  const getPropertyValue = (propertyId: string): any => {
+    if (selectedComponents.length === 0) return undefined;
+    
+    const values = selectedComponents.map(c => {
+      const props = c.props as any;
+      return props[propertyId];
+    });
+    
+    // Check if all values are the same
+    const firstValue = values[0];
+    const allSame = values.every(v => v === firstValue);
+    
+    return allSame ? firstValue : undefined; // undefined indicates mixed
+  };
+
+  // Check if property has mixed values
+  const isPropertyMixed = (propertyId: string): boolean => {
+    if (selectedComponents.length <= 1) return false;
+    
+    const values = selectedComponents.map(c => {
+      const props = c.props as any;
+      return props[propertyId];
+    });
+    
+    const firstValue = values[0];
+    return !values.every(v => v === firstValue);
+  };
+
+  // Get validation error for a property
+  const getPropertyError = (property: PropertyMetadata): string | undefined => {
+    // Basic validation - can be extended
+    const value = getPropertyValue(property.id);
+    
+    if (property.validationRules) {
+      for (const rule of property.validationRules) {
+        if (rule.type === 'required' && (value === undefined || value === null || value === '')) {
+          return rule.message || `${property.label} is required`;
+        }
+        if (rule.type === 'custom' && rule.validator) {
+          const result = rule.validator(value);
+          if (result !== true) {
+            return typeof result === 'string' ? result : rule.message || 'Validation failed';
+          }
+        }
+      }
+    }
+    
+    return undefined;
+  };
+
+  // Handle property update
+  const handlePropertyUpdate = (propertyId: string, value: any) => {
+    if (isSingleSelection && component) {
+      onUpdate(component.id, { [propertyId]: value } as Partial<ComponentProps>);
+    } else {
+      // Update all selected components
+      selectedComponents.forEach(comp => {
+        onUpdate(comp.id, { [propertyId]: value } as Partial<ComponentProps>);
+      });
+    }
+  };
+
+  // Create context for property inputs
+  const propertyContext: PropertyContext = useMemo(() => ({
+    component: component ? { id: component.id, type: component.type, props: component.props } : undefined,
+    components: selectedComponents.map(c => ({ id: c.id, type: c.type, props: c.props })),
+    dataSources,
+    variables,
+    evaluationScope,
+    isMultiSelect: !isSingleSelection,
+  }), [component, selectedComponents, dataSources, variables, evaluationScope, isSingleSelection]);
+
   let content;
   if (selectedComponentIds.length > 1) {
+    // Multi-selection UI with align/distribute tools
     content = (
       <div>
         <p className="text-gray-500 text-sm text-center p-4">{selectedComponentIds.length} components selected.</p>
@@ -127,11 +270,33 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
                 </Tooltip>
              </div>
         </div>
+        
+        {/* Show common properties if schema exists */}
+        {schema && visibleProperties.length > 0 && (
+          <div className="border-t border-gray-200 mt-4">
+            <PropertyTabs
+              tabs={schema.tabs || []}
+              groups={schema.groups || []}
+              properties={visibleProperties}
+              context={propertyContext}
+              onUpdate={handlePropertyUpdate}
+              onOpenExpressionEditor={onOpenExpressionEditor}
+              getValue={getPropertyValue}
+              getError={(id) => {
+                const prop = visibleProperties.find(p => p.id === id);
+                return prop ? getPropertyError(prop) : undefined;
+              }}
+              isMixed={isPropertyMixed}
+            />
+          </div>
+        )}
       </div>
     );
-  } else if (!component || !PropertiesRenderer) {
+  } else if (!component) {
     content = <p className="text-gray-500 text-sm text-center p-4">Select a component to see its properties.</p>;
-  } else {
+  } else if (useLegacyRenderer && plugin) {
+    // Fallback to legacy properties renderer for components without schemas
+    const PropertiesRenderer = plugin.properties;
     content = (
       <PropertiesRenderer 
         component={component}
@@ -142,14 +307,39 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
         onOpenExpressionEditor={onOpenExpressionEditor}
       />
     );
+  } else if (!schema) {
+    content = <p className="text-gray-500 text-sm text-center p-4">Select a component to see its properties.</p>;
+  } else {
+    // Single selection - show full property schema
+    content = (
+      <PropertyTabs
+        tabs={schema.tabs || []}
+        groups={schema.groups || []}
+        properties={visibleProperties}
+        context={propertyContext}
+        onUpdate={handlePropertyUpdate}
+        onOpenExpressionEditor={onOpenExpressionEditor}
+        getValue={getPropertyValue}
+        getError={(id) => {
+          const prop = visibleProperties.find(p => p.id === id);
+          return prop ? getPropertyError(prop) : undefined;
+        }}
+        isMixed={isPropertyMixed}
+      />
+    );
   }
 
   return (
     <aside style={{ width: `${width}px` }} className={commonPanelClasses} role="region" aria-label="Properties" data-testid="properties-panel">
        <div className="flex items-center justify-between p-2 border-b border-gray-200">
         <div className="px-2 py-2">
-            <h3 id="properties-heading" className="text-md font-semibold text-gray-800">{component && plugin ? plugin.paletteConfig.label : 'Properties'}</h3>
+            <h3 id="properties-heading" className="text-md font-semibold text-gray-800">
+              {component && plugin ? plugin.paletteConfig.label : 'Properties'}
+            </h3>
             {component && <p className="text-xs text-gray-400 mt-1 break-words">ID: {component.id}</p>}
+            {!isSingleSelection && selectedComponents.length > 0 && (
+              <p className="text-xs text-gray-400 mt-1">{selectedComponents.length} components selected</p>
+            )}
         </div>
         <button 
             onClick={onToggleCollapse} 
@@ -162,7 +352,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
             </svg>
         </button>
        </div>
-      <div className="p-2 overflow-y-auto" aria-labelledby="properties-heading">
+      <div className="p-2 overflow-y-auto flex-1" aria-labelledby="properties-heading">
         {content}
       </div>
     </aside>

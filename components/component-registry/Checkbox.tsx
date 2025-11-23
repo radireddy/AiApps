@@ -6,6 +6,7 @@ import { LayoutProps, StylingProps, CollapsibleSection, PropInput, StateProps, P
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
+import { evaluateDisabled } from '../../utils/disabled-helper';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -17,7 +18,7 @@ const CheckboxRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
   const p = component.props;
-  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const isDisabled = evaluateDisabled(p.disabled, evaluationScope);
   const isDisabledInEdit = mode === 'edit' || isDisabled;
   return (
     <div className="flex items-center w-full h-full">

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>19/19</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>3/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/4</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/19</span>
+                <span class='fraction'>19/19</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -95,70 +95,70 @@
 <a name='L30'></a><a href='#L30'>30</a>
 <a name='L31'></a><a href='#L31'>31</a>
 <a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<a name='L33'></a><a href='#L33'>33</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >import React, { useState, useCallback } from 'react';</span>
-<span class="cstat-no" title="statement not covered" >import { Dashboard } from '@/Dashboard';</span>
-<span class="cstat-no" title="statement not covered" >import { Editor } from '@/Editor';</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React, { useState, useCallback } from 'react';
+import { Dashboard } from '@/Dashboard';
+import { Editor } from '@/Editor';
 import { AppMetadata } from '@/types';
 &nbsp;
-const App: React.FC = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-  const [currentView, setCurrentView] = <span class="cstat-no" title="statement not covered" >useState&lt;'dashboard' | 'editor'&gt;('dashboard');</span>
-  const [currentAppId, setCurrentAppId] = <span class="cstat-no" title="statement not covered" >useState&lt;string | null&gt;(null);</span>
+const App: React.FC = () =&gt; {
+  const [currentView, setCurrentView] = useState&lt;'dashboard' | 'editor'&gt;('dashboard');
+  const [currentAppId, setCurrentAppId] = useState&lt;string | null&gt;(null);
 &nbsp;
-  const handleEditApp = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >(a</span>pp: AppMetadata) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    setCurrentAppId(app.id);</span>
-<span class="cstat-no" title="statement not covered" >    setCurrentView('editor');</span>
+  const handleEditApp = useCallback((app: AppMetadata) =&gt; {
+    setCurrentAppId(app.id);
+    setCurrentView('editor');
   }, []);
   
-  const handleCreateApp = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >(a</span>pp: AppMetadata) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    setCurrentAppId(app.id);</span>
-<span class="cstat-no" title="statement not covered" >    setCurrentView('editor');</span>
+  const handleCreateApp = useCallback((app: AppMetadata) =&gt; {
+    setCurrentAppId(app.id);
+    setCurrentView('editor');
   }, []);
 &nbsp;
-  const handleBackToDashboard = <span class="cstat-no" title="statement not covered" >useCallback(<span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    setCurrentAppId(null);</span>
-<span class="cstat-no" title="statement not covered" >    setCurrentView('dashboard');</span>
+  const handleBackToDashboard = useCallback(() =&gt; {
+    setCurrentAppId(null);
+    setCurrentView('dashboard');
   }, []);
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (currentView === 'editor' &amp;&amp; currentAppId) {</span>
-<span class="cstat-no" title="statement not covered" >    return &lt;Editor appId={currentAppId} onBack={handleBackToDashboard} /&gt;;</span>
+  if (currentView === 'editor' &amp;&amp; currentAppId) {
+    return &lt;Editor appId={currentAppId} onBack={handleBackToDashboard} /&gt;;
   }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return &lt;Dashboard onEditApp={handleEditApp} onCreateApp={handleCreateApp} /&gt;;</span>
+  return &lt;Dashboard onEditApp={handleEditApp} onCreateApp={handleCreateApp} /&gt;;
 };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >export default App;</span>
+export default App;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -166,7 +166,7 @@ const App: React.FC = <span class="cstat-no" title="statement not covered" ><spa
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-21T01:46:50.401Z
+                at 2025-11-23T13:15:34.309Z
             </div>
         <script src="../prettify.js"></script>
         <script>

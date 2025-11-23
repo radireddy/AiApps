@@ -6,6 +6,7 @@ import { LayoutProps, StylingProps, CollapsibleSection, PropInput, PropSelect, S
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { safeEval } from '../../expressions/engine';
 import { commonStylingProps } from '../../constants';
+import { evaluateDisabled } from '../../utils/disabled-helper';
 
 // Common icon style
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -47,7 +48,7 @@ const ButtonRenderer: React.FC<{
   
   // Evaluate dynamic properties for rendering
   const text = useJavaScriptRenderer(p.text, evaluationScope, '');
-  const isDisabled = !!useJavaScriptRenderer(p.disabled, evaluationScope, false);
+  const isDisabled = evaluateDisabled(p.disabled, evaluationScope);
   const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#4f46e5');
   const textColor = useJavaScriptRenderer(p.textColor, evaluationScope, '#FFFFFF');
   
@@ -115,6 +116,9 @@ const ButtonRenderer: React.FC<{
     }
   };
 
+  // Always call hooks in the same order - evaluate opacity first
+  const opacityValue = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
+  
   const style = {
     backgroundColor,
     color: textColor,
@@ -122,7 +126,7 @@ const ButtonRenderer: React.FC<{
     borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
     borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
     borderStyle: p.borderStyle,
-    opacity: isDisabled ? 0.6 : useJavaScriptRenderer(p.opacity, evaluationScope, 1),
+    opacity: isDisabled ? 0.6 : opacityValue,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

@@ -44,11 +44,13 @@ describe('PropertiesPanel', () => {
 
   it('should render the properties for a single selected component', () => {
     const components = [
-      { id: 'comp1', type: ComponentType.LABEL, props: { text: 'My Label' } } as any,
+      { id: 'comp1', type: ComponentType.LABEL, props: { text: 'My Label', x: 0, y: 0, width: 100, height: 40 } } as any,
     ];
     render(<PropertiesPanel {...baseProps} components={components} selectedComponentIds={['comp1']} />);
-    expect(screen.getByText('Properties for My Label')).toBeInTheDocument();
+    // With the new metadata-driven system, check for the component ID and property tabs
     expect(screen.getByText('ID: comp1')).toBeInTheDocument();
+    // Check that property tabs are rendered (General tab should be present)
+    expect(screen.getByRole('tab', { name: 'General' })).toBeInTheDocument();
   });
 
   it('should render the alignment UI for multiple selected components', () => {
