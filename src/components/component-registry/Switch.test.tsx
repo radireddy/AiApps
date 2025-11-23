@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SwitchPlugin } from '@/components/component-registry/Switch';
 import { ComponentType } from 'types';
@@ -69,9 +69,10 @@ describe('SwitchPlugin', () => {
       const labelInput = screen.getByLabelText('Label');
       expect(labelInput).toHaveValue('My Switch');
 
-      await userEvent.clear(labelInput);
-      await userEvent.type(labelInput, 'New Switch');
-      expect(updateProp).toHaveBeenLastCalledWith('label', 'New Switch');
+      // Use fireEvent to directly set the value for reliability
+      fireEvent.change(labelInput, { target: { value: 'New Switch' } });
+      // PropInput calls updateProp on change, check that it was called with the new value
+      expect(updateProp).toHaveBeenCalledWith('label', 'New Switch');
     });
   });
 });

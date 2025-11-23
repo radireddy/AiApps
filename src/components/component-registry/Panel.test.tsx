@@ -58,6 +58,30 @@ describe('PanelPlugin', () => {
         expect(screen.getByLabelText('Background Color')).toHaveValue('#ffffff');
      });
 
+     it('should have all sections expanded by default', () => {
+        const updateProp = jest.fn();
+        const onOpenExpressionEditor = jest.fn();
+        const props = {
+            component: {
+                id: 'panel1',
+                props: {
+                    backgroundColor: '#FFFFFF'
+                } as any
+            },
+            updateProp,
+            onOpenExpressionEditor
+        };
+        render(<PanelProperties {...props} />);
+        
+        // Check that Basic section is expanded
+        const basicSection = screen.getByRole('button', { name: 'Basic' });
+        expect(basicSection).toHaveAttribute('aria-expanded', 'true');
+
+        // Check that Container Layout Specific section is expanded
+        const containerLayoutSection = screen.getByRole('button', { name: 'Container Layout Specific' });
+        expect(containerLayoutSection).toHaveAttribute('aria-expanded', 'true');
+     });
+
      it('should call arrangeChildren when direction is changed from horizontal to vertical', async () => {
         const updateProp = jest.fn();
         const onOpenExpressionEditor = jest.fn();
@@ -76,11 +100,7 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         
-        // Open the "Container Layout Specific" section first (it's collapsed by default)
-        const containerLayoutSection = screen.getByRole('button', { name: 'Container Layout Specific' });
-        await userEvent.click(containerLayoutSection);
-        
-        // Find and click the vertical direction button
+        // Container Layout Specific section is expanded by default, so buttons should be visible immediately
         const verticalButton = await screen.findByLabelText('Set direction to vertical');
         fireEvent.click(verticalButton);
         
@@ -109,11 +129,7 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         
-        // Open the "Container Layout Specific" section first (it's collapsed by default)
-        const containerLayoutSection = screen.getByRole('button', { name: 'Container Layout Specific' });
-        await userEvent.click(containerLayoutSection);
-        
-        // Find and click the horizontal direction button
+        // Container Layout Specific section is expanded by default, so buttons should be visible immediately
         const horizontalButton = await screen.findByLabelText('Set direction to horizontal');
         fireEvent.click(horizontalButton);
         
@@ -124,7 +140,7 @@ describe('PanelPlugin', () => {
         expect(arrangeChildren).toHaveBeenCalledWith('panel1', { direction: 'horizontal' });
      });
 
-     it('should call arrangeChildren when justifyContent is changed', () => {
+     it('should call arrangeChildren when justifyContent is changed', async () => {
         const updateProp = jest.fn();
         const onOpenExpressionEditor = jest.fn();
         const arrangeChildren = jest.fn();
@@ -143,8 +159,8 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         
-        // Find and click the center justify button
-        const centerButton = screen.getByLabelText('Justify content: Center - Center items');
+        // Container Layout Specific section is expanded by default, so buttons should be visible immediately
+        const centerButton = await screen.findByLabelText('Justify content: Center - Center items', {}, { timeout: 2000 });
         fireEvent.click(centerButton);
         
         // Verify updateProp was called
@@ -154,7 +170,7 @@ describe('PanelPlugin', () => {
         expect(arrangeChildren).toHaveBeenCalledWith('panel1', { justifyContent: 'center' });
      });
 
-     it('should call arrangeChildren when alignItems is changed', () => {
+     it('should call arrangeChildren when alignItems is changed', async () => {
         const updateProp = jest.fn();
         const onOpenExpressionEditor = jest.fn();
         const arrangeChildren = jest.fn();
@@ -173,8 +189,8 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         
-        // Find and click the stretch align button
-        const stretchButton = screen.getByLabelText('Align items: Stretch - Stretch items to fill space');
+        // Container Layout Specific section is expanded by default, so buttons should be visible immediately
+        const stretchButton = await screen.findByLabelText('Align items: Stretch - Stretch items to fill space');
         fireEvent.click(stretchButton);
         
         // Verify updateProp was called

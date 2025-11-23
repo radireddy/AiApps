@@ -206,7 +206,7 @@ const ButtonProperties: React.FC<{
     title: 'On Click Action',
     order: 4,
     collapsible: true,
-    defaultCollapsed: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'actionType',

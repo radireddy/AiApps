@@ -266,7 +266,7 @@ export const PanelProperties: React.FC<{
 
       {/* (2) Container Layout Specific */}
       {!hideDirectionSelector && (
-        <CollapsibleSection title="Container Layout Specific" isOpenDefault={false}>
+        <CollapsibleSection title="Container Layout Specific" isOpenDefault={true}>
           <div className="mb-3">
             <label className={`block ${typography.body} ${typography.medium} text-gray-600 mb-2`}>Direction</label>
             <div className="flex gap-2">

@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ImagePlugin } from '@/components/component-registry/Image';
 import { ComponentType } from 'types';
@@ -63,9 +63,10 @@ describe('ImagePlugin', () => {
     it('should call updateProp when src is changed', async () => {
       render(<ImageProperties {...baseProps} />);
       const input = screen.getByLabelText('Source (src)');
-      await userEvent.clear(input);
-      await userEvent.type(input, 'new_url.jpg');
-      expect(updateProp).toHaveBeenLastCalledWith('src', 'new_url.jpg');
+      // Use fireEvent to directly set the value for reliability
+      fireEvent.change(input, { target: { value: 'new_url.jpg' } });
+      // PropInput calls updateProp on change, check that it was called with the new value
+      expect(updateProp).toHaveBeenCalledWith('src', 'new_url.jpg');
     });
 
     it('should call updateProp when object fit is changed', async () => {

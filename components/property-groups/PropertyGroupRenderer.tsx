@@ -25,7 +25,7 @@ export const PropertyGroupRenderer: React.FC<PropertyGroupRendererProps> = ({
       return (
         <CollapsibleSection
           title={group.title}
-          isOpenDefault={true}
+          isOpenDefault={!group.defaultCollapsed}
         >
           {content}
         </CollapsibleSection>
@@ -55,7 +55,7 @@ export const PropertyGroupRenderer: React.FC<PropertyGroupRendererProps> = ({
     return (
       <CollapsibleSection
         title={group.title}
-        isOpenDefault={true}
+        isOpenDefault={!group.defaultCollapsed}
       >
         {visibleProperties.map(prop => (
           <PropertyRenderer

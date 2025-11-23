@@ -64,7 +64,22 @@ export const BasicPropertiesGroup: PropertyGroup = {
       label: 'Text',
       type: 'expression',
       condition: (props: ComponentProps, context?: Record<string, any>) => {
+        const componentType = context?.componentType;
+        // Don't show 'text' for checkbox/switch - they use 'label' instead
+        if (componentType && [ComponentType.CHECKBOX, ComponentType.SWITCH].includes(componentType)) {
+          return false;
+        }
         return shouldShowProperty(ComponentTypeGroups.TEXT_CONTENT_COMPONENTS, context) || 'text' in props;
+      },
+    },
+    {
+      key: 'label',
+      label: 'Label',
+      type: 'text',
+      condition: (props: ComponentProps, context?: Record<string, any>) => {
+        const componentType = context?.componentType;
+        // Show 'label' for checkbox and switch components
+        return componentType && [ComponentType.CHECKBOX, ComponentType.SWITCH].includes(componentType);
       },
     },
     {
@@ -491,9 +506,14 @@ export const DataPropertiesGroup: PropertyGroup = {
   title: 'Data',
   order: 9,
   collapsible: true,
-  defaultCollapsed: true,
+  defaultCollapsed: false,
   condition: (props: ComponentProps, context?: Record<string, any>) => {
-    return shouldShowProperty(ComponentTypeGroups.DATA_SOURCE_COMPONENTS, context);
+    // Show group if component is a data source component OR has any of the properties in this group
+    return shouldShowProperty(ComponentTypeGroups.DATA_SOURCE_COMPONENTS, context) ||
+           'dataSourceName' in props ||
+           'columns' in props ||
+           'options' in props ||
+           (context?.componentType && [ComponentType.SELECT, ComponentType.RADIO_GROUP].includes(context.componentType));
   },
   properties: [
     {
@@ -867,7 +887,7 @@ export const StylingPropertiesGroup: PropertyGroup = {
   title: 'Styling',
   order: 6,
   collapsible: true,
-  defaultCollapsed: true,
+  defaultCollapsed: false,
   condition: (props: ComponentProps) => {
     // Always show styling group - borders are available for all components
     return true;

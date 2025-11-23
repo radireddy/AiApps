@@ -25,7 +25,10 @@ describe('Delete Functionality - All Components', () => {
         name: 'Page 1',
       },
     ],
+    mainPageId: 'page1',
     components,
+    dataStore: {},
+    variables: [],
     theme: {
       colors: {
         primary: '#000000',

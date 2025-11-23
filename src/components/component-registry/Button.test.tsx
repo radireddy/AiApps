@@ -145,13 +145,20 @@ describe('ButtonPlugin', () => {
       expect(updateProp).toHaveBeenLastCalledWith('text', 'New Text');
     });
 
+    it('should have Events section expanded by default', () => {
+      render(<ButtonProperties {...baseProps} />);
+      // Check that Events section is expanded by default
+      const eventsSection = screen.getByRole('button', { name: /Events/i });
+      expect(eventsSection).toHaveAttribute('aria-expanded', 'true');
+    });
+
     it('should show alert message field when actionType is "alert"', async () => {
       const props = { ...baseProps, component: { ...baseProps.component, props: { ...baseProps.component.props, actionType: 'alert' as const } } };
       render(<ButtonProperties {...props} />);
-      // Open the collapsed "Events" section so its fields are visible (title was changed from "On Click Action" to "Events")
-      const actionSectionButton = screen.getByRole('button', { name: 'Events' });
-      await userEvent.click(actionSectionButton);
-      expect(screen.getByLabelText('Action Type')).toHaveValue('alert');
+      // Events section should be expanded by default, so Action Type should be visible immediately
+      const actionTypeSelect = await screen.findByLabelText('Action Type', {}, { timeout: 2000 });
+      expect(actionTypeSelect).toBeInTheDocument();
+      expect(actionTypeSelect).toHaveValue('alert');
       // PropFxInput doesn't link the label with htmlFor, so assert by test id
       expect(screen.getByTestId('prop-fx-input-Alert-Message')).toBeInTheDocument();
     });

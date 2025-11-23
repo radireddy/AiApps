@@ -28,6 +28,7 @@ const DividerProperties: React.FC<{
     title: 'Styling',
     order: 2,
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'color',

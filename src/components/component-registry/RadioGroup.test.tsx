@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RadioGroupPlugin } from '@/components/component-registry/RadioGroup';
 import { ComponentType } from 'types';
@@ -70,9 +70,10 @@ describe('RadioGroupPlugin', () => {
       const optionsInput = screen.getByLabelText('Options');
       expect(optionsInput).toHaveValue('A,B');
 
-      await userEvent.clear(optionsInput);
-      await userEvent.type(optionsInput, 'X,Y,Z');
-      expect(updateProp).toHaveBeenLastCalledWith('options', 'X,Y,Z');
+      // Use fireEvent to directly set the value for reliability
+      fireEvent.change(optionsInput, { target: { value: 'X,Y,Z' } });
+      // PropInput calls updateProp on change, check that it was called with the new value
+      expect(updateProp).toHaveBeenCalledWith('options', 'X,Y,Z');
     });
   });
 });

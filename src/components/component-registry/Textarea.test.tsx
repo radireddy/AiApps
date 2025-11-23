@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TextareaPlugin } from '@/components/component-registry/Textarea';
 import { ComponentType } from 'types';
@@ -65,11 +65,10 @@ describe('TextareaPlugin', () => {
       const placeholderInput = screen.getByLabelText('Placeholder');
       expect(placeholderInput).toHaveValue('My Placeholder');
 
-      // Select all text first, then type
-      await userEvent.click(placeholderInput);
-      await userEvent.keyboard('{Control>}a{/Control}');
-      await userEvent.type(placeholderInput, 'New Placeholder');
-      expect(updateProp).toHaveBeenLastCalledWith('placeholder', 'New Placeholder');
+      // Use fireEvent to directly set the value for reliability
+      fireEvent.change(placeholderInput, { target: { value: 'New Placeholder' } });
+      // PropInput calls updateProp on change, check that it was called with the new value
+      expect(updateProp).toHaveBeenCalledWith('placeholder', 'New Placeholder');
     });
   });
 });

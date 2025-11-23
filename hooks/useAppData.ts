@@ -92,9 +92,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   // Initialize variable state when app definition changes
   useEffect(() => {
       const newVarState: Record<string, any> = {};
-      appDefinition.variables.forEach(v => {
-          newVarState[v.name] = parseInitialValue(v.initialValue, v.type);
-      });
+      if (appDefinition.variables && Array.isArray(appDefinition.variables)) {
+          appDefinition.variables.forEach(v => {
+              newVarState[v.name] = parseInitialValue(v.initialValue, v.type);
+          });
+      }
       setVariableState(newVarState);
   }, [appDefinition.variables]);
 
@@ -130,13 +132,14 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, []);
 
   const addVariable = useCallback((variable: AppVariable) => {
-    if (appDefinition.variables.some(v => v.name === variable.name)) {
+    const variables = appDefinition.variables || [];
+    if (variables.some(v => v.name === variable.name)) {
         alert('A variable with this name already exists.');
         return;
     }
     setAppDefinitionState(prev => ({
         ...prev,
-        variables: [...prev.variables, variable]
+        variables: [...(prev.variables || []), variable]
     }));
   }, [appDefinition.variables]);
   
@@ -853,7 +856,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const props = c.props as any;
         if (props.dataStoreKey) {
             scope[c.id] = {
-                value: get(dataStore, props.dataStoreKey)
+                value: get(dataStore, props.dataStoreKey),
+                ...props // Also expose all props (like placeholder, disabled, etc.)
             }
         } else { // For components without dataStoreKey like buttons, expose the component itself
              scope[c.id] = {

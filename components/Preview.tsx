@@ -146,7 +146,8 @@ export const Preview: React.FC<PreviewProps> = ({ appDefinition, onUpdateDataSto
         const props = c.props as any;
         if (props.dataStoreKey) {
             scope[c.id] = {
-                value: get(dataStore, props.dataStoreKey)
+                value: get(dataStore, props.dataStoreKey),
+                ...props // Also expose all props (like placeholder, disabled, etc.)
             }
         } else {
              scope[c.id] = {

@@ -6,6 +6,7 @@ import { AppComponent, ComponentProps, ComponentType, ActionHandlers } from '../
 import { componentRegistry } from './component-registry/registry';
 import { useJavaScriptRenderer } from '../property-renderers/useJavaScriptRenderer';
 import { parsePadding } from './component-registry/common';
+import { evaluateHidden } from '../utils/disabled-helper';
 
 interface RenderedComponentProps {
   component: AppComponent;
@@ -65,7 +66,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const ComponentRenderer = plugin.renderer;
   const isSelected = selectedComponentIds.includes(component.id);
   
-  const isHidden = !!useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
+  const isHidden = evaluateHidden(component.props.hidden, evaluationScope);
 
   // Exit inline editing when component is deselected
   useEffect(() => {
@@ -264,11 +265,11 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     height: p.height,
     // Containers should also get higher z-index when selected to show selection outline
     zIndex: plugin.isContainer ? (isSelected ? 10 : 0) : (isSelected ? 10 : 1),
-    // In edit mode, hidden components should still be selectable, so use opacity instead of display
+    // In edit mode, hidden components should be visible but with reduced opacity to indicate they're hidden
     // In preview mode, use display: none to completely hide them
     ...(isHidden 
       ? (mode === 'edit' 
-        ? { opacity: 0, pointerEvents: 'auto' as const, display: 'block' } 
+        ? { opacity: 0.3, pointerEvents: 'auto' as const, display: 'block' } 
         : { display: 'none' })
       : { display: 'block' }),
     // Ensure overflow is visible so delete button positioned outside bounds is not clipped

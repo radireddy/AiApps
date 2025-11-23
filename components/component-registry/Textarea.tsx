@@ -70,6 +70,7 @@ const TextareaProperties: React.FC<{
     title: 'Accessibility',
     order: 4,
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'accessibilityLabel',

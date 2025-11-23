@@ -113,7 +113,7 @@ const TableProperties: React.FC<{
     title: 'On Row Select',
     order: 8, // After data
     collapsible: true,
-    defaultCollapsed: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'rowSelectAction',

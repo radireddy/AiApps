@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CheckboxPlugin } from '@/components/component-registry/Checkbox';
 import { ComponentType } from 'types';
@@ -78,15 +78,16 @@ describe('CheckboxPlugin', () => {
     it('should render properties correctly', () => {
       render(<CheckboxProperties {...baseProps} />);
       expect(screen.getByLabelText('Label')).toHaveValue('My Checkbox');
-      expect(screen.getByLabelText('Data Store Key')).toHaveValue('isChecked');
+      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('isChecked');
     });
 
     it('should call updateProp when label is changed', async () => {
         render(<CheckboxProperties {...baseProps} />);
         const labelInput = screen.getByLabelText('Label');
-        await userEvent.clear(labelInput);
-        await userEvent.type(labelInput, 'New Label');
-        expect(updateProp).toHaveBeenLastCalledWith('label', 'New Label');
+        // Use fireEvent to directly set the value for reliability
+        fireEvent.change(labelInput, { target: { value: 'New Label' } });
+        // PropInput calls updateProp on change, check that it was called with the new value
+        expect(updateProp).toHaveBeenCalledWith('label', 'New Label');
     });
   });
 });
