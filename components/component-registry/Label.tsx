@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ComponentType, LabelProps, ComponentPlugin } from '../../types';
-import { InlineTextEditor } from './common';
+import { InlineTextEditor, buildSpacingStyles } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 import { propertyRendererRegistry } from '../../property-renderers/registry';
@@ -25,6 +25,9 @@ const LabelRenderer: React.FC<{
   const color = useJavaScriptRenderer(p.color, evaluationScope, '#111827');
   const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, 'transparent');
 
+  const paddingValue = useJavaScriptRenderer(p.padding, evaluationScope, undefined);
+  const marginValue = useJavaScriptRenderer(p.margin, evaluationScope, undefined);
+  
   const style: React.CSSProperties = {
     fontSize: `${useJavaScriptRenderer(p.fontSize, evaluationScope, 16)}px`,
     fontWeight: p.fontWeight,
@@ -38,7 +41,8 @@ const LabelRenderer: React.FC<{
     borderStyle: p.borderStyle,
     opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
-    padding: '8px',
+    ...buildSpacingStyles(paddingValue, marginValue),
+    padding: paddingValue !== undefined ? undefined : '8px', // Use prop padding if set, otherwise default to 8px
     boxSizing: 'border-box'
   };
 

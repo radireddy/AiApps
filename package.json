@@ -35,5 +35,8 @@
     "typescript": "^5.4.5",
     "v8-to-istanbul": "^9.1.1",
     "vite": "^5.2.13"
+  },
+  "dependencies": {
+    "openai": "^6.9.1"
   }
 }

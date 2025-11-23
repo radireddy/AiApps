@@ -9,11 +9,22 @@ interface ExpressionEditorModalProps {
 }
 
 export const ExpressionEditorModal: React.FC<ExpressionEditorModalProps> = ({ isOpen, initialValue, onClose, onSave }) => {
-  const [value, setValue] = useState(initialValue);
+  // If initialValue is not an expression, wrap it in {{ }}
+  const getInitialExpressionValue = (val: string): string => {
+    if (!val) return '{{}}';
+    // If already an expression, return as is
+    if (val.startsWith('{{') && val.endsWith('}}')) {
+      return val;
+    }
+    // Otherwise, wrap it in {{ }}
+    return `{{${val}}}`;
+  };
+
+  const [value, setValue] = useState(getInitialExpressionValue(initialValue));
 
   useEffect(() => {
     if (isOpen) {
-      setValue(initialValue);
+      setValue(getInitialExpressionValue(initialValue));
     }
   }, [isOpen, initialValue]);
 
@@ -36,7 +47,30 @@ export const ExpressionEditorModal: React.FC<ExpressionEditorModalProps> = ({ is
   }
 
   const handleSave = () => {
-    onSave(value);
+    let finalValue = value.trim();
+    
+    // If empty, save empty string (removes expression)
+    if (!finalValue) {
+      onSave('');
+      return;
+    }
+    
+    // If user manually removed {{ }}, treat as primitive value
+    // Check if it looks like they want to remove the expression
+    if (!finalValue.startsWith('{{') && !finalValue.endsWith('}}')) {
+      // User typed a primitive value - save it as-is (removes expression)
+      onSave(finalValue);
+      return;
+    }
+    
+    // Otherwise, ensure it's properly wrapped as an expression
+    if (!finalValue.startsWith('{{')) {
+      finalValue = `{{${finalValue}}}`;
+    }
+    if (!finalValue.endsWith('}}')) {
+      finalValue = `${finalValue}}}`;
+    }
+    onSave(finalValue);
   };
 
   return (
@@ -51,11 +85,15 @@ export const ExpressionEditorModal: React.FC<ExpressionEditorModalProps> = ({ is
           </button>
         </header>
         <main className="p-4 flex-grow bg-gray-50">
+          <div className="mb-2 text-xs text-gray-600">
+            <p>Enter a JavaScript expression. The value will be automatically wrapped in <code className="bg-gray-200 px-1 rounded">{'{{ }}'}</code> if not already wrapped.</p>
+            <p className="mt-1">To remove the expression, delete all content and save, or edit the value directly in the input field.</p>
+          </div>
           <textarea
             value={value}
             onChange={e => setValue(e.target.value)}
             className="w-full h-80 p-3 font-mono text-sm bg-gray-900 text-green-300 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            placeholder="Write your JavaScript expression here... e.g., {{ (() => { console.log('hello'); return 1 + 1; })() }}"
+            placeholder="Write your JavaScript expression here... e.g., theme.colors.primary or (() => { return 1 + 1; })()"
             autoFocus
           />
         </main>

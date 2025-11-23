@@ -4,7 +4,6 @@ import { AppComponent, ComponentProps, DataSourceInstance, AppVariable } from '.
 import { componentRegistry } from './component-registry/registry';
 import { AlignAction } from '../hooks/useAppData';
 import { Tooltip } from './component-registry/common';
-import { typography } from '../constants';
 
 interface PropertiesPanelProps {
   components: AppComponent[];
@@ -34,7 +33,6 @@ const AlignButton: React.FC<{ action: AlignAction; tooltip: string; onAlign: (ac
 };
 
 export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, selectedComponentIds, onUpdate, width, isCollapsed, onToggleCollapse, dataSources, variables, evaluationScope, onOpenExpressionEditor, onAlignAndDistribute, onArrangeContainerChildren }) => {
-  const [activeTab, setActiveTab] = React.useState<'display' | 'advanced'>('display');
   const isSingleSelection = selectedComponentIds.length === 1;
   const component = isSingleSelection ? components.find(c => c.id === selectedComponentIds[0]) : null;
   const plugin = component ? componentRegistry[component.type] : null;
@@ -63,15 +61,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
   let content;
   if (selectedComponentIds.length > 1) {
     content = (
-      <div className="px-3 py-3">
-        <div className="mb-3">
-          <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-1`}>Selection</p>
-          <p className={`${typography.body} text-gray-700`}>{selectedComponentIds.length} components selected</p>
-        </div>
-        
-        <div className="border-t border-gray-200 pt-3 mt-3">
-          <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>Align</p>
-          <div className="grid grid-cols-6 gap-1.5">
+      <div>
+        <p className="text-gray-500 text-sm text-center p-4">{selectedComponentIds.length} components selected.</p>
+        <div className="border-t border-gray-200 p-2">
+          <h4 className="text-xs font-semibold text-gray-600 mb-2 px-1">Align</h4>
+          <div className="grid grid-cols-6 gap-1">
             <Tooltip text="Align left edges & stack vertically">
                 <AlignButton action="align-left" tooltip="Align left edges & stack vertically" onAlign={onAlignAndDistribute}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.5 2V14" stroke="currentColor" strokeWidth="1.5"/><rect x="4" y="3" width="5" height="4" fill="currentColor" fillOpacity="0.5"/><rect x="4" y="9" width="8" height="4" fill="currentColor" fillOpacity="0.5"/></svg>
@@ -104,10 +98,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
             </Tooltip>
           </div>
         </div>
-        
-        <div className="border-t border-gray-200 pt-3 mt-3">
-          <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>Distribute</p>
-          <div className="grid grid-cols-6 gap-1.5">
+        <div className="border-t border-gray-200 p-2">
+          <h4 className="text-xs font-semibold text-gray-600 mb-2 px-1">Distribute</h4>
+          <div className="grid grid-cols-6 gap-1">
             <Tooltip text="Distribute horizontal spacing">
                 <AlignButton action="distribute-h" tooltip="Distribute horizontal spacing" onAlign={onAlignAndDistribute}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="13" y="4" width="2" height="8" fill="currentColor"/><rect x="1" y="4" width="2" height="8" fill="currentColor"/><rect x="7" y="6" width="2" height="4" fill="currentColor"/></svg>
@@ -120,10 +113,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
             </Tooltip>
           </div>
         </div>
-        
-        <div className="border-t border-gray-200 pt-3 mt-3">
-             <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>Match Size</p>
-             <div className="grid grid-cols-6 gap-1.5">
+        <div className="border-t border-gray-200 p-2">
+             <h4 className="text-xs font-semibold text-gray-600 mb-2 px-1">Match Size</h4>
+             <div className="grid grid-cols-6 gap-1">
                 <Tooltip text="Match width (first selected)">
                     <AlignButton action="match-width" tooltip="Match width (first selected)" onAlign={onAlignAndDistribute}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="3" width="12" height="4" fill="currentColor" fillOpacity="0.5"/><rect x="2" y="9" width="12" height="5" fill="currentColor" fillOpacity="0.5"/></svg>
@@ -139,15 +131,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
       </div>
     );
   } else if (!component || !PropertiesRenderer) {
-    content = (
-      <div className="px-3 py-8 text-center">
-        <p className={typography.body + ' text-gray-400'}>Select a component to see its properties</p>
-      </div>
-    );
+    content = <p className="text-gray-500 text-sm text-center p-4">Select a component to see its properties.</p>;
   } else {
     content = (
       <PropertiesRenderer 
-        component={{ ...component, type: component.type }}
+        component={component}
         updateProp={(key: any, value: any) => onUpdate(component.id, { [key]: value })}
         dataSources={dataSources}
         variables={variables}
@@ -160,53 +148,23 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
 
   return (
     <aside style={{ width: `${width}px` }} className={commonPanelClasses} role="region" aria-label="Properties" data-testid="properties-panel">
-       <div className="border-b border-gray-200">
-        <div className="flex items-center justify-between px-3 py-2.5">
-          <div>
-            <h3 id="properties-heading" className={`${typography.section} ${typography.semibold} text-gray-900`}>
-              {component && plugin ? plugin.paletteConfig.label.toUpperCase() : 'PROPERTIES'}
-            </h3>
-            {component && (
-              <p className={`${typography.caption} text-gray-500 mt-0.5`}>{component.id}</p>
-            )}
-          </div>
-          <button 
-              onClick={onToggleCollapse} 
-              className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Collapse Properties"
-              aria-expanded="true"
-          >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-          </button>
+       <div className="flex items-center justify-between p-2 border-b border-gray-200">
+        <div className="px-2 py-2">
+            <h3 id="properties-heading" className="text-md font-semibold text-gray-800">{component && plugin ? plugin.paletteConfig.label : 'Properties'}</h3>
+            {component && <p className="text-xs text-gray-400 mt-1 break-words">ID: {component.id}</p>}
         </div>
-        {component && (
-          <div className="flex border-t border-gray-200">
-            <button
-              onClick={() => setActiveTab('display')}
-              className={`flex-1 px-3 py-1.5 ${typography.label} ${typography.medium} transition-colors ${
-                activeTab === 'display'
-                  ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/50'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Display
-            </button>
-            <button
-              onClick={() => setActiveTab('advanced')}
-              className={`flex-1 px-3 py-1.5 ${typography.label} ${typography.medium} transition-colors ${
-                activeTab === 'advanced'
-                  ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/50'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              Advanced
-            </button>
-          </div>
-        )}
+        <button 
+            onClick={onToggleCollapse} 
+            className="p-2 rounded-md hover:bg-gray-100 text-gray-500 hover:text-gray-800"
+            aria-label="Collapse Properties"
+            aria-expanded="true"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+        </button>
        </div>
-      <div className="overflow-y-auto flex-1" aria-labelledby="properties-heading" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+      <div className="p-2 overflow-y-auto" aria-labelledby="properties-heading">
         {content}
       </div>
     </aside>

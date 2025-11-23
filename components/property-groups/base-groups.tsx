@@ -1,4 +1,5 @@
-import { PropertyGroup, PropertyDefinition, PropertyGroupRendererProps } from './types';
+/* @refresh reset */
+import { PropertyGroup, PropertyDefinition, PropertyGroupRendererProps, PropertyRendererProps } from './types';
 import { ComponentProps, BorderProps } from '../../types';
 import { ComponentType } from '../../types';
 import { shouldShowProperty, ComponentTypeGroups } from './component-helpers';
@@ -652,8 +653,214 @@ export const ContainerLayoutGroup: PropertyGroup = {
 };
 
 /**
+ * Custom renderer for border properties with consistent, responsive layout
+ * All labels are on top, using responsive grid layouts
+ */
+const BorderPropertiesRenderer: React.FC<PropertyRendererProps> = ({ props, updateProp, onOpenExpressionEditor }) => {
+  const borderProps = props as BorderProps;
+  
+  return (
+    <div className="space-y-4">
+      {/* Border Style - Full Width */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1.5">Style</label>
+        <select
+          value={borderProps.borderStyle || 'none'}
+          onChange={(e) => updateProp('borderStyle', e.target.value)}
+          className="w-full text-xs border border-gray-300 rounded px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 bg-white text-gray-800"
+        >
+          <option value="none">None</option>
+          <option value="solid">Solid</option>
+          <option value="dashed">Dashed</option>
+          <option value="dotted">Dotted</option>
+        </select>
+      </div>
+
+      {/* Border Width and Color - Responsive 2-column grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <PropFxInput
+          label="Width"
+          value={borderProps.borderWidth || ''}
+          onChange={(val) => updateProp('borderWidth', val)}
+          type="number"
+          placeholder="0"
+          className="mb-0"
+          onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderWidth', newVal)) : undefined}
+        />
+        <PropFxInput
+          label="Color"
+          value={borderProps.borderColor || '#000000'}
+          onChange={(val) => updateProp('borderColor', val)}
+          type="color"
+          className="mb-0"
+          onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderColor', newVal)) : undefined}
+        />
+      </div>
+
+      {/* Individual Border Sides - Responsive 2x2 grid */}
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-2">Individual Sides</label>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative">
+            <PropFxInput
+              label="Top"
+              value={borderProps.borderTop || ''}
+              onChange={(val) => {
+                // Allow empty string to clear the property
+                if (val === '' || val === null || val === undefined) {
+                  updateProp('borderTop', undefined);
+                } else {
+                  updateProp('borderTop', val);
+                }
+              }}
+              type="number"
+              placeholder="0"
+              className="mb-0"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderTop', newVal === '' ? undefined : newVal)) : undefined}
+            />
+            {borderProps.borderTop !== undefined && borderProps.borderTop !== '' && String(borderProps.borderTop).trim() !== '' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateProp('borderTop', undefined);
+                }}
+                className="absolute right-8 top-[1.75rem] p-0.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                title="Clear Top border"
+                aria-label="Clear Top border"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <PropFxInput
+              label="Right"
+              value={borderProps.borderRight || ''}
+              onChange={(val) => {
+                // Allow empty string to clear the property
+                if (val === '' || val === null || val === undefined) {
+                  updateProp('borderRight', undefined);
+                } else {
+                  updateProp('borderRight', val);
+                }
+              }}
+              type="number"
+              placeholder="0"
+              className="mb-0"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderRight', newVal === '' ? undefined : newVal)) : undefined}
+            />
+            {borderProps.borderRight !== undefined && borderProps.borderRight !== '' && String(borderProps.borderRight).trim() !== '' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateProp('borderRight', undefined);
+                }}
+                className="absolute right-8 top-[1.75rem] p-0.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                title="Clear Right border"
+                aria-label="Clear Right border"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <PropFxInput
+              label="Bottom"
+              value={borderProps.borderBottom || ''}
+              onChange={(val) => {
+                // Allow empty string to clear the property
+                if (val === '' || val === null || val === undefined) {
+                  updateProp('borderBottom', undefined);
+                } else {
+                  updateProp('borderBottom', val);
+                }
+              }}
+              type="number"
+              placeholder="0"
+              className="mb-0"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderBottom', newVal === '' ? undefined : newVal)) : undefined}
+            />
+            {borderProps.borderBottom !== undefined && borderProps.borderBottom !== '' && String(borderProps.borderBottom).trim() !== '' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateProp('borderBottom', undefined);
+                }}
+                className="absolute right-8 top-[1.75rem] p-0.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                title="Clear Bottom border"
+                aria-label="Clear Bottom border"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="relative">
+            <PropFxInput
+              label="Left"
+              value={borderProps.borderLeft || ''}
+              onChange={(val) => {
+                // Allow empty string to clear the property
+                if (val === '' || val === null || val === undefined) {
+                  updateProp('borderLeft', undefined);
+                } else {
+                  updateProp('borderLeft', val);
+                }
+              }}
+              type="number"
+              placeholder="0"
+              className="mb-0"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderLeft', newVal === '' ? undefined : newVal)) : undefined}
+            />
+            {borderProps.borderLeft !== undefined && borderProps.borderLeft !== '' && String(borderProps.borderLeft).trim() !== '' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateProp('borderLeft', undefined);
+                }}
+                className="absolute right-8 top-[1.75rem] p-0.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                title="Clear Left border"
+                aria-label="Clear Left border"
+                type="button"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Border Radius - Full Width */}
+      <PropFxInput
+        label="Radius"
+        value={borderProps.borderRadius || ''}
+        onChange={(val) => updateProp('borderRadius', val)}
+        type="number"
+        placeholder="0"
+        onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('borderRadius', newVal)) : undefined}
+      />
+    </div>
+  );
+};
+
+/**
  * (6) Styling Properties
  * Visual styling properties including borders (merged from Border Properties).
+ * Redesigned with space-efficient layout.
  */
 export const StylingPropertiesGroup: PropertyGroup = {
   id: 'styling',
@@ -662,80 +869,77 @@ export const StylingPropertiesGroup: PropertyGroup = {
   collapsible: true,
   defaultCollapsed: true,
   condition: (props: ComponentProps) => {
-    // Show if component has any styling or border properties
-    const borderProps = props as BorderProps;
-    return 'opacity' in props || 'boxShadow' in props || 'backgroundGradient' in props || borderProps.borderStyle !== undefined;
+    // Always show styling group - borders are available for all components
+    return true;
   },
-  properties: [
-    // Border properties merged here
-    {
-      key: 'borderColor',
-      label: 'Border Color',
-      type: 'expression',
-      inputProps: { type: 'color' },
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    {
-      key: 'borderWidth',
-      label: 'Border Width',
-      type: 'expression',
-      inputProps: { type: 'number' },
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    {
-      key: 'borderRadius',
-      label: 'Border Radius',
-      type: 'expression',
-      inputProps: { type: 'number' },
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    {
-      key: 'borderStyle',
-      label: 'Border Style',
-      type: 'select',
-      options: [
-        { value: 'none', label: 'None' },
-        { value: 'solid', label: 'Solid' },
-        { value: 'dashed', label: 'Dashed' },
-        { value: 'dotted', label: 'Dotted' },
-      ],
-      condition: (props: ComponentProps) => {
-        const borderProps = props as BorderProps;
-        return borderProps.borderStyle !== undefined;
-      },
-    },
-    // Styling properties
-    {
-      key: 'opacity',
-      label: 'Opacity',
-      type: 'expression',
-      placeholder: 'e.g. 0.5 or {{theme.opacity}}',
-    },
-    {
-      key: 'boxShadow',
-      label: 'Shadow',
-      type: 'expression',
-      placeholder: 'e.g. 2px 2px 5px #ccc',
-    },
-    {
-      key: 'backgroundGradient',
-      label: 'Background Gradient',
-      type: 'expression',
-      placeholder: 'e.g. linear-gradient(...)',
-      condition: (props: ComponentProps, context?: Record<string, any>) => {
-        return 'backgroundGradient' in props;
-      },
-    },
-  ],
+  customGroupRenderer: ({ rendererProps }) => {
+    const { props, updateProp, onOpenExpressionEditor } = rendererProps;
+
+    return (
+      <div className="space-y-5">
+        {/* Border Properties Section */}
+        <div className="space-y-3">
+          <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide pb-1 border-b border-gray-200">Border</div>
+          <BorderPropertiesRenderer {...rendererProps} />
+        </div>
+
+        {/* Spacing Properties Section */}
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide pb-1 border-b border-gray-200">Spacing</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+            <PropFxInput
+              label="Padding"
+              value={props.padding || ''}
+              onChange={(val) => updateProp('padding', val)}
+              placeholder="e.g. 8px"
+              className="mb-0"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('padding', newVal)) : undefined}
+            />
+            <PropFxInput
+              label="Margin"
+              value={props.margin || ''}
+              onChange={(val) => updateProp('margin', val)}
+              placeholder="e.g. 8px"
+              className="mb-0"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('margin', newVal)) : undefined}
+            />
+          </div>
+        </div>
+
+        {/* Effects Properties Section */}
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          <div className="text-xs font-semibold text-gray-700 uppercase tracking-wide pb-1 border-b border-gray-200">Effects</div>
+          <div className="space-y-3 mt-3">
+            <PropFxInput
+              label="Opacity"
+              value={props.opacity || ''}
+              onChange={(val) => updateProp('opacity', val)}
+              placeholder="e.g. 0.5 or {{theme.opacity}}"
+              propertyKey="opacity"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('opacity', newVal)) : undefined}
+            />
+            <PropFxInput
+              label="Shadow"
+              value={props.boxShadow || ''}
+              onChange={(val) => updateProp('boxShadow', val)}
+              placeholder="e.g. 2px 2px 5px #ccc"
+              onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('boxShadow', newVal)) : undefined}
+            />
+            {'backgroundGradient' in props && (
+              <PropFxInput
+                label="Background Gradient"
+                value={props.backgroundGradient || ''}
+                onChange={(val) => updateProp('backgroundGradient', val)}
+                placeholder="e.g. linear-gradient(...)"
+                onOpenEditor={onOpenExpressionEditor ? (val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundGradient', newVal)) : undefined}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  },
+  properties: [],
 };
 
 /**

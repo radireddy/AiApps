@@ -24,8 +24,15 @@ export const PropFxInput: React.FC<{
     id?: string;
     onOpenEditor?: (currentValue: string) => void;
     propertyKey?: string;
-}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey }) => {
-    const isExpression = typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}');
+    className?: string; // Allow custom className to override margin
+}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey, className }) => {
+    // Check if value is an expression (starts with {{ and ends with }})
+    // Also treat as expression if it starts with {{ (even if incomplete)
+    // Handle undefined/null values safely
+    const isExpression = typeof value === 'string' && 
+                         value !== null && 
+                         value !== undefined && 
+                         value.startsWith('{{');
     const isOpacity = propertyKey === 'opacity';
 
     // Validation function for opacity
@@ -105,27 +112,87 @@ export const PropFxInput: React.FC<{
 
     const inputId = id || `prop-fx-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
     // Only uppercase hex color values (e.g., #ff0000), not expressions
-    const displayValue = type === 'color' && typeof value === 'string' && !value.startsWith('{{') && value.startsWith('#') ? value.toUpperCase() : value;
+    // Handle undefined/null values safely
+    const displayValue = (type === 'color' && 
+                         typeof value === 'string' && 
+                         value !== null && 
+                         value !== undefined && 
+                         !value.startsWith('{{') && 
+                         value.startsWith('#')) 
+                         ? value.toUpperCase() 
+                         : (value ?? '');
+    
+    // Handle input change - allow typing {{ to start an expression
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = e.target.value;
+        
+        // If user types {{, automatically wrap it as an expression
+        if (inputValue === '{{' && !isExpression) {
+            onChange('{{}}');
+            // Move cursor between the braces
+            setTimeout(() => {
+                const input = e.target;
+                if (input) {
+                    input.setSelectionRange(2, 2);
+                }
+            }, 0);
+            return;
+        }
+        
+        // If user is typing and starts with {{, treat as expression
+        if (inputValue.startsWith('{{')) {
+            onChange(inputValue);
+            return;
+        }
+        
+        // If user is removing expression braces, allow it (removes expression)
+        // This allows users to delete {{ and }} to convert back to primitive
+        if (isExpression && !inputValue.startsWith('{{')) {
+            // User is removing the expression - extract the inner value
+            const innerValue = inputValue.replace(/^{{/, '').replace(/}}$/, '');
+            onChange(innerValue);
+            return;
+        }
+        
+        // Otherwise, handle normally
+        if (isOpacity) {
+            handleOpacityChange(e);
+        } else {
+            onChange(type === 'number' || type === 'range' ? (parseFloat(inputValue) || 0) : inputValue);
+        }
+    };
+    
+    // Handle opening expression editor - if not an expression, wrap current value
+    const handleOpenEditor = () => {
+        if (onOpenEditor) {
+            const currentValue = isExpression ? String(value) : (value !== undefined && value !== null ? String(value) : '');
+            onOpenEditor(currentValue);
+        }
+    };
     
     return (
-         <div className="mb-2.5" data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
+         <div className={className || "mb-0"} data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1.5`}>{label}</label>
             <div className="flex items-center">
                 <input
                     id={inputId}
                     type={isExpression ? 'text' : type}
                     value={displayValue}
-                    onChange={isOpacity ? handleOpacityChange : (e => onChange(type === 'number' || type === 'range' ? (parseFloat(e.target.value) || 0) : e.target.value))}
+                    onChange={handleChange}
                     onKeyDown={handleOpacityKeyDown}
-                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression ? 'rounded-l-md border-r-0' : 'rounded-md'} ${isExpression && onOpenEditor ? '' : ''}`}
+                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression || onOpenEditor ? 'rounded-l-md border-r-0' : 'rounded-md'}`}
                     placeholder={placeholder}
                 />
-                {isExpression && onOpenEditor && (
+                {onOpenEditor && (
                     <button
-                        onClick={() => onOpenEditor(value)}
-                        className="p-1 border-t border-b border-r rounded-r-md bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100 h-7 flex items-center justify-center"
-                        title="Open Expression Editor"
-                        aria-label="Open Expression Editor"
+                        onClick={handleOpenEditor}
+                        className={`p-1 border-t border-b border-r rounded-r-md h-7 flex items-center justify-center ${
+                            isExpression 
+                                ? 'bg-blue-50 text-blue-600 border-blue-300 hover:bg-blue-100' 
+                                : 'bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100'
+                        }`}
+                        title={isExpression ? "Edit Expression" : "Add Expression"}
+                        aria-label={isExpression ? "Edit Expression" : "Add Expression"}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v-4h-4" />
@@ -307,6 +374,147 @@ export const StylingProps: React.FC<{
         </>}
     </PropertyGroup>
   )};
+
+/**
+ * Helper function to build spacing styles (padding and margin) from props
+ * Now takes evaluated values instead of calling hooks
+ */
+export const buildSpacingStyles = (
+  padding?: string | number,
+  margin?: string | number
+): React.CSSProperties => {
+  const styles: React.CSSProperties = {};
+  
+  if (padding !== undefined) {
+    const paddingValue = typeof padding === 'number' 
+      ? `${padding}px` 
+      : padding;
+    if (paddingValue) {
+      styles.padding = paddingValue;
+    }
+  }
+  
+  if (margin !== undefined) {
+    const marginValue = typeof margin === 'number'
+      ? `${margin}px`
+      : margin;
+    if (marginValue) {
+      styles.margin = marginValue;
+    }
+  }
+  
+  return styles;
+};
+
+/**
+ * Helper function to parse padding value and extract left/top padding
+ * Handles both number and string values (e.g., "10px", "10px 20px", "10px 20px 30px 40px")
+ */
+export const parsePadding = (padding?: string | number): { left: number; top: number } => {
+  if (padding === undefined) {
+    return { left: 0, top: 0 };
+  }
+  
+  if (typeof padding === 'number') {
+    return { left: padding, top: padding };
+  }
+  
+  // Parse string padding (e.g., "10px", "10px 20px", "10px 20px 30px 40px")
+  const parts = padding.trim().split(/\s+/);
+  if (parts.length === 1) {
+    const value = parseFloat(parts[0]) || 0;
+    return { left: value, top: value };
+  } else if (parts.length === 2) {
+    return {
+      top: parseFloat(parts[0]) || 0,
+      left: parseFloat(parts[1]) || 0,
+    };
+  } else if (parts.length === 4) {
+    return {
+      top: parseFloat(parts[0]) || 0,
+      left: parseFloat(parts[3]) || 0,
+    };
+  }
+  
+  return { left: 0, top: 0 };
+};
+
+/**
+ * Helper function to build border style object from border props
+ * Handles both unified border properties and individual side properties
+ * Individual side properties (borderTop, borderRight, etc.) override unified borderWidth for those sides
+ * Now takes evaluated values instead of calling hooks
+ */
+export const buildBorderStyles = (
+  borderProps: BorderProps,
+  borderRadius?: string | number,
+  borderWidth?: string | number,
+  borderColor?: string,
+  borderTop?: string | number,
+  borderRight?: string | number,
+  borderBottom?: string | number,
+  borderLeft?: string | number
+): React.CSSProperties => {
+  const styles: React.CSSProperties = {};
+  
+  // Check if border style is explicitly set to 'none'
+  const isBorderNone = borderProps.borderStyle === 'none';
+  
+  // Apply border radius (always allowed, independent of border style)
+  if (borderRadius !== undefined) {
+    styles.borderRadius = typeof borderRadius === 'number' ? `${borderRadius}px` : borderRadius;
+  }
+  
+  // If border style is 'none', explicitly set it and don't apply any border widths
+  if (isBorderNone) {
+    styles.borderStyle = 'none';
+    return styles; // Early return - no borders should be applied
+  }
+  
+  // Apply border style and color (needed for all borders)
+  if (borderProps.borderStyle !== undefined) {
+    styles.borderStyle = borderProps.borderStyle;
+  }
+  if (borderColor !== undefined) {
+    styles.borderColor = borderColor;
+  }
+  
+  // Check if any individual border sides are set
+  const hasIndividualSides = borderTop !== undefined || 
+                            borderRight !== undefined || 
+                            borderBottom !== undefined || 
+                            borderLeft !== undefined;
+  
+  if (hasIndividualSides) {
+    // Apply individual border side widths (these override unified borderWidth)
+    if (borderTop !== undefined) {
+      styles.borderTop = typeof borderTop === 'number' ? `${borderTop}px` : borderTop;
+    }
+    if (borderRight !== undefined) {
+      styles.borderRight = typeof borderRight === 'number' ? `${borderRight}px` : borderRight;
+    }
+    if (borderBottom !== undefined) {
+      styles.borderBottom = typeof borderBottom === 'number' ? `${borderBottom}px` : borderBottom;
+    }
+    if (borderLeft !== undefined) {
+      styles.borderLeft = typeof borderLeft === 'number' ? `${borderLeft}px` : borderLeft;
+    }
+    
+    // Ensure borderStyle and borderColor are set if individual sides are used
+    // Only set defaults if borderStyle is not explicitly 'none'
+    if (!styles.borderStyle && borderProps.borderStyle === undefined) {
+      styles.borderStyle = 'solid'; // Default to solid if not specified
+    }
+    if (!styles.borderColor && borderColor === undefined) {
+      styles.borderColor = '#e5e7eb'; // Default color if not specified
+    }
+  } else if (borderWidth !== undefined) {
+    // Apply unified border width only if no individual sides are set
+    styles.borderWidth = typeof borderWidth === 'number' ? `${borderWidth}px` : borderWidth;
+  }
+  
+  return styles;
+};
 
 export const StateProps: React.FC<{ 
     props: ComponentProps & {id?: string}; 

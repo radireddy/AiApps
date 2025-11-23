@@ -42,6 +42,12 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   const [selectedComponentIds, setSelectedComponentIds] = useState<string[]>([]);
   const [currentPageId, setCurrentPageId] = useState<string>(initialAppDefinition.mainPageId);
   
+  // Ref to store latest selectedComponentIds to avoid stale closures in deleteSelectedComponents
+  const selectedComponentIdsRef = useRef<string[]>([]);
+  useEffect(() => {
+    selectedComponentIdsRef.current = selectedComponentIds;
+  }, [selectedComponentIds]);
+  
   const { components, dataStore, dataSources: dataSourceInstances, variables, theme } = appDefinition;
 
   // --- Data Sources State Management ---
@@ -49,26 +55,38 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   // --- App Variables State ---
   const [variableState, setVariableState] = useState<Record<string, any>>({});
 
+  // FIX: Use a ref to access latest appDefinition to break circular dependency in refreshDataSource
+  const appDefinitionRef = useRef(appDefinition);
+  useEffect(() => {
+    appDefinitionRef.current = appDefinition;
+  }, [appDefinition]);
 
   /**
    * Refreshes the data for a specific data source instance.
    * Fetches records from the provider and updates the local state.
    */
   const refreshDataSource = useCallback(async (instanceId: string) => {
-    const instance = appDefinition.dataSources.find(ds => ds.id === instanceId);
+    const instance = appDefinitionRef.current.dataSources.find(ds => ds.id === instanceId);
     if (!instance) return;
     const provider = dataSourceRegistry[instance.providerId];
     if (!provider) return;
 
     const records = await provider.getRecords(instance);
     setDataSourceContents(prev => ({ ...prev, [instance.id]: records }));
-  }, [appDefinition]); // FIX: Depend on the entire appDefinition to avoid stale closures
+  }, []); // FIX: No dependencies - uses ref to access latest appDefinition, breaking circular dependency
   
   // Refresh all data sources on initial load or when instances change
+  // FIX: Use a ref to track previous data source IDs to prevent unnecessary refreshes
+  const prevDataSourceIdsRef = useRef<string>('');
   useEffect(() => {
-    appDefinition.dataSources.forEach(instance => {
-      refreshDataSource(instance.id);
-    });
+    const currentIds = appDefinition.dataSources.map(ds => ds.id).sort().join(',');
+    // Only refresh if data source IDs actually changed
+    if (prevDataSourceIdsRef.current !== currentIds) {
+      prevDataSourceIdsRef.current = currentIds;
+      appDefinition.dataSources.forEach(instance => {
+        refreshDataSource(instance.id);
+      });
+    }
   }, [appDefinition.dataSources, refreshDataSource]);
   
   // Initialize variable state when app definition changes
@@ -140,38 +158,16 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   /**
    * Adds a new component to the canvas.
    * Automatically initializes related data store keys if configured in default props.
-   * 
-   * Note: H_STACK and V_STACK are shortcuts that create PANEL components with
-   * horizontal or vertical direction respectively.
    */
   const addComponent = useCallback((type: ComponentType, position: { x: number; y: number }, parentId: string | null = null, pageId: string) => {
-    // Convert H_STACK and V_STACK to PANEL with appropriate direction
-    let actualType = type;
-    let directionOverride: 'horizontal' | 'vertical' | undefined;
-    
-    if (type === ComponentType.H_STACK) {
-      actualType = ComponentType.PANEL;
-      directionOverride = 'horizontal';
-    } else if (type === ComponentType.V_STACK) {
-      actualType = ComponentType.PANEL;
-      directionOverride = 'vertical';
-    }
-    
-    const componentPlugin = componentRegistry[actualType];
+    const componentPlugin = componentRegistry[type];
     if (!componentPlugin) return;
         setAppDefinitionState(prev => {
-            const defaultProps = { ...componentPlugin.paletteConfig.defaultProps };
-            
-            // Override direction if this is a stack shortcut
-            if (directionOverride) {
-              defaultProps.direction = directionOverride;
-            }
-            
             const newComp: AppComponent = {
-                id: `${actualType}_${Date.now()}`,
-                type: actualType,
+                id: `${type}_${Date.now()}`,
+                type,
                 props: {
-                    ...defaultProps,
+                    ...componentPlugin.paletteConfig.defaultProps,
                     ...position,
                 } as ComponentProps,
                 parentId,
@@ -199,13 +195,30 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                     // Build an array including the new component and compute positions for all children
                     const allChildren = [...existingChildren, newComp];
 
+                    // Parse parent padding to account for it in positioning
+                    const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
+                        if (padding === undefined) return { left: 0, top: 0 };
+                        if (typeof padding === 'number') return { left: padding, top: padding };
+                        const parts = String(padding).trim().split(/\s+/);
+                        if (parts.length === 1) {
+                            const value = parseFloat(parts[0]) || 0;
+                            return { left: value, top: value };
+                        } else if (parts.length === 2) {
+                            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
+                        } else if (parts.length === 4) {
+                            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
+                        }
+                        return { left: 0, top: 0 };
+                    };
+                    const parentPadding = parsePaddingValue(parentProps.padding);
+                    
                     if ((parentProps.direction || 'horizontal') === 'horizontal') {
-                        // compute positions left-to-right
-                        let currentX = 0;
+                        // compute positions left-to-right, starting from padding edge
+                        let currentX = parentPadding.left;
                         const arranged = allChildren.map((c, idx) => {
                             const w = (c.props as any).width || 0;
                             const h = (c.props as any).height || 0;
-                            const y = Math.max(0, Math.floor(((parentProps.height || 0) - h) / 2));
+                            const y = Math.max(parentPadding.top, Math.floor(((parentProps.height || 0) - h) / 2));
                             const x = currentX;
                             currentX += w + GAP;
                             return { id: c.id, x, y };
@@ -220,12 +233,12 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                         // store arranged positions on a map via closure
                         (newComp as any)._arranged = arranged.reduce((m, a) => { m[a.id] = { x: a.x, y: a.y }; return m; }, {} as Record<string, any>);
                     } else {
-                        // vertical stacking
-                        let currentY = 0;
+                        // vertical stacking, starting from padding edge
+                        let currentY = parentPadding.top;
                         const arranged = allChildren.map((c) => {
                             const w = (c.props as any).width || 0;
                             const h = (c.props as any).height || 0;
-                            const x = Math.max(0, Math.floor(((parentProps.width || 0) - w) / 2));
+                            const x = Math.max(parentPadding.left, Math.floor(((parentProps.width || 0) - w) / 2));
                             const y = currentY;
                             currentY += h + GAP;
                             return { id: c.id, x, y };
@@ -324,8 +337,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, []);
 
   const deleteSelectedComponents = useCallback(() => {
-    if (selectedComponentIds.length === 0) return;
     setAppDefinitionState(prev => {
+        // Use ref to get the latest selectedComponentIds to avoid stale closures
+        const currentSelectedIds = selectedComponentIdsRef.current;
+        if (currentSelectedIds.length === 0) return prev;
+        
         const allIdsToDelete = new Set<string>();
         const findChildren = (parentId: string) => {
             prev.components.forEach(c => {
@@ -335,7 +351,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                 }
             });
         };
-        selectedComponentIds.forEach(id => {
+        currentSelectedIds.forEach(id => {
             allIdsToDelete.add(id);
             findChildren(id);
         });
@@ -345,7 +361,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         }
     });
     setSelectedComponentIds([]);
-  }, [selectedComponentIds]);
+  }, []);
 
   const updateDataStore = useCallback((key: string, value: any) => {
     setAppDefinitionState(prev => ({
@@ -353,6 +369,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         dataStore: set(prev.dataStore, key, value)
       }));
   }, []);
+
+  // Ref to track if reparentComponent is currently being processed to prevent infinite loops
+  const isReparentingRef = useRef<Set<string>>(new Set());
 
   /**
    * Handles the complex logic of moving a component into or out of a container.
@@ -362,8 +381,22 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
    * @param componentId - The ID of the component being moved.
    */
   const reparentComponent = useCallback((componentId: string) => {
+    // Prevent infinite loops by checking if this component is already being reparented
+    if (isReparentingRef.current.has(componentId)) {
+      return;
+    }
+    isReparentingRef.current.add(componentId);
+
     // Helper to get the absolute position of a component
-    const getAbsolutePosition = (cId: string, allComponents: AppComponent[]): { x: number, y: number } => {
+    // Uses a visited set to prevent infinite loops from circular parent references
+    const getAbsolutePosition = (cId: string, allComponents: AppComponent[], visited: Set<string> = new Set()): { x: number, y: number } => {
+        // Prevent infinite loops from circular references
+        if (visited.has(cId)) {
+            console.warn(`Circular parent reference detected for component ${cId}`);
+            return { x: 0, y: 0 };
+        }
+        visited.add(cId);
+        
         const component = allComponents.find(c => c.id === cId);
         if (!component) return { x: 0, y: 0 };
 
@@ -371,6 +404,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         let absY = component.props.y;
         let currentParentId = component.parentId;
         while (currentParentId) {
+            if (visited.has(currentParentId)) {
+                console.warn(`Circular parent reference detected in parent chain for component ${cId}`);
+                break;
+            }
+            visited.add(currentParentId);
             const parent = allComponents.find(p => p.id === currentParentId);
             if (parent) {
                 absX += parent.props.x;
@@ -384,11 +422,16 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     };
     
     // Helper to check if a component is a descendant of another
-    const isDescendant = (childId: string, parentId: string, allComponents: AppComponent[]): boolean => {
+    // Uses a visited set to prevent infinite recursion in case of circular references
+    const isDescendant = (childId: string, parentId: string, allComponents: AppComponent[], visited: Set<string> = new Set()): boolean => {
+        // Prevent infinite recursion from circular references
+        if (visited.has(childId)) return false;
+        visited.add(childId);
+        
         const child = allComponents.find(c => c.id === childId);
         if (!child || !child.parentId) return false;
         if (child.parentId === parentId) return true;
-        return isDescendant(child.parentId, parentId, allComponents);
+        return isDescendant(child.parentId, parentId, allComponents, visited);
     };
 
     setAppDefinitionState(prev => {
@@ -403,7 +446,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const potentialParents = allComponents.filter(p => {
             const plugin = componentRegistry[p.type];
             // Cannot be its own parent or child, and must be on the same page
-            return plugin.isContainer && p.id !== componentId && !isDescendant(p.id, componentId, allComponents) && p.pageId === componentToReparent.pageId;
+            // Check if componentId is a descendant of p.id to prevent moving into own child
+            return plugin.isContainer && p.id !== componentId && !isDescendant(componentId, p.id, allComponents) && p.pageId === componentToReparent.pageId;
         });
 
         let newParent: AppComponent | null = null;
@@ -453,6 +497,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
         return { ...prev, components: updatedComponents };
     });
+    
+    // Remove from processing set after a short delay to allow state update to complete
+    setTimeout(() => {
+      isReparentingRef.current.delete(componentId);
+    }, 100);
   }, [setAppDefinitionState]);
 
   // FIX: Completely overhauled alignment and distribution logic to be robust, prevent overlaps, and correctly space all components.
@@ -791,20 +840,6 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, [components, currentPageId]);
 
 
-  // Create theme with lowercase aliases for consistency
-  const themeWithLowercaseAliases = useMemo(() => {
-    const theme = appDefinition.theme;
-    return {
-      ...theme,
-      colors: {
-        ...theme.colors,
-        // Add lowercase aliases for camelCase properties
-        onprimary: theme.colors.onPrimary,
-        onsecondary: theme.colors.onSecondary,
-      },
-    };
-  }, [appDefinition.theme]);
-
   // --- EXPRESSION EVALUATION SCOPE ---
   /**
    * Constructs the scope object used by the expression evaluation engine.
@@ -812,7 +847,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
    * Any change to these dependencies triggers a re-evaluation of expressions.
    */
   const evaluationScope = useMemo(() => {
-    const scope = { console, theme: themeWithLowercaseAliases, ...dataStore, ...dataSourceContents, ...variableState };
+    const scope = { console, theme: appDefinition.theme, ...dataStore, ...dataSourceContents, ...variableState };
     // Add component states to scope
     components.forEach(c => {
         const props = c.props as any;
@@ -839,7 +874,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     });
 
     return scope;
-  }, [themeWithLowercaseAliases, dataStore, components, dataSourceContents, variableState]);
+  }, [appDefinition.theme, dataStore, components, dataSourceContents, variableState]);
 
   const memoizedAppDefinition = useMemo(() => (appDefinition), [appDefinition]);
 

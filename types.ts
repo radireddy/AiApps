@@ -110,6 +110,10 @@ export interface BaseProps {
   disabled?: boolean | string;
   /** Expression to determine visibility (e.g., `{{ !user.isLoggedIn }}`) */
   hidden?: boolean | string;
+  /** Padding (e.g., '8px', '10px 5px', or '{{theme.spacing.md}}') */
+  padding?: number | string;
+  /** Margin (e.g., '8px', '10px 5px', or '{{theme.spacing.md}}') */
+  margin?: number | string;
 }
 
 export interface BorderProps {
@@ -117,6 +121,10 @@ export interface BorderProps {
     borderWidth?: number | string;
     borderColor?: string;
     borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted';
+    borderTop?: number | string;
+    borderLeft?: number | string;
+    borderRight?: number | string;
+    borderBottom?: number | string;
 }
 
 export type PropertyRendererType = 'javascript' | 'markdown' | 'literal';

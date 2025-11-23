@@ -94,7 +94,11 @@ export function filterPropertyGroups(
         properties: filteredProperties,
       };
     })
-    .filter(group => group.properties.length > 0); // Remove groups with no properties
+    .filter(group => {
+      // Keep groups that have properties OR have a customGroupRenderer
+      // (customGroupRenderer groups don't need properties array)
+      return group.properties.length > 0 || !!group.customGroupRenderer;
+    });
 }
 
 /**

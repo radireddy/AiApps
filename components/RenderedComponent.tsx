@@ -5,6 +5,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppComponent, ComponentProps, ComponentType, ActionHandlers } from '../types';
 import { componentRegistry } from './component-registry/registry';
 import { useJavaScriptRenderer } from '../property-renderers/useJavaScriptRenderer';
+import { parsePadding } from './component-registry/common';
 
 interface RenderedComponentProps {
   component: AppComponent;
@@ -45,6 +46,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const dragStartPos = useRef({ x: 0, y: 0 });
   const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const componentRef = useRef<HTMLDivElement>(null);
+  const hasMoved = useRef(false); // Track if component actually moved during drag
 
   // This ref will hold the latest `allComponents` array to avoid stale closures in event handlers.
   const allComponentsRef = useRef(allComponents);
@@ -63,16 +65,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const ComponentRenderer = plugin.renderer;
   const isSelected = selectedComponentIds.includes(component.id);
   
-  // Evaluate hidden property - handle both boolean and string values correctly
-  // String values like "true", "false", "1", "0" should be converted to booleans
-  const hiddenValue = useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
-  const isHidden = (() => {
-    if (typeof hiddenValue === 'string') {
-      const lower = hiddenValue.toLowerCase().trim();
-      return lower === 'true' || lower === '1';
-    }
-    return !!hiddenValue;
-  })();
+  const isHidden = !!useJavaScriptRenderer(component.props.hidden, evaluationScope, false);
 
   // Exit inline editing when component is deselected
   useEffect(() => {
@@ -94,6 +87,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       onSelect(component.id, e);
     }
     setIsDragging(true);
+    hasMoved.current = false; // Reset move tracking
     dragStartPos.current = { x: e.clientX, y: e.clientY };
   };
   
@@ -133,6 +127,11 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       const dx = e.clientX - dragStartPos.current.x;
       const dy = e.clientY - dragStartPos.current.y;
 
+      // Only consider it a move if the mouse has moved more than a few pixels
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        hasMoved.current = true;
+      }
+
       // FIX: Read from the refs to get the latest list of selected IDs and component data,
       // ensuring all selected components move together correctly.
       const updates = selectedIdsRef.current.map(id => {
@@ -157,8 +156,11 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     const handleMouseUp = () => {
       if (isDragging) {
         setIsDragging(false);
-        // FIX: Use the ref here as well to ensure the reparent check is run on all dragged components.
-        selectedIdsRef.current.forEach(id => onReparentCheck(id));
+        // Only call reparentComponent if the component actually moved (was dragged, not just clicked)
+        if (hasMoved.current) {
+          selectedIdsRef.current.forEach(id => onReparentCheck(id));
+        }
+        hasMoved.current = false; // Reset for next interaction
       }
     };
 
@@ -205,11 +207,16 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     if (!type) return;
 
     const rect = componentRef.current.getBoundingClientRect();
-    const x = event.clientX - rect.left + (component.props.x as number);
-    const y = event.clientY - rect.top + (component.props.y as number);
+    
+    // Calculate padding offset - account for parent's padding
+    const { left: paddingLeft, top: paddingTop } = parsePadding(component.props.padding);
+    
+    // Position relative to padding edge, not border edge
+    const x = event.clientX - rect.left - paddingLeft + (component.props.x as number);
+    const y = event.clientY - rect.top - paddingTop + (component.props.y as number);
 
     onDrop({ type }, x, y, component.id);
-  }, [onDrop, component.id, component.props.x, component.props.y, plugin.isContainer]);
+  }, [onDrop, component.id, component.props.x, component.props.y, component.props.padding, plugin.isContainer]);
 
   const handleDragOver = (event: React.DragEvent) => {
     if (plugin.isContainer) {
@@ -220,21 +227,15 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
 
 
   const p = component.props;
-  
   const componentStyle: React.CSSProperties = {
     position: 'absolute',
     left: p.x,
     top: p.y,
     width: p.width,
     height: p.height,
-    zIndex: plugin.isContainer ? 0 : (isSelected ? 10 : 1),
-    // In edit mode, show hidden components with reduced opacity so they're still selectable
-    // In preview mode, hide them completely
-    display: isHidden && mode === 'preview' ? 'none' : 'block',
-    // Apply opacity only for hidden state in edit mode
-    // Regular opacity and boxShadow are handled by individual component renderers
-    opacity: isHidden && mode === 'edit' ? 0.3 : undefined,
-    pointerEvents: isHidden && mode === 'edit' ? 'auto' : undefined, // Ensure hidden components are still clickable in edit mode
+    // Containers should also get higher z-index when selected to show selection outline
+    zIndex: plugin.isContainer ? (isSelected ? 10 : 0) : (isSelected ? 10 : 1),
+    display: isHidden ? 'none' : 'block',
   };
 
   const selectionClass = isSelected && mode === 'edit' ? 'outline outline-2 outline-blue-500 outline-offset-2' : '';

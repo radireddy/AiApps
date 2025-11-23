@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ComponentType, InputProps, ComponentPlugin } from '../../types';
-import { InlineTextEditor } from './common';
+import { InlineTextEditor, buildSpacingStyles } from './common';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
@@ -41,6 +41,9 @@ const InputRenderer: React.FC<{
   // Calculate final opacity: use component opacity, but reduce if disabled
   const finalOpacity = isDisabled ? 0.6 : (typeof opacityValue === 'number' ? opacityValue : (typeof opacityValue === 'string' && opacityValue.trim() ? parseFloat(opacityValue) || 1 : 1));
 
+  const paddingValue = useJavaScriptRenderer(p.padding, evaluationScope, undefined);
+  const marginValue = useJavaScriptRenderer(p.margin, evaluationScope, undefined);
+  
   const style: React.CSSProperties = {
     borderRadius,
     borderWidth,
@@ -48,7 +51,8 @@ const InputRenderer: React.FC<{
     borderStyle: p.borderStyle,
     opacity: finalOpacity,
     boxShadow: boxShadowValue || undefined,
-    padding: '0.5rem',
+    ...buildSpacingStyles(paddingValue, marginValue),
+    padding: paddingValue !== undefined ? undefined : '0.5rem', // Use prop padding if set, otherwise default to 0.5rem
     boxSizing: 'border-box',
     backgroundColor: 'white',
     color: '#111827',

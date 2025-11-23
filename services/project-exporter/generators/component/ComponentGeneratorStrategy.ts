@@ -58,10 +58,19 @@ export abstract class BaseComponentGenerator implements IComponentGeneratorStrat
             height: `\`${props.height}px\``,
             opacity: translateExpression(props.opacity, appDef, 'raw-js'),
             boxShadow: translateExpression(props.boxShadow, appDef, 'raw-js'),
+            padding: translateExpression(props.padding, appDef, 'raw-js'),
+            margin: translateExpression(props.margin, appDef, 'raw-js'),
         };
 
         const borderProps = props as any;
+        // Unified border properties
         ['borderRadius', 'borderWidth', 'borderColor', 'borderStyle'].forEach(prop => {
+             if (borderProps[prop] !== undefined) {
+                 baseStyleProps[prop] = translateExpression(borderProps[prop], appDef, 'raw-js');
+             }
+        });
+        // Individual border side properties
+        ['borderTop', 'borderRight', 'borderBottom', 'borderLeft'].forEach(prop => {
              if (borderProps[prop] !== undefined) {
                  baseStyleProps[prop] = translateExpression(borderProps[prop], appDef, 'raw-js');
              }
