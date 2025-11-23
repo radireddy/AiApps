@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PropertyTab, PropertyGroup, PropertyMetadata } from './metadata';
 import { PropertyGroup as PropertyGroupComponent } from './PropertyGroup';
 import { PropertyInput, PropertyInputProps } from './PropertyInput';
+import { DEFAULT_GROUP_ORDER } from './registry';
 
 interface PropertyTabsProps {
   tabs: PropertyTab[];
@@ -152,8 +153,9 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
             {/* Render grouped properties */}
             {activeTabData.groups
               .sort((a, b) => {
-                const orderA = a.order ?? 999;
-                const orderB = b.order ?? 999;
+                // Use orderOverride if provided, otherwise use order, otherwise use default order
+                const orderA = a.orderOverride ?? a.order ?? DEFAULT_GROUP_ORDER[a.id] ?? 999;
+                const orderB = b.orderOverride ?? b.order ?? DEFAULT_GROUP_ORDER[b.id] ?? 999;
                 return orderA - orderB;
               })
               .map((group) => {

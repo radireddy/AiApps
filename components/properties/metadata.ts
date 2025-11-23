@@ -153,9 +153,11 @@ export interface PropertyGroup {
   id: string;
   label: string;
   tab: string;
-  order?: number;
+  order?: number; // Order within the tab (lower numbers appear first)
   collapsible?: boolean;
   defaultCollapsed?: boolean;
+  /** Override the default group order for this specific group (takes precedence over order) */
+  orderOverride?: number;
   /** Custom renderer for the entire group (overrides default rendering) */
   customGroupRenderer?: React.FC<{
     group: PropertyGroup;

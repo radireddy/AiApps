@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ComponentPropertySchema, PropertyMetadata, PropertyGroup } from '../metadata';
 import { PropertyContext } from '../metadata';
 import { CollapsibleSection, PropInput, PropFxInput, PropSelect } from '../../component-registry/common';
+import { DEFAULT_GROUP_ORDER } from '../registry';
 
 interface SmartLayoutRendererProps {
   schema: ComponentPropertySchema;
@@ -51,15 +52,29 @@ export const SmartLayoutRenderer: React.FC<SmartLayoutRendererProps> = ({
     return grouped;
   }, [schema.properties]);
 
-  // Get groups in order
+  // Get groups in order - groups should already be sorted by createPropertySchema
+  // But we'll sort again here to ensure consistency, especially for tabs
   const sortedGroups = useMemo(() => {
     const groups = schema.groups || [];
+    const tabs = schema.tabs || [];
+    
     return [...groups].sort((a, b) => {
-      const orderA = a.order ?? 999;
-      const orderB = b.order ?? 999;
+      // First sort by tab order
+      const tabA = tabs.find(t => t.id === a.tab);
+      const tabB = tabs.find(t => t.id === b.tab);
+      const tabOrderA = tabA?.order ?? 999;
+      const tabOrderB = tabB?.order ?? 999;
+      if (tabOrderA !== tabOrderB) {
+        return tabOrderA - tabOrderB;
+      }
+      
+      // Within the same tab, sort by order
+      // Use orderOverride if provided, otherwise use order, otherwise use default order
+      const orderA = a.orderOverride ?? a.order ?? DEFAULT_GROUP_ORDER[a.id] ?? 999;
+      const orderB = b.orderOverride ?? b.order ?? DEFAULT_GROUP_ORDER[b.id] ?? 999;
       return orderA - orderB;
     });
-  }, [schema.groups]);
+  }, [schema.groups, schema.tabs]);
 
   // Render a single property input (without wrapper)
   const renderPropertyInput = (prop: PropertyMetadata, compact: boolean = false) => {
@@ -442,16 +457,19 @@ export const SmartLayoutRenderer: React.FC<SmartLayoutRendererProps> = ({
 
   return (
     <div className="py-1">
-      {sortedGroups.map((group) => {
+      {sortedGroups.map((group, index) => {
         const groupProperties = propertiesByGroup[group.id] || [];
         if (groupProperties.length === 0) return null;
+
+        // Use a unique key combining group id, tab, and index to prevent duplicates
+        const uniqueKey = `${group.tab || 'General'}-${group.id}-${index}`;
 
         // Check if group has custom renderer
         if (group.customGroupRenderer) {
           const CustomGroupRenderer = group.customGroupRenderer;
           return (
             <CollapsibleSection
-              key={group.id}
+              key={uniqueKey}
               title={group.label}
               isOpenDefault={!group.defaultCollapsed}
             >
@@ -472,7 +490,7 @@ export const SmartLayoutRenderer: React.FC<SmartLayoutRendererProps> = ({
         // Default group rendering with smart layout
         return (
           <CollapsibleSection
-            key={group.id}
+            key={uniqueKey}
             title={group.label}
             isOpenDefault={!group.defaultCollapsed}
           >

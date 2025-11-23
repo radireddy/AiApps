@@ -151,10 +151,11 @@ const inputProperties: PropertyMetadata[] = [
 
 /**
  * Input-specific groups
+ * Order values use DEFAULT_GROUP_ORDER from registry for consistency
  */
 const inputGroups: PropertyGroup[] = [
-  { id: 'Input Form And Validation', label: 'Input Form And Validation', tab: 'General', order: 2, collapsible: true, defaultCollapsed: false },
-  { id: 'Accessibility', label: 'Accessibility', tab: 'General', order: 3, collapsible: true, defaultCollapsed: false },
+  { id: 'Input Form And Validation', label: 'Input Form And Validation', tab: 'General', collapsible: true, defaultCollapsed: false },
+  { id: 'Accessibility', label: 'Accessibility', tab: 'General', collapsible: true, defaultCollapsed: false },
 ];
 
 /**

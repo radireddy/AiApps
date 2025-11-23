@@ -198,12 +198,34 @@ export const commonTabs: PropertyTab[] = [
 ];
 
 /**
- * Common groups
+ * Default group order for consistent ordering across all components
+ * Groups are ordered by tab first, then by this order within each tab
+ */
+export const DEFAULT_GROUP_ORDER: Record<string, number> = {
+  // General tab groups
+  'Basic': 0,
+  'Layout': 1,
+  'State': 2,
+  'Input Form And Validation': 3,
+  'Accessibility': 4,
+  'Container Layout': 5,
+  'Color & Typography': 6,
+  'Typography': 7,
+  'Spacing': 8,
+  'Borders': 9,
+  // Styles tab groups
+  'Styling': 0,
+  // Events tab groups
+  'Events': 0,
+};
+
+/**
+ * Common groups with consistent default ordering
  */
 export const commonGroups: PropertyGroup[] = [
-  { id: 'Layout', label: 'Layout', tab: 'General', order: 0, collapsible: true },
-  { id: 'State', label: 'State', tab: 'General', order: 1, collapsible: true },
-  { id: 'Styling', label: 'Styling', tab: 'Styles', order: 0, collapsible: true },
+  { id: 'Layout', label: 'Layout', tab: 'General', order: DEFAULT_GROUP_ORDER['Layout'], collapsible: true },
+  { id: 'State', label: 'State', tab: 'General', order: DEFAULT_GROUP_ORDER['State'], collapsible: true },
+  { id: 'Styling', label: 'Styling', tab: 'Styles', order: DEFAULT_GROUP_ORDER['Styling'], collapsible: true },
 ];
 
 /**
@@ -230,7 +252,45 @@ export function createPropertySchema(
 
   // Use custom tabs/groups or defaults
   const tabs = customTabs || commonTabs;
-  const groups = customGroups || commonGroups;
+  
+  // Merge common and custom groups, deduplicating by id
+  let groups: PropertyGroup[];
+  if (customGroups && customGroups.length > 0) {
+    const groupMap = new Map<string, PropertyGroup>();
+    // First add common groups
+    commonGroups.forEach(group => {
+      groupMap.set(group.id, group);
+    });
+    // Then add/override with custom groups (custom groups take precedence)
+    customGroups.forEach(group => {
+      // If custom group doesn't have an order, use default order
+      if (group.order === undefined) {
+        group.order = DEFAULT_GROUP_ORDER[group.id] ?? 999;
+      }
+      groupMap.set(group.id, group);
+    });
+    groups = Array.from(groupMap.values());
+  } else {
+    groups = commonGroups;
+  }
+  
+  // Sort groups: first by tab, then by order within tab
+  groups.sort((a, b) => {
+    // First sort by tab order
+    const tabA = tabs.find(t => t.id === a.tab);
+    const tabB = tabs.find(t => t.id === b.tab);
+    const tabOrderA = tabA?.order ?? 999;
+    const tabOrderB = tabB?.order ?? 999;
+    if (tabOrderA !== tabOrderB) {
+      return tabOrderA - tabOrderB;
+    }
+    
+    // Within the same tab, sort by order
+    // Use orderOverride if provided, otherwise use order, otherwise use default order
+    const orderA = a.orderOverride ?? a.order ?? DEFAULT_GROUP_ORDER[a.id] ?? 999;
+    const orderB = b.orderOverride ?? b.order ?? DEFAULT_GROUP_ORDER[b.id] ?? 999;
+    return orderA - orderB;
+  });
 
   return {
     componentType,
