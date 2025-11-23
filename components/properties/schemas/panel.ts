@@ -1,16 +1,16 @@
 import { ComponentType } from '../../../types';
 import { ComponentPropertySchema, PropertyMetadata, PropertyTab, PropertyGroup } from '../metadata';
-import { commonProperties, commonTabs, commonGroups, createPropertySchema } from '../registry';
+import { commonProperties, commonTabs, commonGroups, createPropertySchema, DEFAULT_GROUP_ORDER } from '../registry';
 import { ContainerLayoutRenderer } from '../renderers/ContainerLayoutRenderer';
 
 /**
  * Panel-specific property definitions
  */
 const panelProperties: PropertyMetadata[] = [
-  // Basic properties
+  // Override state properties to move them to Basic group
   {
-    id: 'hidden',
-    label: 'Hide',
+    id: 'disabled',
+    label: 'Disabled',
     type: 'expression',
     defaultValue: false,
     supportsExpression: true,
@@ -18,9 +18,24 @@ const panelProperties: PropertyMetadata[] = [
     tab: 'General',
     tabOrder: 0,
     groupOrder: 0,
-    propertyOrder: 0,
+    propertyOrder: 1,
     applicableTo: [ComponentType.PANEL],
-    tooltip: 'Expression to determine visibility. Use ! to invert: false = visible, true = hidden',
+    tooltip: 'Expression to determine if component is disabled',
+    placeholder: 'e.g. {{Table1.selectedRecord == null}}',
+  },
+  {
+    id: 'hidden',
+    label: 'Hidden',
+    type: 'expression',
+    defaultValue: false,
+    supportsExpression: true,
+    group: 'Basic',
+    tab: 'General',
+    tabOrder: 0,
+    groupOrder: 0,
+    propertyOrder: 2,
+    applicableTo: [ComponentType.PANEL],
+    tooltip: 'Expression to determine visibility',
     placeholder: 'e.g. {{!showAlert}}',
   },
   
@@ -194,28 +209,63 @@ const panelProperties: PropertyMetadata[] = [
  * Panel-specific groups
  */
 const panelGroups: PropertyGroup[] = [
-  { id: 'Basic', label: 'Basic', tab: 'General', order: 0, collapsible: true, defaultCollapsed: false },
+  { 
+    id: 'Basic', 
+    label: 'Basic', 
+    tab: 'General', 
+    order: DEFAULT_GROUP_ORDER['Basic'], 
+    collapsible: true, 
+    defaultCollapsed: false 
+  },
   { 
     id: 'Container Layout', 
     label: 'Container Layout', 
     tab: 'General', 
-    order: 1, 
+    order: DEFAULT_GROUP_ORDER['Container Layout'], 
     collapsible: true, 
     defaultCollapsed: false,
     customGroupRenderer: ContainerLayoutRenderer as any,
   },
-  { id: 'Color & Typography', label: 'Color & Typography', tab: 'Styles', order: 0, collapsible: true, defaultCollapsed: false },
-  { id: 'Spacing', label: 'Spacing', tab: 'Styles', order: 1, collapsible: true, defaultCollapsed: false },
-  { id: 'Borders', label: 'Borders', tab: 'Styles', order: 2, collapsible: true, defaultCollapsed: false },
+  { 
+    id: 'Color & Typography', 
+    label: 'Color & Typography', 
+    tab: 'Styles', 
+    order: DEFAULT_GROUP_ORDER['Color & Typography'], 
+    collapsible: true, 
+    defaultCollapsed: false 
+  },
+  { 
+    id: 'Spacing', 
+    label: 'Spacing', 
+    tab: 'Styles', 
+    order: DEFAULT_GROUP_ORDER['Spacing'], 
+    collapsible: true, 
+    defaultCollapsed: false 
+  },
+  { 
+    id: 'Borders', 
+    label: 'Borders', 
+    tab: 'Styles', 
+    order: DEFAULT_GROUP_ORDER['Borders'], 
+    collapsible: true, 
+    defaultCollapsed: false 
+  },
 ];
 
 /**
  * Panel property schema
+ * Note: State group is excluded for Panel - state properties are merged into Basic group
  */
-export const panelSchema: ComponentPropertySchema = createPropertySchema(
+const panelSchemaBase = createPropertySchema(
   ComponentType.PANEL,
   panelProperties,
   commonTabs,
   [...commonGroups, ...panelGroups]
 );
+
+// Filter out State group and export the final schema
+export const panelSchema: ComponentPropertySchema = {
+  ...panelSchemaBase,
+  groups: panelSchemaBase.groups.filter(g => g.id !== 'State'),
+};
 

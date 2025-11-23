@@ -757,3 +757,178 @@ describe('PropertiesPanelCore - Property Tabs', () => {
     expect(screen.getByText('State')).toBeInTheDocument();
   });
 });
+
+describe('PropertiesPanelCore - Panel Component', () => {
+  const onUpdate = jest.fn();
+  const onOpenExpressionEditor = jest.fn();
+  const onArrangeContainerChildren = jest.fn();
+  const baseProps = {
+    onUpdate,
+    dataSources: [],
+    variables: [],
+    evaluationScope: {},
+    onOpenExpressionEditor,
+    onArrangeContainerChildren,
+  };
+
+  it('should display Panel properties with Container Layout group', () => {
+    const components = [
+      { 
+        id: 'panel1', 
+        type: ComponentType.PANEL, 
+        props: { 
+          direction: 'horizontal',
+          justifyContent: 'start',
+          alignItems: 'center',
+          x: 0,
+          y: 0,
+          width: 400,
+          height: 300,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['panel1']} 
+      />
+    );
+    
+    // Verify tabs are displayed
+    expect(screen.getByRole('tab', { name: 'General' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Styles' })).toBeInTheDocument();
+    
+    // Verify Container Layout group is displayed
+    expect(screen.getByText('Container Layout')).toBeInTheDocument();
+    
+    // Verify Basic group is displayed
+    expect(screen.getByText('Basic')).toBeInTheDocument();
+  });
+
+  it('should display Container Layout icons for direction, justify, and align', () => {
+    const components = [
+      { 
+        id: 'panel1', 
+        type: ComponentType.PANEL, 
+        props: { 
+          direction: 'horizontal',
+          justifyContent: 'start',
+          alignItems: 'center',
+          x: 0,
+          y: 0,
+          width: 400,
+          height: 300,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['panel1']} 
+      />
+    );
+    
+    // Verify Container Layout group is displayed
+    expect(screen.getByText('Container Layout')).toBeInTheDocument();
+    
+    // Verify direction buttons with icons are present
+    expect(screen.getByLabelText('Set direction to horizontal')).toBeInTheDocument();
+    expect(screen.getByLabelText('Set direction to vertical')).toBeInTheDocument();
+    
+    // Verify justify buttons with icons are present
+    expect(screen.getByLabelText(/Justify content: Start/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Justify content: Center/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Justify content: End/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Justify content: Space Between/)).toBeInTheDocument();
+    
+    // Verify align buttons with icons are present
+    expect(screen.getByLabelText(/Align items: Start/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Align items: Center/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Align items: End/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Align items: Stretch/)).toBeInTheDocument();
+  });
+
+  it('should update Panel direction when icon button is clicked', async () => {
+    const user = userEvent.setup();
+    const components = [
+      { 
+        id: 'panel1', 
+        type: ComponentType.PANEL, 
+        props: { 
+          direction: 'horizontal',
+          justifyContent: 'start',
+          alignItems: 'center',
+          x: 0,
+          y: 0,
+          width: 400,
+          height: 300,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['panel1']} 
+      />
+    );
+    
+    // Find and click the vertical direction button
+    const verticalButton = screen.getByLabelText('Set direction to vertical');
+    await user.click(verticalButton);
+    
+    // Verify onUpdate was called with new direction
+    expect(onUpdate).toHaveBeenCalledWith('panel1', { direction: 'vertical' });
+    
+    // Verify onArrangeContainerChildren was called
+    expect(onArrangeContainerChildren).toHaveBeenCalledWith('panel1', { direction: 'vertical' });
+  });
+
+  it('should display Panel styling properties in Styles tab', async () => {
+    const user = userEvent.setup();
+    const components = [
+      { 
+        id: 'panel1', 
+        type: ComponentType.PANEL, 
+        props: { 
+          direction: 'horizontal',
+          backgroundColor: '#ffffff',
+          padding: '8px',
+          margin: '0px',
+          x: 0,
+          y: 0,
+          width: 400,
+          height: 300,
+        } 
+      } as any,
+    ];
+    
+    render(
+      <PropertiesPanelCore 
+        {...baseProps} 
+        components={components} 
+        selectedComponentIds={['panel1']} 
+      />
+    );
+    
+    // Click on the Styles tab
+    const stylesTab = screen.getByRole('tab', { name: 'Styles' });
+    await user.click(stylesTab);
+    
+    // Wait for styling groups to appear
+    await waitFor(() => {
+      expect(screen.getByText('Color & Typography')).toBeInTheDocument();
+    });
+    
+    // Verify styling properties are visible
+    expect(screen.getByLabelText('Background Color')).toBeInTheDocument();
+    expect(screen.getByLabelText('Background Gradient')).toBeInTheDocument();
+    expect(screen.getByLabelText('Padding')).toBeInTheDocument();
+    expect(screen.getByLabelText('Margin')).toBeInTheDocument();
+  });
+});

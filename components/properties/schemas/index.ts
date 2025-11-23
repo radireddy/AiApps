@@ -8,7 +8,9 @@
  */
 
 import { registerPropertySchema } from '../registry';
-// import { panelSchema } from './panel';
+import { panelSchema } from './panel';
+import { hStackSchema } from './hStack';
+import { vStackSchema } from './vStack';
 import { dividerSchema } from './divider';
 import { inputSchema } from './input';
 import { labelSchema } from './label';
@@ -22,11 +24,12 @@ import { imageSchema } from './image';
 import { tableSchema } from './table';
 
 // Register all schemas
-// Components using metadata-driven system will use SmartLayoutRenderer to preserve original UX with efficient layouts
+// Components using metadata-driven system will use PropertyTabs with smart layout to preserve original UX with efficient layouts
 export function registerAllPropertySchemas(): void {
-  // Schemas are available - when registered, components use metadata backend with legacy UX
-  // Uncomment to enable metadata-driven rendering for specific components:
-  // registerPropertySchema(panelSchema);
+  // Schemas are available - when registered, components use metadata backend with tabs and smart layouts
+  registerPropertySchema(panelSchema); // ✅ Panel uses metadata backend with Container Layout icons
+  registerPropertySchema(hStackSchema); // ✅ H-Stack uses metadata backend with Container Layout icons
+  registerPropertySchema(vStackSchema); // ✅ V-Stack uses metadata backend with Container Layout icons
   registerPropertySchema(dividerSchema); // ✅ Divider uses metadata backend
   registerPropertySchema(inputSchema); // ✅ Input uses metadata backend
   registerPropertySchema(labelSchema); // ✅ Label uses metadata backend
