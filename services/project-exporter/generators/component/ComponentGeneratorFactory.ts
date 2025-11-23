@@ -12,10 +12,8 @@ import { LabelGenerator, ImageGenerator, FallbackGenerator } from './implementat
 export class ComponentGeneratorFactory {
     private static generators: Partial<Record<ComponentType, IComponentGeneratorStrategy>> = {
         [ComponentType.PANEL]: new ContainerGenerator(),
-        [ComponentType.FORM]: new ContainerGenerator(),
         [ComponentType.H_STACK]: new ContainerGenerator(),
         [ComponentType.V_STACK]: new ContainerGenerator(),
-        [ComponentType.MODAL]: new ContainerGenerator(), // Treated as container
         [ComponentType.LABEL]: new LabelGenerator(),
         [ComponentType.INPUT]: new InputGenerator(),
         [ComponentType.BUTTON]: new ButtonGenerator(),

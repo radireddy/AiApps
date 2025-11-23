@@ -37,10 +37,8 @@ export const BasicPropertiesGroup: PropertyGroup = {
         const componentType = context?.componentType;
         if (componentType && [
           ComponentType.PANEL,
-          ComponentType.FORM,
           ComponentType.H_STACK,
           ComponentType.V_STACK,
-          ComponentType.MODAL,
         ].includes(componentType)) {
           return false;
         }

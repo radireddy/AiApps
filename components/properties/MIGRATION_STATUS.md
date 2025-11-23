@@ -16,7 +16,7 @@ These components have metadata schemas and are registered:
 10. **Image** (`IMAGE`) - ✅ Migrated
 11. **Table** (`TABLE`) - ✅ Migrated
 
-## ❌ Components NOT Migrated (5 components)
+## ❌ Components NOT Migrated (3 components)
 
 ### 1. **Panel** (`PANEL`)
 - **Status**: Schema exists but is commented out
@@ -24,32 +24,24 @@ These components have metadata schemas and are registered:
 - **Registration**: Commented out in `components/properties/schemas/index.ts` (line 11, 27)
 - **Note**: Schema is ready but not enabled
 
-### 2. **Form** (`FORM`)
+### 2. **HStack** (`H_STACK`)
 - **Status**: No schema file
 - **Note**: May be able to reuse Panel schema (extends PanelProps)
 
-### 3. **HStack** (`H_STACK`)
-- **Status**: No schema file
-- **Note**: May be able to reuse Panel schema (extends PanelProps)
-
-### 4. **VStack** (`V_STACK`)
-- **Status**: No schema file
-- **Note**: May be able to reuse Panel schema (extends PanelProps)
-
-### 5. **Modal** (`MODAL`)
+### 3. **VStack** (`V_STACK`)
 - **Status**: No schema file
 - **Note**: May be able to reuse Panel schema (extends PanelProps)
 
 ## Summary
 
-- **Total Components**: 16
-- **Migrated**: 11 (69%)
-- **Not Migrated**: 5 (31%)
+- **Total Components**: 14
+- **Migrated**: 11 (79%)
+- **Not Migrated**: 3 (21%)
   - Panel: Schema ready but disabled
-  - Form/HStack/VStack/Modal: Can likely reuse Panel schema
+  - HStack/VStack: Can likely reuse Panel schema
 
 ## Next Steps
 
 1. **Uncomment Panel schema** in `components/properties/schemas/index.ts`
-2. **Create schemas for Form, HStack, VStack, Modal** (or register them with Panel schema)
+2. **Create schemas for HStack, VStack** (or register them with Panel schema)
 

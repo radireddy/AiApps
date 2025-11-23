@@ -42,7 +42,6 @@ export const ComponentTypeGroups = {
     ComponentType.BUTTON,
     ComponentType.IMAGE,
     ComponentType.PANEL,
-    ComponentType.FORM,
     ComponentType.TEXTAREA,
     ComponentType.SELECT,
     ComponentType.CHECKBOX,
@@ -52,7 +51,6 @@ export const ComponentTypeGroups = {
     ComponentType.RADIO_GROUP,
     ComponentType.SWITCH,
     ComponentType.TABLE,
-    ComponentType.MODAL,
   ],
 
   // Text-based components
@@ -78,23 +76,11 @@ export const ComponentTypeGroups = {
     ComponentType.SWITCH,
   ],
 
-  // Form components
-  FORM_COMPONENTS: [
-    ComponentType.INPUT,
-    ComponentType.TEXTAREA,
-    ComponentType.SELECT,
-    ComponentType.CHECKBOX,
-    ComponentType.RADIO_GROUP,
-    ComponentType.SWITCH,
-  ],
-
   // Container/Layout components
   CONTAINER_COMPONENTS: [
     ComponentType.PANEL,
-    ComponentType.FORM,
     ComponentType.H_STACK,
     ComponentType.V_STACK,
-    ComponentType.MODAL,
   ],
 
   // Components with tooltip support
@@ -148,7 +134,6 @@ export const ComponentTypeGroups = {
     ComponentType.BUTTON,
     ComponentType.IMAGE,
     ComponentType.PANEL,
-    ComponentType.FORM,
     ComponentType.H_STACK,
     ComponentType.V_STACK,
   ],

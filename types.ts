@@ -82,7 +82,6 @@ export enum ComponentType {
   BUTTON = 'BUTTON',
   IMAGE = 'IMAGE',
   PANEL = 'PANEL',
-  FORM = 'FORM',
   TEXTAREA = 'TEXTAREA',
   SELECT = 'SELECT',
   CHECKBOX = 'CHECKBOX',
@@ -92,7 +91,6 @@ export enum ComponentType {
   RADIO_GROUP = 'RADIO_GROUP',
   SWITCH = 'SWITCH',
   TABLE = 'TABLE',
-  MODAL = 'MODAL',
 }
 
 /**
@@ -203,10 +201,8 @@ export interface PanelProps extends BaseProps, BorderProps {
   alignItems?: 'start' | 'center' | 'end' | 'stretch';
 }
 
-export interface FormProps extends PanelProps {}
 export interface HStackProps extends PanelProps {}
 export interface VStackProps extends PanelProps {}
-export interface ModalProps extends PanelProps {}
 
 export interface TextareaProps extends BaseProps, BorderProps {
   placeholder: string;
@@ -241,7 +237,7 @@ export interface DividerProps extends BaseProps {
   color: string;
 }
 
-export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | FormProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ModalProps;
+export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps;
 
 /**
  * Represents a single instance of a UI component in the application.

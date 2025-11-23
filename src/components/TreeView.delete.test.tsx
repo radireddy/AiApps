@@ -169,12 +169,10 @@ describe('TreeView Selection + Delete Button Functionality', () => {
   testDeleteViaTreeView(ComponentType.RADIO_GROUP, 'Radio Group', { dataStoreKey: 'testKey', options: 'Option1,Option2' });
   testDeleteViaTreeView(ComponentType.LABEL, 'Label', { text: 'Label Text', fontSize: 14, fontWeight: 'normal', color: '#000000' });
   testDeleteViaTreeView(ComponentType.PANEL, 'Panel', { backgroundColor: '#ffffff' });
-  testDeleteViaTreeView(ComponentType.FORM, 'Form', { backgroundColor: '#ffffff' });
   testDeleteViaTreeView(ComponentType.H_STACK, 'Horizontal Panel', { backgroundColor: '#ffffff' });
   testDeleteViaTreeView(ComponentType.V_STACK, 'Vertical Panel', { backgroundColor: '#ffffff' });
   testDeleteViaTreeView(ComponentType.TABLE, 'Table', { columns: 'Name:name,Age:age', dataSourceName: 'tableData' });
   testDeleteViaTreeView(ComponentType.IMAGE, 'Image', { src: 'https://example.com/image.jpg', alt: 'Test image' });
   testDeleteViaTreeView(ComponentType.DIVIDER, 'Divider', { color: '#d1d5db' });
-  testDeleteViaTreeView(ComponentType.MODAL, 'Modal', { backgroundColor: '#ffffff' });
 });
 

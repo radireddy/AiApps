@@ -35,7 +35,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 1,
     propertyOrder: 0,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     options: [
       { value: 'horizontal', label: 'Horizontal' },
       { value: 'vertical', label: 'Vertical' },
@@ -51,7 +51,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 1,
     propertyOrder: 1,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     options: [
       { value: 'start', label: 'Start' },
       { value: 'center', label: 'Center' },
@@ -69,7 +69,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 1,
     propertyOrder: 2,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     options: [
       { value: 'start', label: 'Start' },
       { value: 'center', label: 'Center' },
@@ -90,7 +90,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 1,
     groupOrder: 0,
     propertyOrder: 0,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
   },
   {
     id: 'backgroundGradient',
@@ -103,7 +103,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 1,
     groupOrder: 0,
     propertyOrder: 1,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     placeholder: 'e.g. linear-gradient(...)',
   },
   
@@ -119,7 +119,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 1,
     groupOrder: 1,
     propertyOrder: 0,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     placeholder: 'e.g. 8px or {{theme.spacing.md}}',
   },
   {
@@ -133,7 +133,7 @@ const panelProperties: PropertyMetadata[] = [
     tabOrder: 1,
     groupOrder: 1,
     propertyOrder: 1,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     placeholder: 'e.g. 8px or {{theme.spacing.md}}',
   },
   {

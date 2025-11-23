@@ -180,12 +180,10 @@ describe('RenderedComponent Delete Functionality', () => {
   testDeleteForComponent(ComponentType.RADIO_GROUP, 'RadioGroup', { dataStoreKey: 'testKey', options: 'Option1,Option2' });
   testDeleteForComponent(ComponentType.LABEL, 'Label', { text: 'Label Text', fontSize: 14, fontWeight: 'normal', color: '#000000' });
   testDeleteForComponent(ComponentType.PANEL, 'Panel', { backgroundColor: '#ffffff' });
-  testDeleteForComponent(ComponentType.FORM, 'Form', { backgroundColor: '#ffffff' });
   testDeleteForComponent(ComponentType.H_STACK, 'HStack', { backgroundColor: '#ffffff' });
   testDeleteForComponent(ComponentType.V_STACK, 'VStack', { backgroundColor: '#ffffff' });
   testDeleteForComponent(ComponentType.TABLE, 'Table', { columns: 'Name:name,Age:age', dataSourceName: 'tableData' });
   testDeleteForComponent(ComponentType.IMAGE, 'Image', { src: 'https://example.com/image.jpg', alt: 'Test image' });
   testDeleteForComponent(ComponentType.DIVIDER, 'Divider', { color: '#d1d5db' });
-  testDeleteForComponent(ComponentType.MODAL, 'Modal', { backgroundColor: '#ffffff' });
 });
 

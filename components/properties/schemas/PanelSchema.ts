@@ -14,7 +14,7 @@ export const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 4,
     propertyOrder: 0,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
   },
   {
     id: 'backgroundGradient',
@@ -27,7 +27,7 @@ export const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 4,
     propertyOrder: 1,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     placeholder: 'e.g. linear-gradient(...)',
   },
   {
@@ -40,7 +40,7 @@ export const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 0,
     propertyOrder: 4,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     options: [
       { value: 'horizontal', label: 'Horizontal' },
       { value: 'vertical', label: 'Vertical' },
@@ -56,7 +56,7 @@ export const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 0,
     propertyOrder: 5,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     options: [
       { value: 'start', label: 'Start' },
       { value: 'center', label: 'Center' },
@@ -74,7 +74,7 @@ export const panelProperties: PropertyMetadata[] = [
     tabOrder: 0,
     groupOrder: 0,
     propertyOrder: 6,
-    applicableTo: [ComponentType.PANEL, ComponentType.FORM, ComponentType.H_STACK, ComponentType.V_STACK, ComponentType.MODAL],
+    applicableTo: [ComponentType.PANEL, ComponentType.H_STACK, ComponentType.V_STACK],
     options: [
       { value: 'start', label: 'Start' },
       { value: 'center', label: 'Center' },

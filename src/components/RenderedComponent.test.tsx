@@ -516,50 +516,6 @@ describe('RenderedComponent Selection', () => {
     });
   });
 
-  describe('Form Component Selection', () => {
-    const formComponent = {
-      id: 'form1',
-      type: ComponentType.FORM,
-      props: {
-        x: 0,
-        y: 0,
-        width: 300,
-        height: 200,
-        backgroundColor: '#ffffff',
-        disabled: false,
-      },
-    };
-
-    it('should be selectable when enabled', () => {
-      render(<RenderedComponent component={formComponent} {...baseProps} />);
-      const wrapper = screen.getByLabelText('FORM component');
-      fireEvent.mouseDown(wrapper);
-      expect(mockOnSelect).toHaveBeenCalledWith('form1', expect.any(Object));
-    });
-
-    it('should be selectable when disabled', () => {
-      const disabledForm = {
-        ...formComponent,
-        props: { ...formComponent.props, disabled: true },
-      };
-      render(<RenderedComponent component={disabledForm} {...baseProps} />);
-      const wrapper = screen.getByLabelText('FORM component');
-      fireEvent.mouseDown(wrapper);
-      expect(mockOnSelect).toHaveBeenCalledWith('form1', expect.any(Object));
-    });
-
-    it('should be selectable when hidden', () => {
-      const hiddenForm = {
-        ...formComponent,
-        props: { ...formComponent.props, hidden: true },
-      };
-      render(<RenderedComponent component={hiddenForm} {...baseProps} />);
-      const wrapper = screen.getByLabelText('FORM component');
-      expect(wrapper).toBeInTheDocument();
-      fireEvent.mouseDown(wrapper);
-      expect(mockOnSelect).toHaveBeenCalledWith('form1', expect.any(Object));
-    });
-  });
 
   describe('HStack Component Selection', () => {
     const hStackComponent = {
@@ -742,49 +698,5 @@ describe('RenderedComponent Selection', () => {
     });
   });
 
-  describe('Modal Component Selection', () => {
-    const modalComponent = {
-      id: 'modal1',
-      type: ComponentType.MODAL,
-      props: {
-        x: 0,
-        y: 0,
-        width: 400,
-        height: 300,
-        backgroundColor: '#ffffff',
-        disabled: false,
-      },
-    };
-
-    it('should be selectable when enabled', () => {
-      render(<RenderedComponent component={modalComponent} {...baseProps} />);
-      const wrapper = screen.getByLabelText('MODAL component');
-      fireEvent.mouseDown(wrapper);
-      expect(mockOnSelect).toHaveBeenCalledWith('modal1', expect.any(Object));
-    });
-
-    it('should be selectable when disabled', () => {
-      const disabledModal = {
-        ...modalComponent,
-        props: { ...modalComponent.props, disabled: true },
-      };
-      render(<RenderedComponent component={disabledModal} {...baseProps} />);
-      const wrapper = screen.getByLabelText('MODAL component');
-      fireEvent.mouseDown(wrapper);
-      expect(mockOnSelect).toHaveBeenCalledWith('modal1', expect.any(Object));
-    });
-
-    it('should be selectable when hidden', () => {
-      const hiddenModal = {
-        ...modalComponent,
-        props: { ...modalComponent.props, hidden: true },
-      };
-      render(<RenderedComponent component={hiddenModal} {...baseProps} />);
-      const wrapper = screen.getByLabelText('MODAL component');
-      expect(wrapper).toBeInTheDocument();
-      fireEvent.mouseDown(wrapper);
-      expect(mockOnSelect).toHaveBeenCalledWith('modal1', expect.any(Object));
-    });
-  });
 });
 
