@@ -18,6 +18,9 @@ export const commonProperties = {
     propertyOrder: 0,
     applicableTo: 'all' as const,
     tooltip: 'X position relative to parent (pixels)',
+    layoutHint: {
+      maxWidth: '100px',
+    },
   },
   y: {
     id: 'y',
@@ -31,6 +34,9 @@ export const commonProperties = {
     propertyOrder: 1,
     applicableTo: 'all' as const,
     tooltip: 'Y position relative to parent (pixels)',
+    layoutHint: {
+      maxWidth: '100px',
+    },
   },
   width: {
     id: 'width',
@@ -44,6 +50,9 @@ export const commonProperties = {
     propertyOrder: 2,
     applicableTo: 'all' as const,
     tooltip: 'Width in pixels',
+    layoutHint: {
+      maxWidth: '100px',
+    },
   },
   height: {
     id: 'height',
@@ -57,6 +66,9 @@ export const commonProperties = {
     propertyOrder: 3,
     applicableTo: 'all' as const,
     tooltip: 'Height in pixels',
+    layoutHint: {
+      maxWidth: '100px',
+    },
   },
   // State properties
   disabled: {
@@ -207,7 +219,8 @@ export function createPropertySchema(
   const applicableCommonProps = Object.values(commonProperties).filter((prop) => {
     if (prop.applicableTo === 'all') return true;
     if (Array.isArray(prop.applicableTo)) {
-      return prop.applicableTo.includes(componentType);
+      const applicableTypes = prop.applicableTo as ComponentType[];
+      return applicableTypes.includes(componentType);
     }
     return false;
   });

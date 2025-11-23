@@ -10,14 +10,16 @@
 import { registerPropertySchema } from '../registry';
 // import { panelSchema } from './panel';
 // import { dividerSchema } from './divider';
+import { inputSchema } from './input';
 
 // Register all schemas
-// Currently commented out to preserve original UX - components use legacy renderers
+// Components using metadata-driven system will use LegacyUXRenderer to preserve original UX
 export function registerAllPropertySchemas(): void {
-  // Schemas are available but not registered to preserve original UX
+  // Schemas are available - when registered, components use metadata backend with legacy UX
   // Uncomment to enable metadata-driven rendering for specific components:
   // registerPropertySchema(panelSchema);
   // registerPropertySchema(dividerSchema);
+  registerPropertySchema(inputSchema); // ✅ Input uses metadata backend with legacy UX
   
   // Add more schemas as they are created
   // registerPropertySchema(buttonSchema);

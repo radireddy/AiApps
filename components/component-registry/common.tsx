@@ -25,7 +25,7 @@ export const PropFxInput: React.FC<{
     onOpenEditor?: (currentValue: string) => void;
     propertyKey?: string;
     className?: string; // Allow custom className to override margin
-}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey, className }) => {
+}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey, className = '' }) => {
     // Check if value is an expression (starts with {{ and ends with }})
     // Also treat as expression if it starts with {{ (even if incomplete)
     // Handle undefined/null values safely
@@ -170,9 +170,10 @@ export const PropFxInput: React.FC<{
         }
     };
     
+    const marginClass = className?.includes('mb-') ? className : (className || 'mb-2.5');
     return (
-         <div className={className || "mb-0"} data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1.5`}>{label}</label>
+         <div className={marginClass} data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`} style={{ minWidth: 0 }}>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1.5 truncate`} title={label}>{label}</label>
             <div className="flex items-center">
                 <input
                     id={inputId}
@@ -180,7 +181,7 @@ export const PropFxInput: React.FC<{
                     value={displayValue}
                     onChange={handleChange}
                     onKeyDown={handleOpacityKeyDown}
-                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression || onOpenEditor ? 'rounded-l-md border-r-0' : 'rounded-md'}`}
+                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0 ${isExpression || onOpenEditor ? 'rounded-l-md border-r-0' : 'rounded-md'}`}
                     placeholder={placeholder}
                 />
                 {onOpenEditor && (
@@ -205,17 +206,18 @@ export const PropFxInput: React.FC<{
 };
 
 
-export const PropInput: React.FC<{ label: string; value: any; onChange: (val: any) => void; type?: string; placeholder?: string; step?: number; min?: number; max?: number; id?: string; }> = ({ label, value, onChange, type = 'text', placeholder, id, ...rest }) => {
+export const PropInput: React.FC<{ label: string; value: any; onChange: (val: any) => void; type?: string; placeholder?: string; step?: number; min?: number; max?: number; id?: string; className?: string; }> = ({ label, value, onChange, type = 'text', placeholder, id, className, ...rest }) => {
     const inputId = id || `prop-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
+    const marginClass = className?.includes('mb-0') ? '' : (className || 'mb-2.5');
     return (
-        <div className="mb-2.5" data-testid={`prop-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
+        <div className={marginClass} data-testid={`prop-input-${label.replace(/\s+/g, '-')}`} style={{ minWidth: 0 }}>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1 truncate`} title={label}>{label}</label>
             <input
             id={inputId}
             type={type}
             value={type === 'number' ? (value !== undefined && value !== null ? value : '') : (value ?? '')}
             onChange={e => onChange(type === 'number' || type === 'range' ? parseFloat(e.target.value) || 0 : e.target.value)}
-            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
+            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0`}
             placeholder={placeholder}
             {...rest}
             />
@@ -223,16 +225,17 @@ export const PropInput: React.FC<{ label: string; value: any; onChange: (val: an
     );
 }
 
-export const PropSelect: React.FC<{ label: string; value: any; onChange: (val: any) => void; options: {value: string; label: string}[]; id?: string; }> = ({ label, value, onChange, options, id }) => {
+export const PropSelect: React.FC<{ label: string; value: any; onChange: (val: any) => void; options: {value: string; label: string}[]; id?: string; className?: string; }> = ({ label, value, onChange, options, id, className }) => {
     const selectId = id || `prop-select-${label.replace(/\s+/g, '-').toLowerCase()}`;
+    const marginClass = className?.includes('mb-') ? className : (className || 'mb-2.5');
     return (
-        <div className="mb-2.5">
-            <label htmlFor={selectId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
+        <div className={marginClass} style={{ minWidth: 0 }}>
+            <label htmlFor={selectId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1 truncate`} title={label}>{label}</label>
             <select
             id={selectId}
             value={value}
             onChange={e => onChange(e.target.value)}
-            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
+            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0`}
             >
                 {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>

@@ -62,6 +62,20 @@ export interface CompositeField {
 }
 
 /**
+ * Layout hint for grouping related properties
+ */
+export interface PropertyLayoutHint {
+  /** Group ID - properties with the same layoutGroupId will be rendered together */
+  layoutGroupId?: string;
+  /** Number of columns this property should span (1-4) */
+  columnSpan?: number;
+  /** Whether this property should be in a compact row with related properties */
+  compactRow?: boolean;
+  /** Maximum width for this property (e.g., '120px', '8rem', '150px') */
+  maxWidth?: string;
+}
+
+/**
  * Property metadata definition
  */
 export interface PropertyMetadata {
@@ -105,6 +119,8 @@ export interface PropertyMetadata {
   compositeFields?: CompositeField[];
   /** Custom renderer component (optional, uses default for type if not provided) */
   customRenderer?: React.FC<any>;
+  /** Layout hints for efficient space usage */
+  layoutHint?: PropertyLayoutHint;
 }
 
 /**

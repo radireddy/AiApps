@@ -1,9 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { AppComponent, ComponentProps, DataSourceInstance, AppVariable, ComponentType } from '../../types';
 import { ComponentPropertySchema, PropertyMetadata, PropertyContext } from './metadata';
 import { propertyRegistry } from './registry';
-import { PropertyTabs } from './PropertyTabs';
-import { componentRegistry } from '../component-registry/registry';
+import { SmartLayoutRenderer } from './renderers/SmartLayoutRenderer';
 
 interface PropertiesPanelCoreProps {
   components: AppComponent[];
@@ -177,8 +176,9 @@ export const PropertiesPanelCore: React.FC<PropertiesPanelCoreProps> = ({
       // Check hidden condition
       if (prop.hidden !== undefined) {
         if (typeof prop.hidden === 'boolean' && prop.hidden) return false;
-        if (typeof prop.hidden === 'function') {
-          const result = prop.hidden(selectedComponents[0]?.props || {}, evaluationScope);
+        if (typeof prop.hidden === 'function' && selectedComponents[0]?.props) {
+          const props = selectedComponents[0].props as ComponentProps;
+          const result = prop.hidden(props, evaluationScope);
           if (result === true) return false;
         }
       }
@@ -187,8 +187,9 @@ export const PropertiesPanelCore: React.FC<PropertiesPanelCoreProps> = ({
       if (prop.visibleIf !== undefined) {
         if (typeof prop.visibleIf === 'boolean') {
           if (!prop.visibleIf) return false;
-        } else if (typeof prop.visibleIf === 'function') {
-          const result = prop.visibleIf(selectedComponents[0]?.props || {}, evaluationScope);
+        } else if (typeof prop.visibleIf === 'function' && selectedComponents[0]?.props) {
+          const props = selectedComponents[0].props as ComponentProps;
+          const result = prop.visibleIf(props, evaluationScope);
           if (result !== true) return false;
         }
       }
@@ -224,11 +225,13 @@ export const PropertiesPanelCore: React.FC<PropertiesPanelCoreProps> = ({
     );
   }
 
+  // Use smart layout renderer - preserves original UX with efficient space usage
   return (
-    <PropertyTabs
-      tabs={schema.tabs || []}
-      groups={schema.groups || []}
-      properties={visibleProperties}
+    <SmartLayoutRenderer
+      schema={{
+        ...schema,
+        properties: visibleProperties,
+      }}
       context={context}
       onUpdate={handleUpdate}
       onOpenExpressionEditor={onOpenExpressionEditor}
