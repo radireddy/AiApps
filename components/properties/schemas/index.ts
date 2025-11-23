@@ -2,9 +2,8 @@
  * Property schemas for all components
  * Import and register all schemas here
  * 
- * NOTE: Schemas are registered but not actively used for rendering.
- * Components continue to use their legacy property renderers to preserve UX.
- * The metadata system is available for future use or gradual migration.
+ * All components are now migrated to the metadata-driven system.
+ * Properties are rendered using PropertyTabs with smart layouts.
  */
 
 import { registerPropertySchema } from '../registry';
