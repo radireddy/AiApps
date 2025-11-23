@@ -120,7 +120,8 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     reparentComponent,
     selectPage,
     alignAndDistribute,
-  } = useAppData(initialAppDefinition, onSave);
+    arrangeContainerChildren,
+  } = useAppData(initialAppDefinition, onSave) as any;
 
   const [isExporting, setIsExporting] = useState(false);
 
@@ -447,6 +448,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
             evaluationScope={evaluationScope}
             onOpenExpressionEditor={openExpressionEditor}
             onAlignAndDistribute={alignAndDistribute}
+            onArrangeContainerChildren={arrangeContainerChildren}
           />
         </div>
       ) : (

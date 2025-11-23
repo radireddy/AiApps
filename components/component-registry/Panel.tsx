@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { ComponentType, PanelProps, ComponentPlugin } from '../../types';
 import { LayoutProps, StylingProps, CollapsibleSection, PropFxInput } from './common';
@@ -24,17 +23,102 @@ const PanelRenderer: React.FC<{
     opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
   };
-  return <div style={style} className="w-full h-full relative">{children}</div>;
+  const direction = useJavaScriptRenderer(p.direction, evaluationScope, 'horizontal');
+  const justify = useJavaScriptRenderer(p.justifyContent, evaluationScope, 'start');
+  const align = useJavaScriptRenderer(p.alignItems, evaluationScope, 'center');
+
+  const mapJustify = (j: any) => {
+    switch (j) {
+      case 'center': return 'center';
+      case 'end': return 'flex-end';
+      case 'space-between': return 'space-between';
+      default: return 'flex-start';
+    }
+  };
+
+  const mapAlign = (a: any) => {
+    switch (a) {
+      case 'center': return 'center';
+      case 'end': return 'flex-end';
+      case 'stretch': return 'stretch';
+      default: return 'flex-start';
+    }
+  };
+
+  const layoutStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: direction === 'vertical' ? 'column' : 'row',
+    justifyContent: mapJustify(justify),
+    alignItems: mapAlign(align),
+    width: '100%',
+    height: '100%',
+    boxSizing: 'border-box',
+  };
+
+  return <div style={{ ...style, ...layoutStyle }} className="w-full h-full relative">{children}</div>;
 };
 
 const PanelProperties: React.FC<{
-  component: { props: PanelProps };
+  component: { id?: string; props: PanelProps };
   updateProp: (key: keyof PanelProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
-}> = ({ component, updateProp, onOpenExpressionEditor }) => {
+  arrangeChildren?: (panelId: string | undefined, opts: { direction?: string; justifyContent?: string; alignItems?: string }) => void;
+}> = ({ component, updateProp, onOpenExpressionEditor, arrangeChildren }) => {
   const p = component.props;
+  const dir = p.direction || 'horizontal';
+  const justify = p.justifyContent || 'start';
+  const align = p.alignItems || 'center';
+
+  const JustifyOptions = [
+    { value: 'start', title: 'Start', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+    { value: 'center', title: 'Center', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+    { value: 'end', title: 'End', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 18h18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+    { value: 'space-between', title: 'Space Between', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h4M17 6h4M3 18h4M17 18h4M11 12h2" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+  ];
+
+  const AlignOptions = [
+    { value: 'start', title: 'Start', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3v18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+    { value: 'center', title: 'Center', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+    { value: 'end', title: 'End', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 3v18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+    { value: 'stretch', title: 'Stretch', icon: (<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3v18M18 3v18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>) },
+  ];
+
   return (
     <>
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-500 mb-1">Direction</label>
+        <div className="flex gap-2">
+          <button onClick={() => { updateProp('direction', 'horizontal'); if (arrangeChildren) arrangeChildren(component.id, { direction: 'horizontal' }); }} className={`p-2 rounded-md border ${dir === 'horizontal' ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200'}`} title="Horizontal" aria-pressed={dir === 'horizontal'} aria-label="Direction: Horizontal">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12h18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+          <button onClick={() => { updateProp('direction', 'vertical'); if (arrangeChildren) arrangeChildren(component.id, { direction: 'vertical' }); }} className={`p-2 rounded-md border ${dir === 'vertical' ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200'}`} title="Vertical" aria-pressed={dir === 'vertical'} aria-label="Direction: Vertical">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-500 mb-1">{dir === 'horizontal' ? 'Justify (Horizontal)' : 'Justify (Vertical)'}</label>
+        <div className="flex gap-2">
+          {JustifyOptions.map(opt => (
+            <button key={opt.value} onClick={() => { updateProp('justifyContent', opt.value as any); if (arrangeChildren) arrangeChildren(component.id, { justifyContent: opt.value }); }} className={`p-2 rounded-md border ${justify === opt.value ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200'}`} title={opt.title} aria-pressed={justify === opt.value} aria-label={`Justify: ${opt.title}`}>
+              {opt.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <label className="block text-xs font-medium text-gray-500 mb-1">{dir === 'horizontal' ? 'Align (Vertical)' : 'Align (Horizontal)'}</label>
+        <div className="flex gap-2">
+          {AlignOptions.map(opt => (
+            <button key={opt.value} onClick={() => { updateProp('alignItems', opt.value as any); if (arrangeChildren) arrangeChildren(component.id, { alignItems: opt.value }); }} className={`p-2 rounded-md border ${align === opt.value ? 'bg-blue-50 border-blue-400' : 'bg-white border-gray-200'}`} title={opt.title} aria-pressed={align === opt.value} aria-label={`Align: ${opt.title}`}>
+              {opt.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <LayoutProps props={p} updateProp={updateProp} />
       <CollapsibleSection title="Background">
         <PropFxInput label="Background Color" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
@@ -57,6 +141,9 @@ export const PanelPlugin: ComponentPlugin = {
       height: 200,
       backgroundColor: '{{theme.colors.surface}}',
       backgroundGradient: '',
+      direction: 'horizontal',
+      justifyContent: 'start',
+      alignItems: 'center',
     },
   },
   renderer: PanelRenderer,

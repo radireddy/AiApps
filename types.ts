@@ -187,6 +187,12 @@ export interface TableProps extends BaseProps, BorderProps {
 export interface PanelProps extends BaseProps, BorderProps {
   backgroundColor: string;
   backgroundGradient?: string;
+  /** Layout direction for container children */
+  direction?: 'horizontal' | 'vertical';
+  /** Justify children along the main axis */
+  justifyContent?: 'start' | 'center' | 'end' | 'space-between';
+  /** Align children along the cross axis */
+  alignItems?: 'start' | 'center' | 'end' | 'stretch';
 }
 
 export interface FormProps extends PanelProps {}
