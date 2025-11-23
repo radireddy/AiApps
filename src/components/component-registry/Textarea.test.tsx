@@ -65,7 +65,9 @@ describe('TextareaPlugin', () => {
       const placeholderInput = screen.getByLabelText('Placeholder');
       expect(placeholderInput).toHaveValue('My Placeholder');
 
-      await userEvent.clear(placeholderInput);
+      // Select all text first, then type
+      await userEvent.click(placeholderInput);
+      await userEvent.keyboard('{Control>}a{/Control}');
       await userEvent.type(placeholderInput, 'New Placeholder');
       expect(updateProp).toHaveBeenLastCalledWith('placeholder', 'New Placeholder');
     });

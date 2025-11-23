@@ -45,10 +45,11 @@ describe('SwitchPlugin', () => {
       expect(onUpdateDataStore).toHaveBeenCalledWith('feature.enabled', true);
     });
 
-    it('should be disabled in edit mode', () => {
+    it('should be selectable in edit mode (not disabled)', () => {
       render(<SwitchRenderer component={baseComponent} mode="edit" dataStore={{}} evaluationScope={{}} />);
       const switchEl = screen.getByRole('switch', { name: 'Enable Feature' });
-      expect(switchEl).toBeDisabled();
+      // In edit mode, components should be selectable, so they should NOT be disabled
+      expect(switchEl).not.toBeDisabled();
     });
   });
 

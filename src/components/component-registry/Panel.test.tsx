@@ -1,6 +1,7 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PanelPlugin } from '@/components/component-registry/Panel';
 import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
@@ -57,7 +58,7 @@ describe('PanelPlugin', () => {
         expect(screen.getByLabelText('Background Color')).toHaveValue('#ffffff');
      });
 
-     it('should call arrangeChildren when direction is changed from horizontal to vertical', () => {
+     it('should call arrangeChildren when direction is changed from horizontal to vertical', async () => {
         const updateProp = jest.fn();
         const onOpenExpressionEditor = jest.fn();
         const arrangeChildren = jest.fn();
@@ -75,8 +76,12 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         
+        // Open the "Container Layout Specific" section first (it's collapsed by default)
+        const containerLayoutSection = screen.getByRole('button', { name: 'Container Layout Specific' });
+        await userEvent.click(containerLayoutSection);
+        
         // Find and click the vertical direction button
-        const verticalButton = screen.getByLabelText('Set direction to vertical');
+        const verticalButton = await screen.findByLabelText('Set direction to vertical');
         fireEvent.click(verticalButton);
         
         // Verify updateProp was called with the new direction
@@ -86,7 +91,7 @@ describe('PanelPlugin', () => {
         expect(arrangeChildren).toHaveBeenCalledWith('panel1', { direction: 'vertical' });
      });
 
-     it('should call arrangeChildren when direction is changed from vertical to horizontal', () => {
+     it('should call arrangeChildren when direction is changed from vertical to horizontal', async () => {
         const updateProp = jest.fn();
         const onOpenExpressionEditor = jest.fn();
         const arrangeChildren = jest.fn();
@@ -104,8 +109,12 @@ describe('PanelPlugin', () => {
         };
         render(<PanelProperties {...props} />);
         
+        // Open the "Container Layout Specific" section first (it's collapsed by default)
+        const containerLayoutSection = screen.getByRole('button', { name: 'Container Layout Specific' });
+        await userEvent.click(containerLayoutSection);
+        
         // Find and click the horizontal direction button
-        const horizontalButton = screen.getByLabelText('Set direction to horizontal');
+        const horizontalButton = await screen.findByLabelText('Set direction to horizontal');
         fireEvent.click(horizontalButton);
         
         // Verify updateProp was called with the new direction

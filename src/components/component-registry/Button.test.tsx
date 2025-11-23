@@ -148,8 +148,8 @@ describe('ButtonPlugin', () => {
     it('should show alert message field when actionType is "alert"', async () => {
       const props = { ...baseProps, component: { ...baseProps.component, props: { ...baseProps.component.props, actionType: 'alert' as const } } };
       render(<ButtonProperties {...props} />);
-      // Open the collapsed "On Click Action" section so its fields are visible
-      const actionSectionButton = screen.getByRole('button', { name: 'On Click Action' });
+      // Open the collapsed "Events" section so its fields are visible (title was changed from "On Click Action" to "Events")
+      const actionSectionButton = screen.getByRole('button', { name: 'Events' });
       await userEvent.click(actionSectionButton);
       expect(screen.getByLabelText('Action Type')).toHaveValue('alert');
       // PropFxInput doesn't link the label with htmlFor, so assert by test id

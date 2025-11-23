@@ -77,6 +77,23 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode !== 'edit' || isEditingInline) return;
     if ((e.target as HTMLElement).dataset.resizeHandle) return;
+    
+    // Don't handle mousedown if clicking on the delete button or any of its children
+    const target = e.target as HTMLElement;
+    const deleteButton = target.closest('[data-delete-button="true"]') || target.closest('[aria-label="Delete Component"]');
+    if (deleteButton) {
+      // Let the delete button handle its own events
+      return;
+    }
+    
+    // Also check if the click originated from within the delete button area
+    // by checking if the target or its parent has the delete button data attribute
+    if (target.getAttribute('data-delete-button') === 'true' || 
+        target.closest('[data-delete-button="true"]') ||
+        target.getAttribute('aria-label') === 'Delete Component' ||
+        target.closest('[aria-label="Delete Component"]')) {
+      return;
+    }
 
     // FIX: Removed logic that allowed clicks on container backgrounds to "pass through".
     // Now, any click on any part of a component will select it and stop the event,
@@ -104,9 +121,21 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     setIsEditingInline(false);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+
+  const handleDeleteMouseDown = (e: React.MouseEvent) => {
+    // Prevent the delete button click from triggering component selection
+    // Stop propagation immediately to prevent wrapper's handleMouseDown from firing
     e.stopPropagation();
-    if (mode === 'edit') onDelete(component.id);
+    e.preventDefault();
+  };
+  
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    // Ensure delete click is handled
+    e.stopPropagation();
+    e.preventDefault();
+    if (mode === 'edit') {
+      onDelete(component.id);
+    }
   };
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -235,7 +264,15 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     height: p.height,
     // Containers should also get higher z-index when selected to show selection outline
     zIndex: plugin.isContainer ? (isSelected ? 10 : 0) : (isSelected ? 10 : 1),
-    display: isHidden ? 'none' : 'block',
+    // In edit mode, hidden components should still be selectable, so use opacity instead of display
+    // In preview mode, use display: none to completely hide them
+    ...(isHidden 
+      ? (mode === 'edit' 
+        ? { opacity: 0, pointerEvents: 'auto' as const, display: 'block' } 
+        : { display: 'none' })
+      : { display: 'block' }),
+    // Ensure overflow is visible so delete button positioned outside bounds is not clipped
+    overflow: 'visible',
   };
 
   const selectionClass = isSelected && mode === 'edit' ? 'outline outline-2 outline-blue-500 outline-offset-2' : '';
@@ -287,13 +324,35 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
         ))}
       </ComponentRenderer>
       
-       {isSelected && mode === 'edit' && !isEditingInline && (
+      {/* Delete button and resize handle rendered after ComponentRenderer to ensure they're on top */}
+      {isSelected && mode === 'edit' && !isEditingInline && (
         <>
            <div
-            onClick={handleDelete}
-            className="absolute -top-3 -right-3 w-6 h-6 bg-white text-gray-600 border border-gray-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-500 hover:text-white hover:border-red-500 z-20 transition-all"
+            onClick={handleDeleteClick}
+            onMouseDown={handleDeleteMouseDown}
+            className="absolute -top-3 -right-3 w-6 h-6 bg-white text-gray-600 border border-gray-300 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-500 hover:text-white hover:border-red-500 transition-all shadow-lg"
             aria-label="Delete Component"
             role="button"
+            style={{ 
+              pointerEvents: 'auto',
+              zIndex: 1000, // Very high z-index to ensure it's above everything
+              position: 'absolute',
+            }}
+            data-delete-button="true"
+            onMouseUp={(e) => {
+              // Also stop propagation on mouseup to be safe
+              e.stopPropagation();
+            }}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (mode === 'edit') {
+                  onDelete(component.id);
+                }
+              }
+            }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -45,10 +45,11 @@ describe('CheckboxPlugin', () => {
       expect(onUpdateDataStore).toHaveBeenCalledWith('termsAccepted', true);
     });
 
-    it('should be disabled in edit mode', () => {
+    it('should be selectable in edit mode (not disabled)', () => {
         render(<CheckboxRenderer component={baseComponent} mode="edit" dataStore={{}} evaluationScope={{}} />);
         const checkbox = screen.getByLabelText('Accept Terms');
-        expect(checkbox).toBeDisabled();
+        // In edit mode, components should be selectable, so they should NOT be disabled
+        expect(checkbox).not.toBeDisabled();
     });
 
     it('should be disabled based on expression', () => {

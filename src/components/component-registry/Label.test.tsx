@@ -76,16 +76,22 @@ describe('LabelPlugin', () => {
     it('should call updateProp when text is changed', async () => {
         render(<LabelProperties {...baseProps} />);
         const input = screen.getByLabelText('Text');
-        await userEvent.clear(input);
+        // Select all text first, then type (PropFxInput for expression type)
+        await userEvent.click(input);
+        await userEvent.keyboard('{Control>}a{/Control}');
         await userEvent.type(input, 'New Text');
+        // PropFxInput may call updateProp on each keystroke, so check the last call
         expect(updateProp).toHaveBeenLastCalledWith('text', 'New Text');
     });
 
     it('should call updateProp when font size is changed', async () => {
         render(<LabelProperties {...baseProps} />);
         const input = screen.getByLabelText('Font Size');
-        await userEvent.clear(input);
+        // Select all text first, then type
+        await userEvent.click(input);
+        await userEvent.keyboard('{Control>}a{/Control}');
         await userEvent.type(input, '24');
+        // The input converts to number, check the last call
         expect(updateProp).toHaveBeenLastCalledWith('fontSize', 24);
     });
   });

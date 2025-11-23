@@ -25,7 +25,33 @@ const mockApp: AppDefinition = {
   dataStore: {},
   dataSources: [],
   variables: [],
-  theme: {} as any,
+  theme: {
+    colors: {
+      primary: '#000000',
+      onPrimary: '#ffffff',
+      secondary: '#000000',
+      onSecondary: '#ffffff',
+      background: '#ffffff',
+      surface: '#ffffff',
+      text: '#000000',
+      border: '#e5e5e5',
+    },
+    font: {
+      family: 'Arial',
+    },
+    border: {
+      width: '1px',
+      style: 'solid',
+    },
+    radius: {
+      default: '4px',
+    },
+    spacing: {
+      sm: '4px',
+      md: '8px',
+      lg: '16px',
+    },
+  },
 };
 
 const mockedStorageService = storageService as jest.Mocked<typeof storageService>;
@@ -100,13 +126,23 @@ describe('Editor', () => {
     const component = await screen.findByLabelText('LABEL component');
     await userEvent.click(component);
 
+    // Wait for the component to be selected (it should have the outline class)
+    await waitFor(() => {
+      const selectedComponent = screen.getByLabelText('LABEL component');
+      expect(selectedComponent).toHaveClass('outline');
+    });
+
+    // Ensure focus is on the canvas (required for delete handler to work)
+    const canvas = screen.getByTestId('canvas');
+    canvas.focus();
+
     // Press delete key
     await userEvent.keyboard('{Delete}');
 
     // The component should be gone
     await waitFor(() => {
         expect(screen.queryByLabelText('LABEL component')).not.toBeInTheDocument();
-    });
+    }, { timeout: 2000 });
   });
 
    it('should switch between left panel tabs', async () => {

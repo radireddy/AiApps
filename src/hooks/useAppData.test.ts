@@ -14,7 +14,33 @@ const mockAppDef: AppDefinition = {
   dataStore: {},
   dataSources: [],
   variables: [],
-  theme: {} as any,
+  theme: {
+    colors: {
+      primary: '#000000',
+      onPrimary: '#ffffff',
+      secondary: '#000000',
+      onSecondary: '#ffffff',
+      background: '#ffffff',
+      surface: '#ffffff',
+      text: '#000000',
+      border: '#e5e5e5',
+    },
+    font: {
+      family: 'Arial',
+    },
+    border: {
+      width: '1px',
+      style: 'solid',
+    },
+    radius: {
+      default: '4px',
+    },
+    spacing: {
+      sm: '4px',
+      md: '8px',
+      lg: '16px',
+    },
+  },
 };
 
 describe('useAppData', () => {

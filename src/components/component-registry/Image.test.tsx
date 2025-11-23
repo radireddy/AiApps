@@ -55,14 +55,14 @@ describe('ImagePlugin', () => {
 
     it('should render properties correctly', () => {
       render(<ImageProperties {...baseProps} />);
-      expect(screen.getByLabelText('Image URL')).toHaveValue('https://example.com/image.png');
+      expect(screen.getByLabelText('Source (src)')).toHaveValue('https://example.com/image.png');
       expect(screen.getByLabelText('Alt Text')).toHaveValue('An example image');
-      expect(screen.getByLabelText('Object Fit')).toHaveValue('cover');
+      expect(screen.getByLabelText('Fit')).toHaveValue('cover');
     });
 
     it('should call updateProp when src is changed', async () => {
       render(<ImageProperties {...baseProps} />);
-      const input = screen.getByLabelText('Image URL');
+      const input = screen.getByLabelText('Source (src)');
       await userEvent.clear(input);
       await userEvent.type(input, 'new_url.jpg');
       expect(updateProp).toHaveBeenLastCalledWith('src', 'new_url.jpg');
@@ -70,7 +70,7 @@ describe('ImagePlugin', () => {
 
     it('should call updateProp when object fit is changed', async () => {
       render(<ImageProperties {...baseProps} />);
-      const select = screen.getByLabelText('Object Fit');
+      const select = screen.getByLabelText('Fit');
       await userEvent.selectOptions(select, 'contain');
       expect(updateProp).toHaveBeenCalledWith('objectFit', 'contain');
     });

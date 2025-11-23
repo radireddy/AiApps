@@ -167,49 +167,35 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
       if (mode === 'edit' && selectedComponentIds.length > 0) {
         const activeElement = document.activeElement;
         
-        // Check if the focused element is inside the canvas area (not in properties panel or other UI)
-        let isInsideCanvas = false;
+        // Check if focus is in the properties panel - if so, don't delete
+        let isInPropertiesPanel = false;
         let current: HTMLElement | null = activeElement as HTMLElement;
         while (current && current !== document.body) {
-          // Check if this element is inside the canvas
-          if (current.getAttribute('data-testid') === 'canvas' || 
-              current.closest('[data-testid="canvas"]')) {
-            isInsideCanvas = true;
-            break;
-          }
-          // If we find properties panel or other UI, we're not in canvas
           if (current.getAttribute('data-testid') === 'properties-panel' ||
               current.closest('[data-testid="properties-panel"]')) {
-            isInsideCanvas = false;
+            isInPropertiesPanel = true;
             break;
           }
           current = current.parentElement;
         }
         
-        // Only allow deletion if focus is inside the canvas area
-        if (!isInsideCanvas) {
-          return; // Focus is in properties panel or other UI, don't delete
+        // Don't delete if focus is in properties panel
+        if (isInPropertiesPanel) {
+          return;
         }
         
-        // Check if the active element is an input/textarea/radio/checkbox inside a component
-        const isInputElement = activeElement && (
+        // Check if the active element is an input/textarea that might be actively being edited
+        const isTextInput = activeElement && (
           activeElement.tagName === 'INPUT' || 
           activeElement.tagName === 'TEXTAREA' ||
           (activeElement as HTMLElement).isContentEditable
         );
         
-        if (isInputElement) {
-          // For text inputs/textarea, check if user is actively typing (has text selected)
-          const inputElement = activeElement as HTMLInputElement | HTMLTextAreaElement;
-          const hasTextSelection = inputElement.selectionStart !== undefined && 
-                                   inputElement.selectionStart !== inputElement.selectionEnd;
-          
-          // Check if the focused element is inside a selected component
+        if (isTextInput) {
+          // Check if the input is inside a selected component
           let isInsideSelectedComponent = false;
           let componentCheck: HTMLElement | null = activeElement as HTMLElement;
           while (componentCheck && componentCheck !== document.body) {
-            // Check if this element is part of a selected component by looking for the outline class
-            // Selected components have 'outline' class when selected
             if (componentCheck.classList.contains('outline')) {
               isInsideSelectedComponent = true;
               break;
@@ -217,21 +203,27 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
             componentCheck = componentCheck.parentElement;
           }
           
-          // If inside a selected component:
-          // - For text inputs: only skip if user has text selected (actively editing)
-          // - For radio/checkbox: always allow deletion (they don't have text selection)
           if (isInsideSelectedComponent) {
-            // For text inputs/textarea, only prevent deletion if user has text selected
-            if (hasTextSelection && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
-              return; // User is actively editing text, don't delete component
+            // For text inputs/textarea, check if user is actively typing (has text selected)
+            if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+              const inputElement = activeElement as HTMLInputElement | HTMLTextAreaElement;
+              const hasTextSelection = inputElement.selectionStart !== undefined && 
+                                       inputElement.selectionStart !== inputElement.selectionEnd;
+              // Only prevent deletion if user has text selected (actively editing)
+              if (hasTextSelection) {
+                return; // User is actively editing text, don't delete component
+              }
             }
-            // Otherwise, allow deletion (empty input, radio, checkbox, or no text selection)
+            // For contentEditable or inputs without text selection - allow deletion
+            // Continue to deletion logic below
           } else {
-            // Input element in canvas but not in selected component - don't delete
+            // Text input in canvas but not in selected component - don't delete
             return;
           }
         }
         
+        // For all other cases (including when focus is on body or component wrapper):
+        // If components are selected and we're not in properties panel, allow deletion
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
           e.stopPropagation();

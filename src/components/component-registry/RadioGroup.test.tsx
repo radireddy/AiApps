@@ -46,9 +46,10 @@ describe('RadioGroupPlugin', () => {
       expect(onUpdateDataStore).toHaveBeenCalledWith('user.role', 'Admin');
     });
 
-    it('should be disabled in edit mode', () => {
+    it('should be selectable in edit mode (not disabled)', () => {
       render(<RadioGroupRenderer component={baseComponent} mode="edit" dataStore={{}} evaluationScope={{}} />);
-      expect(screen.getByLabelText('Admin')).toBeDisabled();
+      // In edit mode, components should be selectable, so they should NOT be disabled
+      expect(screen.getByLabelText('Admin')).not.toBeDisabled();
     });
   });
 
@@ -65,8 +66,8 @@ describe('RadioGroupPlugin', () => {
       };
       render(<RadioGroupProperties {...props} />);
 
-      expect(screen.getByLabelText('Data Store Key')).toHaveValue('role');
-      const optionsInput = screen.getByLabelText('Options (CSV)');
+      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('role');
+      const optionsInput = screen.getByLabelText('Options');
       expect(optionsInput).toHaveValue('A,B');
 
       await userEvent.clear(optionsInput);

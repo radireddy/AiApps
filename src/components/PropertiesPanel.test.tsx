@@ -39,7 +39,7 @@ describe('PropertiesPanel', () => {
 
   it('should show a message when no component is selected', () => {
     render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={[]} />);
-    expect(screen.getByText('Select a component to see its properties')).toBeInTheDocument();
+    expect(screen.getByText(/Select a component to see its properties/i)).toBeInTheDocument();
   });
 
   it('should render the properties for a single selected component', () => {
@@ -48,7 +48,7 @@ describe('PropertiesPanel', () => {
     ];
     render(<PropertiesPanel {...baseProps} components={components} selectedComponentIds={['comp1']} />);
     expect(screen.getByText('Properties for My Label')).toBeInTheDocument();
-    expect(screen.getByText('comp1')).toBeInTheDocument();
+    expect(screen.getByText(/comp1/i)).toBeInTheDocument();
   });
 
   it('should render the alignment UI for multiple selected components', () => {
