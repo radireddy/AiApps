@@ -71,7 +71,7 @@ export const BasePropertiesRenderer: React.FC<BasePropertiesRendererProps> = ({
     <div className="py-1">
       {filteredGroups.map(group => (
         <PropertyGroupRenderer
-          key={group.id}
+          key={`${component.id || component.type}-${group.id}`}
           group={group}
           rendererProps={rendererProps}
         />

@@ -252,6 +252,11 @@ export const CollapsibleSection: React.FC<{ title: string; children: React.React
     const sectionId = `section-content-${title.replace(/\s+/g, '-')}`;
     const formattedTitle = formatTitle(title);
 
+    // Reset state when isOpenDefault changes (e.g., when component selection changes)
+    useEffect(() => {
+        setIsOpen(isOpenDefault);
+    }, [isOpenDefault]);
+
     return (
         <div className="border-b border-gray-200 last:border-b-0">
             <button
