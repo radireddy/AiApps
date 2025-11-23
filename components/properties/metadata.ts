@@ -117,6 +117,7 @@ export interface PropertyContext {
   variables?: any[];
   evaluationScope?: Record<string, any>;
   isMultiSelect?: boolean;
+  onArrangeContainerChildren?: (panelId: string, opts: { direction?: string; justifyContent?: string; alignItems?: string }) => void;
 }
 
 /**
@@ -139,6 +140,17 @@ export interface PropertyGroup {
   order?: number;
   collapsible?: boolean;
   defaultCollapsed?: boolean;
+  /** Custom renderer for the entire group (overrides default rendering) */
+  customGroupRenderer?: React.FC<{
+    group: PropertyGroup;
+    properties: PropertyMetadata[];
+    context: PropertyContext;
+    onUpdate: (propertyId: string, value: any) => void;
+    onOpenExpressionEditor?: (initialValue: string, onSave: (newValue: string) => void) => void;
+    getValue: (propertyId: string) => any;
+    getError: (propertyId: string) => string | undefined;
+    isMixed: (propertyId: string) => boolean;
+  }>;
 }
 
 /**

@@ -4,6 +4,8 @@ import { AppComponent, ComponentProps, DataSourceInstance, AppVariable } from '.
 import { componentRegistry } from './component-registry/registry';
 import { AlignAction } from '../hooks/useAppData';
 import { Tooltip } from './component-registry/common';
+import { PropertiesPanelCore } from './properties/PropertiesPanelCore';
+import { propertyRegistry } from './properties/registry';
 
 interface PropertiesPanelProps {
   components: AppComponent[];
@@ -58,8 +60,29 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
 
   const PropertiesRenderer = plugin?.properties;
   
+  // Check if we should use the new metadata-driven system
+  const useMetadataSystem = React.useMemo(() => {
+    if (selectedComponentIds.length === 0) return false;
+    if (selectedComponentIds.length > 1) {
+      // For multi-select, check if all selected components have metadata schemas
+      const selectedComponents = components.filter(c => selectedComponentIds.includes(c.id));
+      if (selectedComponents.length === 0) return false; // No components found, can't use metadata system
+      const types = selectedComponents.map(c => c.type);
+      const uniqueTypes = Array.from(new Set(types));
+      if (uniqueTypes.length === 0) return false; // No types found
+      // Only use metadata system if all types have schemas
+      return uniqueTypes.every(type => propertyRegistry[type] !== undefined);
+    } else {
+      // Single selection
+      const component = components.find(c => c.id === selectedComponentIds[0]);
+      return component ? propertyRegistry[component.type] !== undefined : false;
+    }
+  }, [selectedComponentIds, components]);
+  
   let content;
   if (selectedComponentIds.length > 1) {
+    // Multi-select: show alignment UI if not using metadata system, otherwise use metadata system
+    if (!useMetadataSystem) {
     content = (
       <div>
         <p className="text-gray-500 text-sm text-center p-4">{selectedComponentIds.length} components selected.</p>
@@ -130,9 +153,39 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ components, se
         </div>
       </div>
     );
+    } else {
+      // Use metadata system for multi-select
+      content = (
+        <PropertiesPanelCore
+          components={components}
+          selectedComponentIds={selectedComponentIds}
+          onUpdate={onUpdate}
+          dataSources={dataSources}
+          variables={variables}
+          evaluationScope={evaluationScope}
+          onOpenExpressionEditor={onOpenExpressionEditor}
+          onArrangeContainerChildren={onArrangeContainerChildren}
+        />
+      );
+    }
+  } else if (useMetadataSystem && selectedComponentIds.length > 0) {
+    // Use new metadata-driven system
+    content = (
+      <PropertiesPanelCore
+        components={components}
+        selectedComponentIds={selectedComponentIds}
+        onUpdate={onUpdate}
+        dataSources={dataSources}
+        variables={variables}
+        evaluationScope={evaluationScope}
+        onOpenExpressionEditor={onOpenExpressionEditor}
+        onArrangeContainerChildren={onArrangeContainerChildren}
+      />
+    );
   } else if (!component || !PropertiesRenderer) {
     content = <p className="text-gray-500 text-sm text-center p-4">Select a component to see its properties.</p>;
   } else {
+    // Use legacy property renderer
     content = (
       <PropertiesRenderer 
         component={component}

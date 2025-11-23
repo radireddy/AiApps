@@ -33,6 +33,47 @@ export const PropertyGroup: React.FC<PropertyGroupProps> = ({
     return orderA - orderB;
   });
 
+  // Use custom renderer if provided
+  if (group.customGroupRenderer) {
+    const CustomRenderer = group.customGroupRenderer;
+    return (
+      <div className="border-b border-gray-200 py-2">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full flex justify-between items-center text-left font-semibold text-gray-700 text-sm hover:bg-gray-50 p-1 rounded-md"
+          aria-expanded={isOpen}
+          aria-controls={sectionId}
+        >
+          <span>{group.label}</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        {isOpen && (
+          <div id={sectionId} className="p-1 mt-2">
+            <CustomRenderer
+              group={group}
+              properties={sortedProperties}
+              context={context}
+              onUpdate={onUpdate}
+              onOpenExpressionEditor={onOpenExpressionEditor}
+              getValue={getValue}
+              getError={getError}
+              isMixed={isMixed}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (group.collapsible === false) {
     return (
       <div className="border-b border-gray-200 py-2">

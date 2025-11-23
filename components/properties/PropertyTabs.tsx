@@ -64,6 +64,65 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
 
   const activeTabData = propertiesByTab[activeTab];
 
+  // If no tabs, render all properties in a single view
+  if (sortedTabs.length === 0) {
+    // Group properties by group
+    const propertiesByGroup = groups.reduce((acc, group) => {
+      const groupProperties = properties.filter((p) => p.group === group.id);
+      if (groupProperties.length > 0) {
+        acc[group.id] = groupProperties;
+      }
+      return acc;
+    }, {} as Record<string, PropertyMetadata[]>);
+
+    // Ungrouped properties
+    const ungroupedProperties = properties.filter((p) => !p.group);
+
+    return (
+      <div className="flex flex-col h-full overflow-y-auto p-2">
+        {groups
+          .sort((a, b) => {
+            const orderA = a.order ?? 999;
+            const orderB = b.order ?? 999;
+            return orderA - orderB;
+          })
+          .map((group) => {
+            const groupProperties = propertiesByGroup[group.id] || [];
+            if (groupProperties.length === 0) return null;
+            return (
+              <PropertyGroupComponent
+                key={group.id}
+                group={group}
+                properties={groupProperties}
+                context={context}
+                onUpdate={onUpdate}
+                onOpenExpressionEditor={onOpenExpressionEditor}
+                getValue={getValue}
+                getError={getError}
+                isMixed={isMixed}
+              />
+            );
+          })}
+        {ungroupedProperties.length > 0 && (
+          <div className="py-2">
+            {ungroupedProperties.map((prop) => (
+              <PropertyInput
+                key={prop.id}
+                metadata={prop}
+                value={getValue(prop.id)}
+                onChange={(value) => onUpdate(prop.id, value)}
+                context={context}
+                onOpenExpressionEditor={onOpenExpressionEditor}
+                error={getError(prop.id)}
+                isMixed={isMixed(prop.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Tab Headers */}
