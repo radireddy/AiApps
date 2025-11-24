@@ -200,6 +200,483 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     expect(screen.getByLabelText('Default Value')).toBeInTheDocument();
   });
 
+  it('should apply static default value to INPUT component when dataStore is empty', () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: 'John Doe',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    expect(input?.defaultValue).toBe('John Doe');
+  });
+
+  it('should apply expression default value to INPUT component when dataStore is empty', () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: '{{user.name}}',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const evaluationScope = {
+      user: { name: 'Jane Doe' },
+    };
+    
+    const { container } = renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    expect(input?.defaultValue).toBe('Jane Doe');
+  });
+
+  it('should prioritize dataStore value over default value for INPUT component', () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: 'Default Name',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {
+      'user.name': 'Stored Name',
+    };
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    expect(input?.defaultValue).toBe('Stored Name');
+  });
+
+  it('should not throw hooks error when double-clicking input with default value', () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: 'Test Value',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {};
+    const evaluationScope = {};
+    
+    // Render multiple times to simulate re-renders (like double-clicking)
+    const { container, rerender } = renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    // Re-render to simulate state change (like double-clicking)
+    rerender(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    // Should not throw "Rendered fewer hooks than expected" error
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    expect(input?.defaultValue).toBe('Test Value');
+  });
+
+  it('should initialize dataStore with default value when empty for INPUT component', async () => {
+    const { render: renderComponent, waitFor } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: 'Initial Value',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const onUpdateDataStore = jest.fn();
+    const evaluationScope = {};
+    
+    renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        onUpdateDataStore={onUpdateDataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    // Wait for useEffect to run and initialize dataStore
+    await waitFor(() => {
+      expect(onUpdateDataStore).toHaveBeenCalledWith('user.name', 'Initial Value');
+    }, { timeout: 2000 });
+  });
+
+  it('should show default value in preview when dataStore is empty for INPUT component', async () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: 'Preview Value',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const onUpdateDataStore = jest.fn();
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        onUpdateDataStore={onUpdateDataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    // Should show default value even when dataStore is empty
+    expect(input?.defaultValue || input?.value).toBe('Preview Value');
+  });
+
+  it('should use dataStore value once initialized, not default value for INPUT component', async () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { InputPlugin } = require('components/component-registry/Input');
+    
+    const component = {
+      id: 'input1',
+      type: ComponentType.INPUT,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.name',
+        defaultValue: 'Default Value',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    // dataStore already has a value
+    const dataStore = {
+      'user.name': 'Changed Value',
+    };
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <InputPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    // Should use dataStore value, not default value
+    expect(input?.defaultValue || input?.value).toBe('Changed Value');
+  });
+
+  it('should initialize dataStore with default value when empty for TEXTAREA component', async () => {
+    const { render: renderComponent, waitFor } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { TextareaPlugin } = require('components/component-registry/Textarea');
+    
+    const component = {
+      id: 'textarea1',
+      type: ComponentType.TEXTAREA,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.bio',
+        defaultValue: 'Initial Bio',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const onUpdateDataStore = jest.fn();
+    const evaluationScope = {};
+    
+    renderComponent(
+      <TextareaPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        onUpdateDataStore={onUpdateDataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    // Wait for useEffect to run and initialize dataStore
+    await waitFor(() => {
+      expect(onUpdateDataStore).toHaveBeenCalledWith('user.bio', 'Initial Bio');
+    }, { timeout: 2000 });
+  });
+
+  it('should show default value in preview when dataStore is empty for TEXTAREA component', async () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { TextareaPlugin } = require('components/component-registry/Textarea');
+    
+    const component = {
+      id: 'textarea1',
+      type: ComponentType.TEXTAREA,
+      props: {
+        placeholder: 'Enter text',
+        dataStoreKey: 'user.bio',
+        defaultValue: 'Preview Bio',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const onUpdateDataStore = jest.fn();
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <TextareaPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        onUpdateDataStore={onUpdateDataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const textarea = container.querySelector('textarea');
+    expect(textarea).toBeInTheDocument();
+    // Should show default value even when dataStore is empty
+    expect(textarea?.defaultValue || textarea?.value).toBe('Preview Bio');
+  });
+
+  it('should initialize dataStore with default value when empty for SELECT component', async () => {
+    const { render: renderComponent, waitFor } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { SelectPlugin } = require('components/component-registry/Select');
+    
+    const component = {
+      id: 'select1',
+      type: ComponentType.SELECT,
+      props: {
+        placeholder: 'Select option',
+        options: 'Option 1,Option 2,Option 3',
+        dataStoreKey: 'user.country',
+        defaultValue: 'Option 2',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const onUpdateDataStore = jest.fn();
+    const evaluationScope = {};
+    
+    renderComponent(
+      <SelectPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        onUpdateDataStore={onUpdateDataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    // Wait for useEffect to run and initialize dataStore
+    await waitFor(() => {
+      expect(onUpdateDataStore).toHaveBeenCalledWith('user.country', 'Option 2');
+    }, { timeout: 2000 });
+  });
+
+  it('should show default value in preview when dataStore is empty for SELECT component', async () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { SelectPlugin } = require('components/component-registry/Select');
+    
+    const component = {
+      id: 'select1',
+      type: ComponentType.SELECT,
+      props: {
+        placeholder: 'Select option',
+        options: 'Option 1,Option 2,Option 3',
+        dataStoreKey: 'user.country',
+        defaultValue: 'Option 3',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    const dataStore = {}; // Empty dataStore
+    const onUpdateDataStore = jest.fn();
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <SelectPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        onUpdateDataStore={onUpdateDataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const select = container.querySelector('select');
+    expect(select).toBeInTheDocument();
+    // Should show default value even when dataStore is empty
+    expect(select?.value).toBe('Option 3');
+  });
+
+  it('should use dataStore value once initialized, not default value for SELECT component', async () => {
+    const { render: renderComponent } = require('@testing-library/react');
+    const { ComponentType } = require('types');
+    const { SelectPlugin } = require('components/component-registry/Select');
+    
+    const component = {
+      id: 'select1',
+      type: ComponentType.SELECT,
+      props: {
+        placeholder: 'Select option',
+        options: 'Option 1,Option 2,Option 3',
+        dataStoreKey: 'user.country',
+        defaultValue: 'Option 1',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 40,
+      },
+    };
+    
+    // dataStore already has a value
+    const dataStore = {
+      'user.country': 'Option 2',
+    };
+    const evaluationScope = {};
+    
+    const { container } = renderComponent(
+      <SelectPlugin.renderer
+        component={component}
+        mode="preview"
+        dataStore={dataStore}
+        evaluationScope={evaluationScope}
+      />
+    );
+    
+    const select = container.querySelector('select');
+    expect(select).toBeInTheDocument();
+    // Should use dataStore value, not default value
+    expect(select?.value).toBe('Option 2');
+  });
+
   it('should display Default Value property for SELECT component', () => {
     const components = [
       { 

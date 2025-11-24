@@ -1,6 +1,6 @@
 
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ComponentType, SelectProps, ComponentPlugin } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
@@ -46,9 +46,38 @@ const SelectRenderer: React.FC<{
     pointerEvents: (mode === 'edit' && isDisabled ? 'none' : 'auto') as React.CSSProperties['pointerEvents'],
   };
 
+  // Evaluate defaultValue - always call hook unconditionally (React hooks rule)
+  // Supports both static values and expressions
+  const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue || '', evaluationScope, '');
+  
+  // Get value from dataStore - try both direct key access and dot notation
+  let dataStoreValue = dataStore[p.dataStoreKey];
+  if (dataStoreValue === undefined) {
+    // Try dot notation for nested paths like 'user.name'
+    dataStoreValue = get(dataStore, p.dataStoreKey, undefined);
+  }
+  
+  // Check if dataStore has a value (undefined means key doesn't exist, empty string means user cleared it)
+  const hasDataStoreValue = dataStoreValue !== undefined;
+  
+  // Initialize dataStore with defaultValue if key doesn't exist and defaultValue is provided
+  useEffect(() => {
+    if (!hasDataStoreValue && p.defaultValue && onUpdateDataStore) {
+      // Only initialize if defaultValue evaluates to a non-empty value
+      const initValue = evaluatedDefaultValue;
+      if (initValue !== undefined && initValue !== null && initValue !== '') {
+        onUpdateDataStore(p.dataStoreKey, initValue);
+      }
+    }
+  }, [hasDataStoreValue, p.defaultValue, p.dataStoreKey, evaluatedDefaultValue, onUpdateDataStore]);
+  
+  // Use dataStore value if key exists (even if empty), otherwise use evaluated defaultValue for display
+  // Once dataStore is initialized, it will have the value and we'll use that
+  const currentValue = hasDataStoreValue ? (dataStoreValue ?? '') : (p.defaultValue ? evaluatedDefaultValue : '');
+  
   return (
     <select
-      value={get(dataStore, p.dataStoreKey, '')}
+      value={currentValue}
       onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
       style={style}
       className={`w-full h-full p-2 bg-white text-gray-900 focus:outline-none ${mode === 'edit' ? 'pointer-events-none' : ''}`}

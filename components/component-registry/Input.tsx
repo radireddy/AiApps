@@ -1,6 +1,6 @@
 
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ComponentType, InputProps, ComponentPlugin } from '../../types';
 import { InlineTextEditor, buildSpacingStyles } from './common';
 import { get } from '../../utils/data-helpers';
@@ -74,7 +74,35 @@ const InputRenderer: React.FC<{
       )
   }
 
-  const currentValue = get(dataStore, p.dataStoreKey, '');
+  // Evaluate defaultValue - always call hook unconditionally (React hooks rule)
+  // Supports both static values and expressions
+  const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue || '', evaluationScope, '');
+  
+  // Get value from dataStore - try both direct key access and dot notation
+  let dataStoreValue = dataStore[p.dataStoreKey];
+  if (dataStoreValue === undefined) {
+    // Try dot notation for nested paths like 'user.name'
+    dataStoreValue = get(dataStore, p.dataStoreKey, undefined);
+  }
+  
+  // Check if dataStore has a value (undefined means key doesn't exist, empty string means user cleared it)
+  const hasDataStoreValue = dataStoreValue !== undefined;
+  
+  // Initialize dataStore with defaultValue if key doesn't exist and defaultValue is provided
+  useEffect(() => {
+    if (!hasDataStoreValue && p.defaultValue && onUpdateDataStore) {
+      // Only initialize if defaultValue evaluates to a non-empty value
+      const initValue = evaluatedDefaultValue;
+      if (initValue !== undefined && initValue !== null && initValue !== '') {
+        onUpdateDataStore(p.dataStoreKey, initValue);
+      }
+    }
+  }, [hasDataStoreValue, p.defaultValue, p.dataStoreKey, evaluatedDefaultValue, onUpdateDataStore]);
+  
+  // Use dataStore value if key exists (even if empty), otherwise use evaluated defaultValue for display
+  // Once dataStore is initialized, it will have the value and we'll use that
+  const currentValue = hasDataStoreValue ? (dataStoreValue ?? '') : (p.defaultValue ? evaluatedDefaultValue : '');
+  
   return (
     <input
       type="text"

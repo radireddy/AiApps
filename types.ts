@@ -150,6 +150,8 @@ export interface InputProps extends BaseProps, BorderProps {
   placeholder: string;
   /** The key in the `dataStore` where this input's value is saved (e.g., 'user.name') */
   dataStoreKey: string;
+  /** Default value for the input field (supports expressions) */
+  defaultValue?: string;
   accessibilityLabel?: string;
 }
 
@@ -207,6 +209,8 @@ export interface VStackProps extends PanelProps {}
 export interface TextareaProps extends BaseProps, BorderProps {
   placeholder: string;
   dataStoreKey: string;
+  /** Default value for the textarea field (supports expressions) */
+  defaultValue?: string;
   accessibilityLabel?: string;
 }
 
@@ -214,6 +218,8 @@ export interface SelectProps extends BaseProps, BorderProps {
   dataStoreKey: string;
   options: string; // comma-separated
   placeholder: string;
+  /** Default value for the select field (supports expressions) */
+  defaultValue?: string;
   accessibilityLabel?: string;
 }
 
