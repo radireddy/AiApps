@@ -194,33 +194,30 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
         );
         
         if (isTextInput) {
-          // Check if the input is inside a selected component
-          let isInsideSelectedComponent = false;
-          let componentCheck: HTMLElement | null = activeElement as HTMLElement;
-          while (componentCheck && componentCheck !== document.body) {
-            if (componentCheck.classList.contains('outline')) {
-              isInsideSelectedComponent = true;
-              break;
+          // If user is actively editing text in an input/textarea, never delete the component
+          // This includes when pressing backspace to delete characters
+          if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
+            // Check if the input is focused (user is actively editing)
+            if (document.activeElement === activeElement) {
+              // User is editing text - don't delete component, let the input handle the key
+              return;
             }
-            componentCheck = componentCheck.parentElement;
           }
-          
-          if (isInsideSelectedComponent) {
-            // For text inputs/textarea, check if user is actively typing (has text selected)
-            if (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA') {
-              const inputElement = activeElement as HTMLInputElement | HTMLTextAreaElement;
-              const hasTextSelection = inputElement.selectionStart !== undefined && 
-                                       inputElement.selectionStart !== inputElement.selectionEnd;
-              // Only prevent deletion if user has text selected (actively editing)
-              if (hasTextSelection) {
-                return; // User is actively editing text, don't delete component
+          // For contentEditable elements, check if it's inside a selected component
+          if ((activeElement as HTMLElement).isContentEditable) {
+            let isInsideSelectedComponent = false;
+            let componentCheck: HTMLElement | null = activeElement as HTMLElement;
+            while (componentCheck && componentCheck !== document.body) {
+              if (componentCheck.classList.contains('outline')) {
+                isInsideSelectedComponent = true;
+                break;
               }
+              componentCheck = componentCheck.parentElement;
             }
-            // For contentEditable or inputs without text selection - allow deletion
-            // Continue to deletion logic below
-          } else {
-            // Text input in canvas but not in selected component - don't delete
-            return;
+            if (!isInsideSelectedComponent) {
+              // ContentEditable in canvas but not in selected component - don't delete
+              return;
+            }
           }
         }
         

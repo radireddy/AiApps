@@ -113,6 +113,12 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         }
 
         // Heuristic: if the value looks like plain text (no code-like chars), return it as a string literal.
+        // Check if it's a URL (starts with http:// or https://)
+        const isUrl = /^https?:\/\//.test(value);
+        if (isUrl) {
+            return JSON.stringify(value);
+        }
+        
         const seemsLikeCode = /[()\[\].=<>+\-*/%&|?:]/.test(value) || value.includes('.') || value.includes('actions') || value.includes('updateVariable');
         if (!seemsLikeCode) {
             return JSON.stringify(value);
@@ -133,6 +139,12 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         return isRaw ? `\`${templateLiteral}\`` : `{\`${templateLiteral}\`}`;
     }
 
+    // Check if it's a URL (starts with http:// or https://) - always quote URLs
+    const isUrl = /^https?:\/\//.test(value);
+    if (isUrl) {
+        return isRaw ? JSON.stringify(value) : `"${value}"`;
+    }
+    
     if (context === 'jsx-attr') return `"${value}"`;
     if (isRaw) return JSON.stringify(value);
     return value;

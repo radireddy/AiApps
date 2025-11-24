@@ -524,18 +524,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
    * @param componentId - The ID of the component being moved.
    */
   const reparentComponent = useCallback((componentId: string, finalPosition?: { x: number; y: number }) => {
-    // DEBUG_LOGGING: Log reparent attempt
-    debugLog('REPARENT_ATTEMPT', {
-      componentId,
-      finalPosition,
-    });
-    
     // Prevent infinite loops by checking if this component is already being reparented
     if (isReparentingRef.current.has(componentId)) {
-      debugLog('REPARENT_SKIPPED_ALREADY_PROCESSING', {
-        componentId,
-        currentlyProcessing: Array.from(isReparentingRef.current),
-      }, true);
       return;
     }
     isReparentingRef.current.add(componentId);
@@ -636,11 +626,6 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const allComponents = prev.components;
         const componentToReparent = allComponents.find(c => c.id === componentId);
         if (!componentToReparent) {
-          debugLog('REPARENT_FAILED_COMPONENT_NOT_FOUND', {
-            componentId,
-            availableComponentIds: allComponents.map(c => c.id),
-            totalComponents: allComponents.length,
-          }, true);
           return prev;
         }
 
@@ -715,6 +700,17 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         // Use threshold for easier container entry
         const CONTAINER_THRESHOLD = 0.5;
         
+        // Helper to check if a container is nested inside another container
+        const isNestedIn = (containerId: string, potentialAncestorId: string, allComps: AppComponent[]): boolean => {
+            if (containerId === potentialAncestorId) return false;
+            const container = allComps.find(c => c.id === containerId);
+            if (!container || !container.parentId) return false;
+            if (container.parentId === potentialAncestorId) return true;
+            return isNestedIn(container.parentId, potentialAncestorId, allComps);
+        };
+        
+        const containingContainers: Array<{ parent: AppComponent; area: number; borderPos: { x: number; y: number }; bounds: any }> = [];
+        
         for (const parent of potentialParents) {
             // Get parent's border position (not including padding)
             const parentBorderPos = getParentBorderPosition(parent.id);
@@ -753,20 +749,56 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             
             if (isWithinBounds) {
                 const area = parentWidth * parentHeight;
-                if (area < smallestArea) {
-                    smallestArea = area;
-                    newParent = parent;
+                const bounds = parent.type === ComponentType.CONTAINER ? {
+                    contentLeft: parentBorderPos.x + (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).left : 0),
+                    contentTop: parentBorderPos.y + (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).top : 0),
+                    contentRight: parentBorderPos.x + parentWidth - (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).right : 0),
+                    contentBottom: parentBorderPos.y + parentHeight - (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).bottom : 0),
+                } : {
+                    left: parentBorderPos.x,
+                    top: parentBorderPos.y,
+                    right: parentBorderPos.x + parentWidth,
+                    bottom: parentBorderPos.y + parentHeight,
+                };
+                
+                containingContainers.push({
+                    parent,
+                    area,
+                    borderPos: parentBorderPos,
+                    bounds,
+                });
+            }
+        }
+        
+        // Filter out outer containers - if container A is nested in container B and both contain the component,
+        // we only want container A (the innermost)
+        const innermostContainers = containingContainers.filter(({ parent: candidate }) => {
+            // Check if this container is nested inside any other container that also contains the component
+            for (const { parent: other } of containingContainers) {
+                if (other.id !== candidate.id && isNestedIn(candidate.id, other.id, allComponents)) {
+                    // This container is nested inside another containing container, so skip it
+                    return false;
                 }
+            }
+            return true;
+        });
+        
+        // Select the container with the smallest area (innermost)
+        for (const { parent, area } of innermostContainers) {
+            if (area < smallestArea) {
+                smallestArea = area;
+                newParent = parent;
             }
         }
         
         const oldParentId = componentToReparent.parentId || null;
+        const newParentId = newParent ? newParent.id : null;
         
-        // If component is currently in a Container, check if it's still within that container's bounds
-        // Only move it out if it's completely outside the container
-        // Use a small threshold (0.5px) to account for floating-point precision issues
+        // If component is currently in a Container and we found a new parent, check if we should reparent
+        // For nested containers, we allow reparenting even if still within old parent's bounds
+        // (e.g., moving from C1 to C2 where C2 is nested in C1)
         const CONTAINMENT_THRESHOLD = 0.5;
-        if (oldParentId) {
+        if (oldParentId && oldParentId !== newParentId) {
             const oldParent = allComponents.find(p => p.id === oldParentId);
             if (oldParent && oldParent.type === ComponentType.CONTAINER) {
                 const oldParentBorderPos = getParentBorderPosition(oldParentId);
@@ -779,7 +811,6 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                 const contentBottom = oldParentBorderPos.y + oldParentHeight - oldParentPadding.bottom;
                 
                 // Check if component is still completely within the original container's content area
-                // Use threshold to account for floating-point precision
                 const stillInOriginalContainer = (
                     absoluteX >= contentLeft - CONTAINMENT_THRESHOLD &&
                     absoluteX + componentWidth <= contentRight + CONTAINMENT_THRESHOLD &&
@@ -787,21 +818,24 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                     absoluteY + componentHeight <= contentBottom + CONTAINMENT_THRESHOLD
                 );
                 
-                // If still in original container, keep it there (don't reparent)
-                if (stillInOriginalContainer) {
-                  debugLog('REPARENT_NO_CHANGE_STILL_IN_ORIGINAL', {
-                    componentId,
-                    oldParentId,
-                    absolutePosition: { x: absoluteX, y: absoluteY },
-                    containerBounds: { contentLeft, contentTop, contentRight, contentBottom },
-                    componentSize: { width: componentWidth, height: componentHeight },
-                  });
+                // If we found a new parent, check if it's nested in the old parent
+                // If so, allow the reparenting (this handles moving to nested containers)
+                let allowReparentToNested = false;
+                if (newParentId) {
+                    const newParentComp = allComponents.find(p => p.id === newParentId);
+                    if (newParentComp && isNestedIn(newParentId, oldParentId, allComponents)) {
+                        // New parent is nested in old parent - allow reparenting
+                        allowReparentToNested = true;
+                    }
+                }
+                
+                // If still in original container and not moving to a nested container, keep it there
+                if (stillInOriginalContainer && !allowReparentToNested) {
                   return prev; // No change needed - component stays in original container
                 }
                 
                 // If not in original container, check if it's completely outside
                 // Component is completely outside if no part of it overlaps the content area
-                // Use threshold to make it easier to drag out
                 const completelyOutside = (
                     absoluteX + componentWidth <= contentLeft + CONTAINMENT_THRESHOLD ||
                     absoluteX >= contentRight - CONTAINMENT_THRESHOLD ||
@@ -809,29 +843,15 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                     absoluteY >= contentBottom - CONTAINMENT_THRESHOLD
                 );
                 
-                // Only allow moving out if completely outside
-                // If partially overlapping, don't change parent (keep in original container)
-                if (!completelyOutside) {
-                  debugLog('REPARENT_NO_CHANGE_PARTIALLY_OVERLAPPING', {
-                    componentId,
-                    oldParentId,
-                    absolutePosition: { x: absoluteX, y: absoluteY },
-                    containerBounds: { contentLeft, contentTop, contentRight, contentBottom },
-                    componentSize: { width: componentWidth, height: componentHeight },
-                    completelyOutside,
-                  });
+                // Only prevent reparenting if completely outside AND not moving to a nested container
+                // If partially overlapping and not moving to nested container, don't change parent
+                if (!completelyOutside && !allowReparentToNested) {
                   return prev; // Partially overlapping - keep in original container
                 }
             }
         }
-        
-        const newParentId = newParent ? newParent.id : null;
 
         if (oldParentId === newParentId) {
-          debugLog('REPARENT_NO_CHANGE_SAME_PARENT', {
-            componentId,
-            parentId: oldParentId,
-          });
           return prev; // No change needed
         }
 
@@ -869,27 +889,22 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             return c;
           });
 
-          debugLog('REPARENT_SUCCESS', {
-            componentId,
-            oldParentId,
-            newParentId,
-            oldPosition: { x: componentToReparent.props.x, y: componentToReparent.props.y },
-            newPosition: { x: newRelativeX, y: newRelativeY },
-            absolutePosition: { x: absoluteX, y: absoluteY },
-            newParentAbsPos,
-            newParentType: newParent?.type,
-          });
+          // VALIDATION: Verify the component is actually a child of the new parent
+          const updatedComponent = updatedComponents.find(c => c.id === componentId);
+          const actualParentId = updatedComponent?.parentId || null;
+          const validationFailed = actualParentId !== newParentId;
+          
+          if (validationFailed) {
+            const errorMessage = `CRITICAL: Component ${componentId} was dropped on container ${newParentId} but is not its child! Expected parentId: ${newParentId}, Actual parentId: ${actualParentId}`;
+            console.error(`[REPARENT ERROR] ${errorMessage}`);
+            // Show user-visible error
+            alert(`Error: Component was dropped on a container but was not added as its child. Check console for details.`);
+            return prev; // Return original state on validation failure
+          }
 
           return { ...prev, components: updatedComponents };
         } catch (error) {
-          debugLog('REPARENT_EXCEPTION', {
-            componentId,
-            oldParentId,
-            newParentId,
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            absolutePosition: { x: absoluteX, y: absoluteY },
-          }, true);
+          console.error('[REPARENT EXCEPTION]', error);
           return prev;
         }
     });

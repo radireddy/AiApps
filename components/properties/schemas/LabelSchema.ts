@@ -104,3 +104,4 @@ export const labelProperties: PropertyMetadata[] = [
 
 export const labelSchema = createPropertySchema(ComponentType.LABEL, labelProperties);
 
+

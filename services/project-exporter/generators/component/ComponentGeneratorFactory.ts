@@ -2,8 +2,8 @@
 import { ComponentType } from '../../../../types';
 import { IComponentGeneratorStrategy } from './ComponentGeneratorStrategy';
 import { ContainerGenerator } from './implementations/ContainerGenerators';
-import { ButtonGenerator, InputGenerator } from './implementations/InputGenerators';
-import { LabelGenerator, ImageGenerator, FallbackGenerator } from './implementations/DisplayGenerators';
+import { ButtonGenerator, InputGenerator, TextareaGenerator, SelectGenerator, CheckboxGenerator, RadioGroupGenerator, SwitchGenerator } from './implementations/InputGenerators';
+import { LabelGenerator, ImageGenerator, DividerGenerator, TableGenerator, FallbackGenerator } from './implementations/DisplayGenerators';
 
 /**
  * Factory class responsible for instantiating the correct component generator based on component type.
@@ -14,11 +14,18 @@ export class ComponentGeneratorFactory {
         [ComponentType.PANEL]: new ContainerGenerator(),
         [ComponentType.H_STACK]: new ContainerGenerator(),
         [ComponentType.V_STACK]: new ContainerGenerator(),
+        [ComponentType.CONTAINER]: new ContainerGenerator(),
         [ComponentType.LABEL]: new LabelGenerator(),
         [ComponentType.INPUT]: new InputGenerator(),
         [ComponentType.BUTTON]: new ButtonGenerator(),
         [ComponentType.IMAGE]: new ImageGenerator(),
-        // Add other mappings here
+        [ComponentType.TEXTAREA]: new TextareaGenerator(),
+        [ComponentType.SELECT]: new SelectGenerator(),
+        [ComponentType.CHECKBOX]: new CheckboxGenerator(),
+        [ComponentType.DIVIDER]: new DividerGenerator(),
+        [ComponentType.RADIO_GROUP]: new RadioGroupGenerator(),
+        [ComponentType.SWITCH]: new SwitchGenerator(),
+        [ComponentType.TABLE]: new TableGenerator(),
     };
 
     private static fallback = new FallbackGenerator();

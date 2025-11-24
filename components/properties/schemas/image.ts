@@ -75,3 +75,4 @@ export const imageSchema: ComponentPropertySchema = createPropertySchema(
   [...commonGroups, ...imageGroups]
 );
 
+

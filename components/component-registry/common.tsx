@@ -263,13 +263,20 @@ export const InlineTextEditor: React.FC<{
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Stop propagation for all keyboard events to prevent parent handlers from interfering
+    // This is especially important for backspace/delete keys that might delete components
+    e.stopPropagation();
+    
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         onCommit(currentValue);
     }
     if (e.key === 'Escape') {
+      e.preventDefault();
       onCommit(value);
     }
+    // For backspace and delete, let the textarea handle it naturally (don't prevent default)
+    // We just stop propagation so it doesn't bubble up to the component deletion handler
   };
 
   const handleEventBubble = (e: React.MouseEvent | React.FocusEvent) => {

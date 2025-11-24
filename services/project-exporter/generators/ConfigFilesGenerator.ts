@@ -17,7 +17,8 @@ export const generatePackageJson = (appName: string): string => {
         },
         "dependencies": {
             "react": "^18.2.0",
-            "react-dom": "^18.2.0"
+            "react-dom": "^18.2.0",
+            "marked": "^11.1.1"
         },
         "devDependencies": {
             "@types/react": "^18.2.15",
@@ -27,7 +28,8 @@ export const generatePackageJson = (appName: string): string => {
             "postcss": "^8.4.29",
             "tailwindcss": "^3.3.3",
             "typescript": "^5.0.2",
-            "vite": "^4.4.5"
+            "vite": "^4.4.5",
+            "@types/marked": "^6.0.0"
         }
     }, null, 2);
 };
@@ -151,10 +153,25 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 `;
 
 /**
- * Generates the `src/index.css` file with Tailwind directives.
+ * Generates the `src/index.css` file with Tailwind directives and full-height styles.
  */
 export const generateIndexCss = (): string => `
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Ensure full window height for the app */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 `;

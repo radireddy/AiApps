@@ -312,7 +312,7 @@ export const ButtonPlugin: ComponentPlugin = {
       width: 120,
       height: 40,
       backgroundColor: '{{theme.colors.primary}}',
-      textColor: '{{theme.colors.onprimary}}',
+      textColor: '{{theme.colors.onPrimary}}',
       actionType: 'none',
       borderStyle: 'none',
       disabled: false,

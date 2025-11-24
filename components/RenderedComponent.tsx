@@ -911,30 +911,41 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   // Calculate z-index based on nesting depth and component type
   // Containers should have lower z-index (stay in background)
   // Children should have higher z-index (always on top)
-  // Calculate nesting depth
-  const getNestingDepth = (compId: string, allComps: AppComponent[]): number => {
-    const comp = allComps.find(c => c.id === compId);
-    if (!comp || !comp.parentId) return 0;
-    return 1 + getNestingDepth(comp.parentId, allComps);
-  };
-  const nestingDepth = getNestingDepth(component.id, allComponents);
+  // But if component has explicit zIndex prop, use that as base instead
+  const explicitZIndex = (component.props as any).zIndex;
   
-  // Base z-index: containers get lower values, non-containers get higher
   // Selected components get a boost to show selection outline
-  // Children get higher z-index than parents
-  let baseZIndex: number;
-  if (plugin.isContainer) {
-    // Containers: lower z-index, deeper nesting = even lower
-    baseZIndex = 100 - (nestingDepth * 10);
-  } else {
-    // Non-container children: higher z-index, deeper nesting = even higher
-    baseZIndex = 200 + (nestingDepth * 10);
-  }
-  
-  // Selected components get a boost
   const selectedBoost = isSelected ? 1000 : 0;
   // Dragged components get an even higher z-index to stay visible above all containers
   const dragBoost = isDragging ? 10000 : 0;
+  
+  let finalZIndex: number;
+  if (explicitZIndex !== undefined && explicitZIndex !== null) {
+    // Use explicit z-index from props as base, but still apply boosts for selection/dragging
+    const baseZIndex = typeof explicitZIndex === 'number' ? explicitZIndex : parseFloat(String(explicitZIndex)) || 0;
+    finalZIndex = baseZIndex + selectedBoost + dragBoost;
+  } else {
+    // Calculate nesting depth
+    const getNestingDepth = (compId: string, allComps: AppComponent[]): number => {
+      const comp = allComps.find(c => c.id === compId);
+      if (!comp || !comp.parentId) return 0;
+      return 1 + getNestingDepth(comp.parentId, allComps);
+    };
+    const nestingDepth = getNestingDepth(component.id, allComponents);
+    
+    // Base z-index: containers get lower values, non-containers get higher
+    // Children get higher z-index than parents
+    let baseZIndex: number;
+    if (plugin.isContainer) {
+      // Containers: lower z-index, deeper nesting = even lower
+      baseZIndex = 100 - (nestingDepth * 10);
+    } else {
+      // Non-container children: higher z-index, deeper nesting = even higher
+      baseZIndex = 200 + (nestingDepth * 10);
+    }
+    
+    finalZIndex = baseZIndex + selectedBoost + dragBoost;
+  }
   
   const componentStyle: React.CSSProperties = {
     position: 'absolute',
@@ -942,7 +953,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     top: `${y}px`, // Ensure pixel units for proper CSS rendering
     width: width, // Can be "400px" or "50%" - CSS will handle it
     height: height, // Can be "300px" or "50%" - CSS will handle it
-    zIndex: baseZIndex + selectedBoost + dragBoost,
+    zIndex: finalZIndex,
     // In edit mode, hidden components should be visible but with reduced opacity to indicate they're hidden
     // In preview mode, use display: none to completely hide them
     ...(isHidden 
