@@ -1,6 +1,7 @@
 import { ComponentType, ComponentPlugin } from '../../types';
 import { ButtonPlugin } from './Button';
 import { CheckboxPlugin } from './Checkbox';
+import { ContainerPlugin } from './Container';
 import { DividerPlugin } from './Divider';
 import { HStackPlugin } from './HStack';
 import { ImagePlugin } from './Image';
@@ -30,4 +31,5 @@ export const componentRegistry: Record<ComponentType, ComponentPlugin> = {
     [ComponentType.DIVIDER]: DividerPlugin,
     [ComponentType.RADIO_GROUP]: RadioGroupPlugin,
     [ComponentType.SWITCH]: SwitchPlugin,
+    [ComponentType.CONTAINER]: ContainerPlugin,
 };

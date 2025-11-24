@@ -247,8 +247,16 @@ export function createPropertySchema(
     return false;
   });
 
-  // Combine common and custom properties
-  const allProperties = [...applicableCommonProps, ...customProperties];
+  // Combine common and custom properties, with custom properties overriding common ones
+  // Deduplicate by id - custom properties take precedence
+  const propertyMap = new Map<string, PropertyMetadata>();
+  applicableCommonProps.forEach(prop => {
+    propertyMap.set(prop.id, prop);
+  });
+  customProperties.forEach(prop => {
+    propertyMap.set(prop.id, prop); // Custom properties override common ones
+  });
+  const allProperties = Array.from(propertyMap.values());
 
   // Use custom tabs/groups or defaults
   const tabs = customTabs || commonTabs;

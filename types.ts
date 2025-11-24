@@ -91,6 +91,7 @@ export enum ComponentType {
   RADIO_GROUP = 'RADIO_GROUP',
   SWITCH = 'SWITCH',
   TABLE = 'TABLE',
+  CONTAINER = 'CONTAINER',
 }
 
 /**
@@ -243,7 +244,32 @@ export interface DividerProps extends BaseProps {
   color: string;
 }
 
-export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps;
+export interface ContainerProps extends BaseProps, BorderProps {
+  /** Background color */
+  backgroundColor?: string;
+  /** Background image URL */
+  backgroundImage?: string;
+  /** Minimum width in pixels */
+  minWidth?: number;
+  /** Maximum width in pixels */
+  maxWidth?: number;
+  /** Minimum height in pixels */
+  minHeight?: number;
+  /** Maximum height in pixels */
+  maxHeight?: number;
+  /** Z-index for layering */
+  zIndex?: number;
+  /** Custom CSS class names */
+  className?: string;
+  /** Custom HTML attributes */
+  customAttributes?: string; // JSON string of key-value pairs
+  /** Tooltip text */
+  tooltip?: string;
+  /** onClick event handler (JS expression) */
+  onClick?: string;
+}
+
+export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ContainerProps;
 
 /**
  * Represents a single instance of a UI component in the application.

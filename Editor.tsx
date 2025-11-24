@@ -326,8 +326,17 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     if (finalParentId) {
         const parent = components.find(c => c.id === finalParentId);
         if (parent) {
-            finalX = x - parent.props.x;
-            finalY = y - parent.props.y;
+            // For Container type, the x/y passed in is already relative to padding edge
+            // For other containers, convert from absolute to relative
+            if (parent.type === ComponentType.CONTAINER) {
+                // Position is already relative to padding edge, use as-is
+                finalX = x;
+                finalY = y;
+            } else {
+                // Convert from absolute canvas coordinates to relative coordinates
+                finalX = x - parent.props.x;
+                finalY = y - parent.props.y;
+            }
         }
     }
     
@@ -502,7 +511,6 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
             variables={variables}
             evaluationScope={evaluationScope}
             onOpenExpressionEditor={openExpressionEditor}
-            onAlignAndDistribute={alignAndDistribute}
             onArrangeContainerChildren={arrangeContainerChildren}
           />
         </div>

@@ -51,6 +51,7 @@ export const ComponentTypeGroups = {
     ComponentType.RADIO_GROUP,
     ComponentType.SWITCH,
     ComponentType.TABLE,
+    ComponentType.CONTAINER,
   ],
 
   // Text-based components
@@ -76,11 +77,22 @@ export const ComponentTypeGroups = {
     ComponentType.SWITCH,
   ],
 
+  // Form components (same as input components for validation purposes)
+  FORM_COMPONENTS: [
+    ComponentType.INPUT,
+    ComponentType.TEXTAREA,
+    ComponentType.SELECT,
+    ComponentType.CHECKBOX,
+    ComponentType.RADIO_GROUP,
+    ComponentType.SWITCH,
+  ],
+
   // Container/Layout components
   CONTAINER_COMPONENTS: [
     ComponentType.PANEL,
     ComponentType.H_STACK,
     ComponentType.V_STACK,
+    ComponentType.CONTAINER,
   ],
 
   // Components with tooltip support

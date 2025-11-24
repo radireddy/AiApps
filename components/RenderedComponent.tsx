@@ -238,15 +238,16 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
 
     const rect = componentRef.current.getBoundingClientRect();
     
-    // Calculate padding offset - account for parent's padding
+    // Calculate padding offset - account for container's padding
     const { left: paddingLeft, top: paddingTop } = parsePadding(component.props.padding);
     
-    // Position relative to padding edge, not border edge
-    const x = event.clientX - rect.left - paddingLeft + (component.props.x as number);
-    const y = event.clientY - rect.top - paddingTop + (component.props.y as number);
+    // Position relative to padding edge (content area), not border edge
+    // The position should be relative to the container's content area (after padding)
+    const x = event.clientX - rect.left - paddingLeft;
+    const y = event.clientY - rect.top - paddingTop;
 
     onDrop({ type }, x, y, component.id);
-  }, [onDrop, component.id, component.props.x, component.props.y, component.props.padding, plugin.isContainer]);
+  }, [onDrop, component.id, component.props.padding, plugin.isContainer]);
 
   const handleDragOver = (event: React.DragEvent) => {
     if (plugin.isContainer) {

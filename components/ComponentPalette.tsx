@@ -61,6 +61,7 @@ export const ComponentPalette: React.FC<ComponentPaletteProps> = ({ width, isCol
       case ComponentType.PANEL:
       case ComponentType.H_STACK:
       case ComponentType.V_STACK:
+      case ComponentType.CONTAINER:
         return 'Layout';
       case ComponentType.DIVIDER:
         return 'Icons';

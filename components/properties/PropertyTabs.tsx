@@ -36,9 +36,14 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
 
   const [activeTab, setActiveTab] = useState(sortedTabs[0]?.id || '');
 
+  // Deduplicate properties by id (first occurrence wins)
+  const uniqueProperties = Array.from(
+    new Map(properties.map(p => [p.id, p])).values()
+  );
+
   // Group properties by tab and then by group
   const propertiesByTab = sortedTabs.reduce((acc, tab) => {
-    const tabProperties = properties.filter((p) => p.tab === tab.id);
+    const tabProperties = uniqueProperties.filter((p) => p.tab === tab.id);
     const propertiesByGroup = groups
       .filter((g) => g.tab === tab.id)
       .reduce((groupAcc, group) => {
@@ -69,7 +74,7 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
   if (sortedTabs.length === 0) {
     // Group properties by group
     const propertiesByGroup = groups.reduce((acc, group) => {
-      const groupProperties = properties.filter((p) => p.group === group.id);
+      const groupProperties = uniqueProperties.filter((p) => p.group === group.id);
       if (groupProperties.length > 0) {
         acc[group.id] = groupProperties;
       }
@@ -77,7 +82,7 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
     }, {} as Record<string, PropertyMetadata[]>);
 
     // Ungrouped properties
-    const ungroupedProperties = properties.filter((p) => !p.group);
+    const ungroupedProperties = uniqueProperties.filter((p) => !p.group);
 
     return (
       <div className="flex flex-col h-full overflow-y-auto p-2">

@@ -191,31 +191,39 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             if (parentId) {
                 const parent = prev.components.find(c => c.id === parentId);
                 if (parent) {
-                    const parentProps: any = parent.props as any;
-                    const existingChildren = prev.components.filter(c => c.parentId === parentId && c.pageId === pageId);
-                    const GAP = 10;
+                    // For Container type, use the provided position directly (no auto-arrangement)
+                    if (parent.type === ComponentType.CONTAINER) {
+                        // Container uses absolute positioning - position is already relative to padding edge
+                        // Ensure position is not negative (clamp to 0)
+                        (newComp.props as any).x = Math.max(0, (newComp.props as any).x);
+                        (newComp.props as any).y = Math.max(0, (newComp.props as any).y);
+                    } else {
+                        // For other container types (Panel, HStack, VStack), use auto-arrangement
+                        const parentProps: any = parent.props as any;
+                        const existingChildren = prev.components.filter(c => c.parentId === parentId && c.pageId === pageId);
+                        const GAP = 10;
 
-                    // Build an array including the new component and compute positions for all children
-                    const allChildren = [...existingChildren, newComp];
+                        // Build an array including the new component and compute positions for all children
+                        const allChildren = [...existingChildren, newComp];
 
-                    // Parse parent padding to account for it in positioning
-                    const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
-                        if (padding === undefined) return { left: 0, top: 0 };
-                        if (typeof padding === 'number') return { left: padding, top: padding };
-                        const parts = String(padding).trim().split(/\s+/);
-                        if (parts.length === 1) {
-                            const value = parseFloat(parts[0]) || 0;
-                            return { left: value, top: value };
-                        } else if (parts.length === 2) {
-                            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
-                        } else if (parts.length === 4) {
-                            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
-                        }
-                        return { left: 0, top: 0 };
-                    };
-                    const parentPadding = parsePaddingValue(parentProps.padding);
-                    
-                    if ((parentProps.direction || 'horizontal') === 'horizontal') {
+                        // Parse parent padding to account for it in positioning
+                        const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
+                            if (padding === undefined) return { left: 0, top: 0 };
+                            if (typeof padding === 'number') return { left: padding, top: padding };
+                            const parts = String(padding).trim().split(/\s+/);
+                            if (parts.length === 1) {
+                                const value = parseFloat(parts[0]) || 0;
+                                return { left: value, top: value };
+                            } else if (parts.length === 2) {
+                                return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
+                            } else if (parts.length === 4) {
+                                return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
+                            }
+                            return { left: 0, top: 0 };
+                        };
+                        const parentPadding = parsePaddingValue(parentProps.padding);
+                        
+                        if ((parentProps.direction || 'horizontal') === 'horizontal') {
                         // compute positions left-to-right, starting from padding edge
                         let currentX = parentPadding.left;
                         const arranged = allChildren.map((c, idx) => {
@@ -250,6 +258,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                         (newComp.props as any).y = arranged.find(a => a.id === newComp.id)!.y;
                         (newComp as any)._arranged = arranged.reduce((m, a) => { m[a.id] = { x: a.x, y: a.y }; return m; }, {} as Record<string, any>);
                     }
+                    }
                 }
             }
 
@@ -274,12 +283,67 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, [dataStore]);
 
   const updateComponent = useCallback((id: string, newProps: Partial<ComponentProps>) => {
-    setAppDefinitionState(prev => ({
-        ...prev,
-        components: prev.components.map(c =>
-            c.id === id ? { ...c, props: { ...c.props, ...newProps } } : c
-        )
-    }));
+    setAppDefinitionState(prev => {
+        const component = prev.components.find(c => c.id === id);
+        if (!component) {
+            return prev;
+        }
+
+        // Check if this is a Container and padding is being changed
+        const isContainer = component.type === ComponentType.CONTAINER;
+        const paddingChanged = isContainer && 'padding' in newProps && newProps.padding !== component.props.padding;
+        
+        // Parse padding helper
+        const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
+            if (padding === undefined) return { left: 0, top: 0 };
+            if (typeof padding === 'number') return { left: padding, top: padding };
+            const parts = String(padding).trim().split(/\s+/);
+            if (parts.length === 1) {
+                const value = parseFloat(parts[0]) || 0;
+                return { left: value, top: value };
+            } else if (parts.length === 2) {
+                return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
+            } else if (parts.length === 4) {
+                return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
+            }
+            return { left: 0, top: 0 };
+        };
+
+        let updatedComponents = prev.components.map(c => {
+            if (c.id === id) {
+                return { ...c, props: { ...c.props, ...newProps } };
+            }
+            return c;
+        });
+
+        // If padding changed on a Container, adjust all child positions
+        if (paddingChanged) {
+            const oldPadding = parsePaddingValue(component.props.padding);
+            const newPadding = parsePaddingValue(newProps.padding);
+            const paddingDeltaX = newPadding.left - oldPadding.left;
+            const paddingDeltaY = newPadding.top - oldPadding.top;
+
+            // Adjust all children's positions to maintain their visual position
+            updatedComponents = updatedComponents.map(c => {
+                if (c.parentId === id) {
+                    return {
+                        ...c,
+                        props: {
+                            ...c.props,
+                            x: Math.max(0, (c.props.x as number) + paddingDeltaX),
+                            y: Math.max(0, (c.props.y as number) + paddingDeltaY),
+                        }
+                    };
+                }
+                return c;
+            });
+        }
+
+        return {
+            ...prev,
+            components: updatedComponents,
+        };
+    });
   }, []);
   
   const updateComponents = useCallback((updates: Array<{ id: string; props: Partial<ComponentProps> }>) => {
@@ -390,8 +454,25 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     }
     isReparentingRef.current.add(componentId);
 
-    // Helper to get the absolute position of a component
+    // Helper to parse padding
+    const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
+        if (padding === undefined) return { left: 0, top: 0 };
+        if (typeof padding === 'number') return { left: padding, top: padding };
+        const parts = String(padding).trim().split(/\s+/);
+        if (parts.length === 1) {
+            const value = parseFloat(parts[0]) || 0;
+            return { left: value, top: value };
+        } else if (parts.length === 2) {
+            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
+        } else if (parts.length === 4) {
+            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
+        }
+        return { left: 0, top: 0 };
+    };
+
+    // Helper to get the absolute position of a component (border position on canvas)
     // Uses a visited set to prevent infinite loops from circular parent references
+    // For Container parents, accounts for padding: child positions are relative to padding edge
     const getAbsolutePosition = (cId: string, allComponents: AppComponent[], visited: Set<string> = new Set()): { x: number, y: number } => {
         // Prevent infinite loops from circular references
         if (visited.has(cId)) {
@@ -403,9 +484,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const component = allComponents.find(c => c.id === cId);
         if (!component) return { x: 0, y: 0 };
 
+        // Start with component's own position
         let absX = component.props.x;
         let absY = component.props.y;
         let currentParentId = component.parentId;
+        
         while (currentParentId) {
             if (visited.has(currentParentId)) {
                 console.warn(`Circular parent reference detected in parent chain for component ${cId}`);
@@ -414,8 +497,16 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             visited.add(currentParentId);
             const parent = allComponents.find(p => p.id === currentParentId);
             if (parent) {
+                // Add parent's border position
                 absX += parent.props.x;
                 absY += parent.props.y;
+                // For Container type, child positions are relative to padding edge (content area)
+                // So we need to add padding to get the absolute border position
+                if (parent.type === ComponentType.CONTAINER) {
+                    const parentPadding = parsePaddingValue(parent.props.padding);
+                    absX += parentPadding.left;
+                    absY += parentPadding.top;
+                }
                 currentParentId = parent.parentId;
             } else {
                 break;
@@ -446,6 +537,38 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const centerX = absoluteX + componentToReparent.props.width / 2;
         const centerY = absoluteY + componentToReparent.props.height / 2;
 
+        // Helper to get parent's border position (not including padding)
+        const getParentBorderPosition = (parentId: string): { x: number, y: number } => {
+            if (!parentId) return { x: 0, y: 0 };
+            const parent = allComponents.find(p => p.id === parentId);
+            if (!parent) return { x: 0, y: 0 };
+            
+            let borderX = parent.props.x;
+            let borderY = parent.props.y;
+            let currentParentId = parent.parentId;
+            const visited = new Set<string>();
+            
+            while (currentParentId) {
+                if (visited.has(currentParentId)) break;
+                visited.add(currentParentId);
+                const grandParent = allComponents.find(p => p.id === currentParentId);
+                if (grandParent) {
+                    borderX += grandParent.props.x;
+                    borderY += grandParent.props.y;
+                    // For Container grandparents, add their padding
+                    if (grandParent.type === ComponentType.CONTAINER) {
+                        const grandParentPadding = parsePaddingValue(grandParent.props.padding);
+                        borderX += grandParentPadding.left;
+                        borderY += grandParentPadding.top;
+                    }
+                    currentParentId = grandParent.parentId;
+                } else {
+                    break;
+                }
+            }
+            return { x: borderX, y: borderY };
+        };
+
         const potentialParents = allComponents.filter(p => {
             const plugin = componentRegistry[p.type];
             // Cannot be its own parent or child, and must be on the same page
@@ -457,13 +580,35 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         let smallestArea = Infinity;
 
         for (const parent of potentialParents) {
-            const { x: parentAbsX, y: parentAbsY } = getAbsolutePosition(parent.id, allComponents);
-            if (
-                centerX >= parentAbsX &&
-                centerX <= parentAbsX + parent.props.width &&
-                centerY >= parentAbsY &&
-                centerY <= parentAbsY + parent.props.height
-            ) {
+            // Get parent's border position (not including padding)
+            const parentBorderPos = getParentBorderPosition(parent.id);
+            // For Container type, check if component is still within content area bounds (accounting for padding)
+            // For other containers, use center point check
+            let isWithinBounds: boolean;
+            if (parent.type === ComponentType.CONTAINER) {
+                const parentPadding = parsePaddingValue(parent.props.padding);
+                // Check if component fits within the content area (border - padding on all sides)
+                const contentLeft = parentBorderPos.x + parentPadding.left;
+                const contentTop = parentBorderPos.y + parentPadding.top;
+                const contentRight = parentBorderPos.x + parent.props.width - parentPadding.left;
+                const contentBottom = parentBorderPos.y + parent.props.height - parentPadding.top;
+                
+                isWithinBounds = (
+                    absoluteX >= contentLeft &&
+                    absoluteX + componentToReparent.props.width <= contentRight &&
+                    absoluteY >= contentTop &&
+                    absoluteY + componentToReparent.props.height <= contentBottom
+                );
+            } else {
+                isWithinBounds = (
+                    centerX >= parentBorderPos.x &&
+                    centerX <= parentBorderPos.x + parent.props.width &&
+                    centerY >= parentBorderPos.y &&
+                    centerY <= parentBorderPos.y + parent.props.height
+                );
+            }
+            
+            if (isWithinBounds) {
                 const area = parent.props.width * parent.props.height;
                 if (area < smallestArea) {
                     smallestArea = area;
@@ -479,9 +624,23 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             return prev; // No change needed
         }
 
-        const newParentAbsPos = newParent ? getAbsolutePosition(newParent.id, allComponents) : { x: 0, y: 0 };
-        const newRelativeX = absoluteX - newParentAbsPos.x;
-        const newRelativeY = absoluteY - newParentAbsPos.y;
+        const newParentAbsPos = newParent ? getParentBorderPosition(newParent.id) : { x: 0, y: 0 };
+        // For Container, position should be relative to padding edge (content area)
+        // For other containers, position is relative to border edge
+        let newRelativeX: number;
+        let newRelativeY: number;
+        if (newParent && newParent.type === ComponentType.CONTAINER) {
+            const newParentPadding = parsePaddingValue(newParent.props.padding);
+            // Calculate relative position to padding edge (content area)
+            newRelativeX = absoluteX - newParentAbsPos.x - newParentPadding.left;
+            newRelativeY = absoluteY - newParentAbsPos.y - newParentPadding.top;
+            // Clamp to ensure non-negative
+            newRelativeX = Math.max(0, newRelativeX);
+            newRelativeY = Math.max(0, newRelativeY);
+        } else {
+            newRelativeX = absoluteX - newParentAbsPos.x;
+            newRelativeY = absoluteY - newParentAbsPos.y;
+        }
 
         const updatedComponents = allComponents.map(c => {
             if (c.id === componentId) {
