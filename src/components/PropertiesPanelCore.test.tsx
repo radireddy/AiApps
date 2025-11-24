@@ -955,26 +955,26 @@ describe('PropertiesPanelCore - Group Ordering', () => {
     // Get all group headers (buttons with group labels)
     const groupButtons = Array.from(container.querySelectorAll('button')).filter(btn => {
       const text = btn.textContent?.trim();
-      return text && ['Layout', 'State', 'Input Form And Validation', 'Accessibility', 'Styling'].includes(text);
+      return text && ['Layout', 'State', 'Validation', 'Accessibility', 'Styling'].includes(text);
     });
     
     const groupLabels = groupButtons.map(btn => btn.textContent?.trim()).filter(Boolean);
     
-    // Verify order: Layout should come before State, State before Input Form And Validation, etc.
+    // Verify order: Layout should come before State, State before Validation, etc.
     const layoutIndex = groupLabels.indexOf('Layout');
     const stateIndex = groupLabels.indexOf('State');
-    const inputFormIndex = groupLabels.indexOf('Input Form And Validation');
+    const validationIndex = groupLabels.indexOf('Validation');
     const accessibilityIndex = groupLabels.indexOf('Accessibility');
     
     expect(layoutIndex).toBeGreaterThanOrEqual(0);
     expect(stateIndex).toBeGreaterThanOrEqual(0);
-    expect(inputFormIndex).toBeGreaterThanOrEqual(0);
+    expect(validationIndex).toBeGreaterThanOrEqual(0);
     expect(accessibilityIndex).toBeGreaterThanOrEqual(0);
     
     // Verify consistent ordering
     expect(layoutIndex).toBeLessThan(stateIndex);
-    expect(stateIndex).toBeLessThan(inputFormIndex);
-    expect(inputFormIndex).toBeLessThan(accessibilityIndex);
+    expect(stateIndex).toBeLessThan(validationIndex);
+    expect(validationIndex).toBeLessThan(accessibilityIndex);
   });
 
   it('should maintain consistent group order for SELECT component', () => {

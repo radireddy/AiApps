@@ -87,7 +87,7 @@ const LabelRenderer: React.FC<{
   
   return (
     <div style={{...style, display: 'flex', alignItems: 'center', justifyContent, width: '100%', height: '100%'}}>
-      <span style={{ textAlign: p.textAlign || 'left', width: '100%' }}>{String(content)}</span>
+      <span style={{ textAlign: p.textAlign || 'left', width: '100%', color: style.color, fontSize: style.fontSize }}>{String(content)}</span>
     </div>
   );
 };

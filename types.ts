@@ -153,8 +153,51 @@ export interface InputProps extends BaseProps, BorderProps {
   dataStoreKey: string;
   /** Default value for the input field (supports expressions) */
   defaultValue?: string;
+  /** Input type: text, number, password, email, url, tel */
+  inputType?: 'text' | 'number' | 'password' | 'email' | 'url' | 'tel';
+  /** Value binding (supports expressions) - alternative to dataStoreKey */
+  value?: string;
+  /** Accessibility label for screen readers */
   accessibilityLabel?: string;
+  /** Text alignment */
   textAlign?: 'left' | 'center' | 'right';
+  /** Maximum length for text inputs */
+  maxLength?: number;
+  /** Minimum value (for number inputs, supports expressions) */
+  min?: number | string;
+  /** Maximum value (for number inputs, supports expressions) */
+  max?: number | string;
+  /** Step value for number inputs */
+  step?: number | string;
+  /** Regex pattern for validation */
+  pattern?: string;
+  /** Whether input is required */
+  required?: boolean | string;
+  /** Custom error message (supports expressions) */
+  errorMessage?: string;
+  /** Font size */
+  fontSize?: number | string;
+  /** Font family */
+  fontFamily?: string;
+  /** Font weight */
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
+  /** Font style */
+  fontStyle?: 'normal' | 'italic';
+  /** Text color */
+  color?: string;
+  /** Background color */
+  backgroundColor?: string;
+  /** Z-index for layering */
+  zIndex?: number;
+  /** Custom CSS class names */
+  className?: string;
+  /** Custom HTML attributes (JSON string of key-value pairs) */
+  customAttributes?: string;
+  /** Event handlers */
+  onChange?: string; // JS expression
+  onFocus?: string; // JS expression
+  onBlur?: string; // JS expression
+  onEnterKeyPress?: string; // JS expression
 }
 
 export type ButtonActionType = 'alert' | 'updateData' | 'none' | 'createRecord' | 'updateRecord' | 'deleteRecord' | 'selectRecord' | 'updateVariable' | 'executeCode' | 'navigate';

@@ -206,15 +206,18 @@ export const DEFAULT_GROUP_ORDER: Record<string, number> = {
   'Basic': 0,
   'Layout': 1,
   'State': 2,
+  'Validation': 3,
   'Input Form And Validation': 3,
   'Accessibility': 4,
   'Container Layout': 5,
   'Color & Typography': 6,
-  'Typography': 7,
   'Spacing': 8,
   'Borders': 9,
   // Styles tab groups
   'Styling': 0,
+  'Typography': 1,
+  'Color': 2,
+  'Advanced': 3,
   // Events tab groups
   'Events': 0,
 };
