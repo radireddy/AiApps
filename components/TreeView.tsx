@@ -12,6 +12,7 @@ interface TreeViewProps {
   selectedComponentIds: string[];
   onSelectPage: (pageId: string) => void;
   onSelectComponent: (componentId: string, pageId: string) => void;
+  onDeleteComponent?: (componentId: string) => void;
 }
 
 interface TreeNodeData {
@@ -75,7 +76,8 @@ const TreeNode: React.FC<{
   selectedComponentIds: string[];
   onSelectPage: (pageId: string) => void;
   onSelectComponent: (componentId: string, pageId: string) => void;
-}> = memo(({ node, level, expandedNodes, toggleNode, currentPageId, selectedComponentIds, onSelectPage, onSelectComponent }) => {
+  onDeleteComponent?: (componentId: string) => void;
+}> = memo(({ node, level, expandedNodes, toggleNode, currentPageId, selectedComponentIds, onSelectPage, onSelectComponent, onDeleteComponent }) => {
   const isExpanded = expandedNodes.has(node.id);
   const isExpandable = node.children.length > 0;
 
@@ -91,16 +93,33 @@ const TreeNode: React.FC<{
   const selectionClass = isSelected ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100';
   const label = node.type === 'COMPONENT' ? `${componentRegistry[node.componentType!].paletteConfig.label}` : node.name;
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (node.type === 'COMPONENT' && onDeleteComponent) {
+      onDeleteComponent(node.id);
+    }
+  };
+
+  // Handle click on the entire row - for expandable nodes, both toggle AND select
+  const handleRowClick = (e: React.MouseEvent) => {
+    // If it's expandable, toggle the expand/collapse state
+    if (isExpandable) {
+      toggleNode(node.id);
+    }
+    // Always select the component/page
+    handleSelect();
+  };
+
   return (
     <div>
       <div 
-        className={`flex items-center p-1 my-0.5 rounded-md cursor-pointer ${selectionClass} transition-colors`} 
+        className={`flex items-center p-1 my-0.5 rounded-md cursor-pointer ${selectionClass} transition-colors group`} 
         style={{ paddingLeft: `${level * 16 + 4}px` }}
-        onClick={handleSelect}
+        onClick={handleRowClick}
         role="button"
         tabIndex={0}
       >
-        <div className="flex items-center flex-grow" onClick={isExpandable ? (e) => { e.stopPropagation(); toggleNode(node.id) } : undefined}>
+        <div className="flex items-center flex-grow">
             {isExpandable ? (
                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 mr-1 text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -111,6 +130,19 @@ const TreeNode: React.FC<{
             <span className="mr-2 flex-shrink-0">{getIconForType(node.type, node.componentType)}</span>
             <span className={`${typography.label} ${typography.medium} truncate`} title={label}>{label}</span>
         </div>
+        {node.type === 'COMPONENT' && onDeleteComponent && (
+          <button
+            onClick={handleDelete}
+            className="ml-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 text-gray-400 hover:text-red-600 transition-all flex-shrink-0"
+            aria-label={`Delete ${label}`}
+            title={`Delete ${label}`}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
       {isExpanded && node.children.map(child => (
         <TreeNode
@@ -123,13 +155,14 @@ const TreeNode: React.FC<{
           selectedComponentIds={selectedComponentIds}
           onSelectPage={onSelectPage}
           onSelectComponent={onSelectComponent}
+          onDeleteComponent={onDeleteComponent}
         />
       ))}
     </div>
   );
 });
 
-export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollapse, appDefinition, currentPageId, selectedComponentIds, onSelectPage, onSelectComponent }) => {
+export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollapse, appDefinition, currentPageId, selectedComponentIds, onSelectPage, onSelectComponent, onDeleteComponent }) => {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => new Set([appDefinition.id, currentPageId]));
 
     const tree = useMemo(() => buildTree(appDefinition), [appDefinition]);
@@ -195,6 +228,7 @@ export const TreeView: React.FC<TreeViewProps> = ({ isCollapsed, onToggleCollaps
                 selectedComponentIds={selectedComponentIds}
                 onSelectPage={onSelectPage}
                 onSelectComponent={onSelectComponent}
+                onDeleteComponent={onDeleteComponent}
             />
           </div>
         </aside>

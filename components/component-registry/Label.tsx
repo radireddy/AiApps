@@ -18,9 +18,19 @@ const LabelRenderer: React.FC<{
 }> = ({ component, isEditingInline, onCommitInlineEdit, evaluationScope }) => {
   const p = component.props;
 
-  // Dynamically select the renderer based on the textRenderer prop
-  const rendererHook = propertyRendererRegistry[p.textRenderer || 'javascript'] || propertyRendererRegistry.literal;
-  const content = rendererHook(p.text, evaluationScope, '');
+  // Call all renderer hooks at the top level (React hooks must be called unconditionally)
+  // Then select which result to use based on textRenderer prop
+  const javascriptContent = propertyRendererRegistry.javascript(p.text, evaluationScope, '');
+  const markdownContent = propertyRendererRegistry.markdown(p.text, evaluationScope, '');
+  const literalContent = propertyRendererRegistry.literal(p.text, evaluationScope, '');
+  
+  // Select the appropriate content based on textRenderer
+  const textRenderer = p.textRenderer || 'javascript';
+  const content = textRenderer === 'markdown' 
+    ? markdownContent 
+    : textRenderer === 'literal' 
+    ? literalContent 
+    : javascriptContent;
   
   const color = useJavaScriptRenderer(p.color, evaluationScope, '#111827');
   const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, 'transparent');
@@ -32,7 +42,7 @@ const LabelRenderer: React.FC<{
     fontSize: `${useJavaScriptRenderer(p.fontSize, evaluationScope, 16)}px`,
     fontWeight: p.fontWeight,
     color: color,
-    textAlign: p.textAlign,
+    textAlign: p.textAlign || 'left', // Default to 'left' if not specified
     fontFamily: useJavaScriptRenderer(p.fontFamily, evaluationScope, 'sans-serif'),
     backgroundColor: backgroundColor,
     borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '0px'),
@@ -67,10 +77,19 @@ const LabelRenderer: React.FC<{
   
   // For renderers that return a string (like Markdown), we need to render it as HTML
   if (p.textRenderer === 'markdown' && typeof content === 'string') {
-      return <div style={{...style, display: 'block'}} dangerouslySetInnerHTML={{ __html: content }} />;
+      return <div style={{...style, display: 'flex', alignItems: 'center', justifyContent: 'flex-start'}} dangerouslySetInnerHTML={{ __html: content }} />;
   }
 
-  return <div style={{...style, display: 'flex', alignItems: 'center'}}>{String(content)}</div>;
+  // Use flexbox for vertical centering (alignItems: 'center')
+  // For horizontal alignment, use justifyContent based on textAlign
+  // Map textAlign to justifyContent: 'left' -> 'flex-start', 'center' -> 'center', 'right' -> 'flex-end'
+  const justifyContent = p.textAlign === 'center' ? 'center' : (p.textAlign === 'right' ? 'flex-end' : 'flex-start');
+  
+  return (
+    <div style={{...style, display: 'flex', alignItems: 'center', justifyContent, width: '100%', height: '100%'}}>
+      <span style={{ textAlign: p.textAlign || 'left', width: '100%' }}>{String(content)}</span>
+    </div>
+  );
 };
 
 const LabelProperties: React.FC<{

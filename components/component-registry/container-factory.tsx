@@ -105,8 +105,8 @@ export function createContainerComponent(
   // Merge default props with common styling props
   const mergedDefaultProps: Partial<ContainerProps> = {
     ...commonStylingProps,
-    width: 400,
-    height: 300,
+    width: '400px',
+    height: '300px',
     backgroundColor: '{{theme.colors.surface}}',
     borderWidth: '{{theme.border.width}}',
     borderColor: '{{theme.colors.border}}',

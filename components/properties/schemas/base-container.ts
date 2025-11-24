@@ -29,6 +29,7 @@
 import { ComponentType } from '../../../types';
 import { ComponentPropertySchema, PropertyMetadata, PropertyTab, PropertyGroup } from '../metadata';
 import { commonProperties, commonTabs, commonGroups, createPropertySchema, DEFAULT_GROUP_ORDER } from '../registry';
+import { WidthHeightPropertyInput } from '../PropertyInput';
 
 /**
  * Options for customizing base container properties
@@ -128,9 +129,9 @@ export function createBaseContainerProperties(
     {
       id: 'x',
       label: 'X',
-      type: 'expression',
+      type: 'number',
       defaultValue: 0,
-      supportsExpression: true,
+      supportsExpression: false,
       group: 'Layout',
       tab: 'General',
       tabOrder: 0,
@@ -145,9 +146,9 @@ export function createBaseContainerProperties(
     {
       id: 'y',
       label: 'Y',
-      type: 'expression',
+      type: 'number',
       defaultValue: 0,
-      supportsExpression: true,
+      supportsExpression: false,
       group: 'Layout',
       tab: 'General',
       tabOrder: 0,
@@ -162,36 +163,40 @@ export function createBaseContainerProperties(
     {
       id: 'width',
       label: 'Width',
-      type: 'expression',
-      defaultValue: 400,
-      supportsExpression: true,
+      type: 'string',
+      defaultValue: '400px',
+      supportsExpression: false,
       group: 'Layout',
       tab: 'General',
       tabOrder: 0,
       groupOrder: 1,
       propertyOrder: 2,
       applicableTo: types,
-      tooltip: 'Width in pixels',
+      tooltip: 'Width in pixels (px) or percentage (%). Examples: 400px, 50%, 100%',
+      placeholder: 'e.g. 400px or 50%',
       layoutHint: {
-        maxWidth: '100px',
+        maxWidth: '120px',
       },
+      customRenderer: WidthHeightPropertyInput,
     },
     {
       id: 'height',
       label: 'Height',
-      type: 'expression',
-      defaultValue: 300,
-      supportsExpression: true,
+      type: 'string',
+      defaultValue: '300px',
+      supportsExpression: false,
       group: 'Layout',
       tab: 'General',
       tabOrder: 0,
       groupOrder: 1,
       propertyOrder: 3,
       applicableTo: types,
-      tooltip: 'Height in pixels',
+      tooltip: 'Height in pixels (px) or percentage (%). Examples: 300px, 50%, 100%',
+      placeholder: 'e.g. 300px or 50%',
       layoutHint: {
-        maxWidth: '100px',
+        maxWidth: '120px',
       },
+      customRenderer: WidthHeightPropertyInput,
     },
     {
       id: 'minWidth',

@@ -293,7 +293,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const isContainer = component.type === ComponentType.CONTAINER;
         const paddingChanged = isContainer && 'padding' in newProps && newProps.padding !== component.props.padding;
         
-        // Parse padding helper
+        // Parse padding helper - extracts left and top padding values
+        // Children positions are relative to content area which starts at (padding.left, padding.top)
         const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
             if (padding === undefined) return { left: 0, top: 0 };
             if (typeof padding === 'number') return { left: padding, top: padding };
@@ -302,13 +303,31 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                 const value = parseFloat(parts[0]) || 0;
                 return { left: value, top: value };
             } else if (parts.length === 2) {
-                return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
+                // Format: "top right" -> top applies to top and bottom, right applies to left and right
+                const top = parseFloat(parts[0]) || 0;
+                const right = parseFloat(parts[1]) || 0;
+                return { top, left: right };
             } else if (parts.length === 4) {
-                return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
+                // Format: "top right bottom left"
+                return { 
+                    top: parseFloat(parts[0]) || 0, 
+                    left: parseFloat(parts[3]) || 0 
+                };
             }
             return { left: 0, top: 0 };
         };
 
+        // If padding changed on a Container, calculate deltas BEFORE updating the container
+        let paddingDeltaX = 0;
+        let paddingDeltaY = 0;
+        if (paddingChanged) {
+            const oldPadding = parsePaddingValue(component.props.padding);
+            const newPadding = parsePaddingValue(newProps.padding);
+            paddingDeltaX = newPadding.left - oldPadding.left;
+            paddingDeltaY = newPadding.top - oldPadding.top;
+        }
+
+        // Update components - first update the container, then adjust children
         let updatedComponents = prev.components.map(c => {
             if (c.id === id) {
                 return { ...c, props: { ...c.props, ...newProps } };
@@ -316,22 +335,24 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             return c;
         });
 
-        // If padding changed on a Container, adjust all child positions
-        if (paddingChanged) {
-            const oldPadding = parsePaddingValue(component.props.padding);
-            const newPadding = parsePaddingValue(newProps.padding);
-            const paddingDeltaX = newPadding.left - oldPadding.left;
-            const paddingDeltaY = newPadding.top - oldPadding.top;
-
-            // Adjust all children's positions to maintain their visual position
+        // If padding changed, adjust all child positions to maintain their visual positions
+        // When padding increases, content area moves right/down, so children need to move right/down
+        // When padding decreases, content area moves left/up, so children need to move left/up
+        // This preserves the visual arrangement and spacing between components
+        if (paddingChanged && (paddingDeltaX !== 0 || paddingDeltaY !== 0)) {
             updatedComponents = updatedComponents.map(c => {
                 if (c.parentId === id) {
+                    const currentX = c.props.x as number;
+                    const currentY = c.props.y as number;
+                    // Adjust position by the padding delta to maintain visual position
+                    // Don't clamp to 0 here - allow negative values if padding decreases significantly
+                    // The component will be clipped by the container's overflow anyway
                     return {
                         ...c,
                         props: {
                             ...c.props,
-                            x: Math.max(0, (c.props.x as number) + paddingDeltaX),
-                            y: Math.max(0, (c.props.y as number) + paddingDeltaY),
+                            x: currentX + paddingDeltaX,
+                            y: currentY + paddingDeltaY,
                         }
                     };
                 }
@@ -347,16 +368,44 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   }, []);
   
   const updateComponents = useCallback((updates: Array<{ id: string; props: Partial<ComponentProps> }>) => {
+    if (updates.length === 0) return; // Early exit if no updates
+    
     setAppDefinitionState(prev => {
         const updatesMap = new Map(updates.map(u => [u.id, u.props]));
+        
+        // Only create new array if there are actual changes
+        let hasChanges = false;
+        const newComponents = prev.components.map(c => {
+            if (updatesMap.has(c.id)) {
+                const newProps = updatesMap.get(c.id)!;
+                // Check if props actually changed to avoid unnecessary re-renders
+                const xChanged = 'x' in newProps && (c.props as any).x !== (newProps as any).x;
+                const yChanged = 'y' in newProps && (c.props as any).y !== (newProps as any).y;
+                
+                if (xChanged || yChanged) {
+                    hasChanges = true;
+                    // Only merge the changed props, not all props
+                    return { 
+                        ...c, 
+                        props: { 
+                            ...c.props, 
+                            ...(xChanged ? { x: (newProps as any).x } : {}),
+                            ...(yChanged ? { y: (newProps as any).y } : {}),
+                        } 
+                    };
+                }
+            }
+            return c; // Return same reference if unchanged
+        });
+        
+        // Only update state if there are actual changes
+        if (!hasChanges) {
+            return prev; // Return same reference to prevent re-render
+        }
+        
         return {
             ...prev,
-            components: prev.components.map(c => {
-                if (updatesMap.has(c.id)) {
-                    return { ...c, props: { ...c.props, ...updatesMap.get(c.id) } };
-                }
-                return c;
-            }),
+            components: newComponents,
         };
     });
   }, []);
@@ -447,27 +496,34 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
    * 
    * @param componentId - The ID of the component being moved.
    */
-  const reparentComponent = useCallback((componentId: string) => {
+  const reparentComponent = useCallback((componentId: string, finalPosition?: { x: number; y: number }) => {
     // Prevent infinite loops by checking if this component is already being reparented
     if (isReparentingRef.current.has(componentId)) {
       return;
     }
     isReparentingRef.current.add(componentId);
 
-    // Helper to parse padding
-    const parsePaddingValue = (padding?: string | number): { left: number; top: number } => {
-        if (padding === undefined) return { left: 0, top: 0 };
-        if (typeof padding === 'number') return { left: padding, top: padding };
+    // Helper to parse padding - returns all four sides
+    const parsePaddingValue = (padding?: string | number): { left: number; top: number; right: number; bottom: number } => {
+        if (padding === undefined) return { left: 0, top: 0, right: 0, bottom: 0 };
+        if (typeof padding === 'number') return { left: padding, top: padding, right: padding, bottom: padding };
         const parts = String(padding).trim().split(/\s+/);
         if (parts.length === 1) {
             const value = parseFloat(parts[0]) || 0;
-            return { left: value, top: value };
+            return { left: value, top: value, right: value, bottom: value };
         } else if (parts.length === 2) {
-            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[1]) || 0 };
+            const top = parseFloat(parts[0]) || 0;
+            const right = parseFloat(parts[1]) || 0;
+            return { top, right, bottom: top, left: right };
         } else if (parts.length === 4) {
-            return { top: parseFloat(parts[0]) || 0, left: parseFloat(parts[3]) || 0 };
+            return {
+                top: parseFloat(parts[0]) || 0,
+                right: parseFloat(parts[1]) || 0,
+                bottom: parseFloat(parts[2]) || 0,
+                left: parseFloat(parts[3]) || 0,
+            };
         }
-        return { left: 0, top: 0 };
+        return { left: 0, top: 0, right: 0, bottom: 0 };
     };
 
     // Helper to get the absolute position of a component (border position on canvas)
@@ -533,7 +589,21 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const componentToReparent = allComponents.find(c => c.id === componentId);
         if (!componentToReparent) return prev;
 
-        const { x: absoluteX, y: absoluteY } = getAbsolutePosition(componentId, allComponents);
+        // Use finalPosition if provided (from drag drop), otherwise calculate from current state
+        let absoluteX: number;
+        let absoluteY: number;
+        if (finalPosition) {
+            // If final position is provided, it should be the absolute position on canvas
+            // (calculated from initial absolute position + drag delta)
+            // This is more accurate than calculating from relative position within old parent
+            absoluteX = finalPosition.x;
+            absoluteY = finalPosition.y;
+        } else {
+            // Use current position from state
+            const pos = getAbsolutePosition(componentId, allComponents);
+            absoluteX = pos.x;
+            absoluteY = pos.y;
+        }
         const centerX = absoluteX + componentToReparent.props.width / 2;
         const centerY = absoluteY + componentToReparent.props.height / 2;
 
@@ -579,6 +649,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         let newParent: AppComponent | null = null;
         let smallestArea = Infinity;
 
+        // Use threshold for easier container entry
+        const CONTAINER_THRESHOLD = 0.5;
+        
         for (const parent of potentialParents) {
             // Get parent's border position (not including padding)
             const parentBorderPos = getParentBorderPosition(parent.id);
@@ -588,16 +661,19 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             if (parent.type === ComponentType.CONTAINER) {
                 const parentPadding = parsePaddingValue(parent.props.padding);
                 // Check if component fits within the content area (border - padding on all sides)
+                // Use threshold to make it easier to drag into container
                 const contentLeft = parentBorderPos.x + parentPadding.left;
                 const contentTop = parentBorderPos.y + parentPadding.top;
-                const contentRight = parentBorderPos.x + parent.props.width - parentPadding.left;
-                const contentBottom = parentBorderPos.y + parent.props.height - parentPadding.top;
+                const contentRight = parentBorderPos.x + parent.props.width - parentPadding.right;
+                const contentBottom = parentBorderPos.y + parent.props.height - parentPadding.bottom;
                 
+                // Component is considered inside if it's mostly inside (using threshold)
+                // This makes it easier to drag components into containers
                 isWithinBounds = (
-                    absoluteX >= contentLeft &&
-                    absoluteX + componentToReparent.props.width <= contentRight &&
-                    absoluteY >= contentTop &&
-                    absoluteY + componentToReparent.props.height <= contentBottom
+                    absoluteX >= contentLeft - CONTAINER_THRESHOLD &&
+                    absoluteX + componentToReparent.props.width <= contentRight + CONTAINER_THRESHOLD &&
+                    absoluteY >= contentTop - CONTAINER_THRESHOLD &&
+                    absoluteY + componentToReparent.props.height <= contentBottom + CONTAINER_THRESHOLD
                 );
             } else {
                 isWithinBounds = (
@@ -618,6 +694,53 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         }
         
         const oldParentId = componentToReparent.parentId || null;
+        
+        // If component is currently in a Container, check if it's still within that container's bounds
+        // Only move it out if it's completely outside the container
+        // Use a small threshold (0.5px) to account for floating-point precision issues
+        const CONTAINMENT_THRESHOLD = 0.5;
+        if (oldParentId) {
+            const oldParent = allComponents.find(p => p.id === oldParentId);
+            if (oldParent && oldParent.type === ComponentType.CONTAINER) {
+                const oldParentBorderPos = getParentBorderPosition(oldParentId);
+                const oldParentPadding = parsePaddingValue(oldParent.props.padding);
+                const contentLeft = oldParentBorderPos.x + oldParentPadding.left;
+                const contentTop = oldParentBorderPos.y + oldParentPadding.top;
+                const contentRight = oldParentBorderPos.x + oldParent.props.width - oldParentPadding.right;
+                const contentBottom = oldParentBorderPos.y + oldParent.props.height - oldParentPadding.bottom;
+                
+                // Check if component is still completely within the original container's content area
+                // Use threshold to account for floating-point precision
+                const stillInOriginalContainer = (
+                    absoluteX >= contentLeft - CONTAINMENT_THRESHOLD &&
+                    absoluteX + componentToReparent.props.width <= contentRight + CONTAINMENT_THRESHOLD &&
+                    absoluteY >= contentTop - CONTAINMENT_THRESHOLD &&
+                    absoluteY + componentToReparent.props.height <= contentBottom + CONTAINMENT_THRESHOLD
+                );
+                
+                // If still in original container, keep it there (don't reparent)
+                if (stillInOriginalContainer) {
+                    return prev; // No change needed - component stays in original container
+                }
+                
+                // If not in original container, check if it's completely outside
+                // Component is completely outside if no part of it overlaps the content area
+                // Use threshold to make it easier to drag out
+                const completelyOutside = (
+                    absoluteX + componentToReparent.props.width <= contentLeft + CONTAINMENT_THRESHOLD ||
+                    absoluteX >= contentRight - CONTAINMENT_THRESHOLD ||
+                    absoluteY + componentToReparent.props.height <= contentTop + CONTAINMENT_THRESHOLD ||
+                    absoluteY >= contentBottom - CONTAINMENT_THRESHOLD
+                );
+                
+                // Only allow moving out if completely outside
+                // If partially overlapping, don't change parent (keep in original container)
+                if (!completelyOutside) {
+                    return prev; // Partially overlapping - keep in original container
+                }
+            }
+        }
+        
         const newParentId = newParent ? newParent.id : null;
 
         if (oldParentId === newParentId) {

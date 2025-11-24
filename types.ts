@@ -154,6 +154,7 @@ export interface InputProps extends BaseProps, BorderProps {
   /** Default value for the input field (supports expressions) */
   defaultValue?: string;
   accessibilityLabel?: string;
+  textAlign?: 'left' | 'center' | 'right';
 }
 
 export type ButtonActionType = 'alert' | 'updateData' | 'none' | 'createRecord' | 'updateRecord' | 'deleteRecord' | 'selectRecord' | 'updateVariable' | 'executeCode' | 'navigate';
@@ -208,6 +209,7 @@ export interface HStackProps extends PanelProps {}
 export interface VStackProps extends PanelProps {}
 
 export interface TextareaProps extends BaseProps, BorderProps {
+  textAlign?: 'left' | 'center' | 'right';
   placeholder: string;
   dataStoreKey: string;
   /** Default value for the textarea field (supports expressions) */
@@ -244,7 +246,11 @@ export interface DividerProps extends BaseProps {
   color: string;
 }
 
-export interface ContainerProps extends BaseProps, BorderProps {
+export interface ContainerProps extends Omit<BaseProps, 'width' | 'height'>, BorderProps {
+  /** Width in pixels (px) or percentage (%) */
+  width?: number | string;
+  /** Height in pixels (px) or percentage (%) */
+  height?: number | string;
   /** Background color */
   backgroundColor?: string;
   /** Background image URL */

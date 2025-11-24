@@ -56,6 +56,7 @@ const InputRenderer: React.FC<{
     boxSizing: 'border-box',
     backgroundColor: 'white',
     color: '#111827',
+    textAlign: p.textAlign || 'left', // Apply textAlign property
     // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
     pointerEvents: mode === 'edit' && isDisabled ? 'none' : 'auto',
   };

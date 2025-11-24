@@ -366,7 +366,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
   const renderLeftPanel = () => {
     switch(activeLeftPanel) {
         case 'explorer':
-            return <TreeView 
+            return <TreeView
                         isCollapsed={isLeftPanelCollapsed} 
                         onToggleCollapse={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
                         appDefinition={appDefinition}
@@ -374,6 +374,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
                         selectedComponentIds={selectedComponentIds}
                         onSelectPage={selectPage}
                         onSelectComponent={handleSelectComponentFromTree}
+                        onDeleteComponent={deleteComponent}
                     />;
         case 'components':
             return <ComponentPalette width={leftPanelWidth} isCollapsed={isLeftPanelCollapsed} onToggleCollapse={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)} />;

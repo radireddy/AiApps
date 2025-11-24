@@ -17,7 +17,7 @@ interface RenderedComponentProps {
   onUpdateComponents: (updates: Array<{ id: string; props: Partial<ComponentProps> }>) => void;
   onDelete: (id: string) => void;
   onDrop: (item: { type: ComponentType }, x: number, y: number, parentId: string | null) => void;
-  onReparentCheck: (id: string) => void;
+  onReparentCheck: (id: string, finalPosition?: { x: number; y: number }) => void;
   mode: 'edit' | 'preview';
   dataStore: Record<string, any>;
   onUpdateDataStore?: (key: string, value: any) => void;
@@ -45,9 +45,13 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [isEditingInline, setIsEditingInline] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
-  const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0, widthUnit: 'px', heightUnit: 'px' });
   const componentRef = useRef<HTMLDivElement>(null);
   const hasMoved = useRef(false); // Track if component actually moved during drag
+  const initialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map()); // Store initial positions on drag start
+  const initialAbsolutePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map()); // Store initial absolute positions on drag start
+  const rafIdRef = useRef<number | null>(null); // RAF ID for throttling
+  const pendingUpdatesRef = useRef<Array<{ id: string; props: { x: number; y: number; } }> | null>(null); // Pending updates
 
   // This ref will hold the latest `allComponents` array to avoid stale closures in event handlers.
   const allComponentsRef = useRef(allComponents);
@@ -107,6 +111,62 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     setIsDragging(true);
     hasMoved.current = false; // Reset move tracking
     dragStartPos.current = { x: e.clientX, y: e.clientY };
+    
+    // Store initial positions of all selected components for smooth drag
+    initialPositionsRef.current.clear();
+    initialAbsolutePositionsRef.current.clear();
+    
+    // Helper to calculate absolute position
+    const getAbsolutePosition = (comp: AppComponent, allComps: AppComponent[]): { x: number; y: number } => {
+      let absX = comp.props.x as number;
+      let absY = comp.props.y as number;
+      let currentParentId = comp.parentId;
+      const visited = new Set<string>();
+      
+      while (currentParentId) {
+        if (visited.has(currentParentId)) break;
+        visited.add(currentParentId);
+        const parent = allComps.find(p => p.id === currentParentId);
+        if (parent) {
+          absX += parent.props.x as number;
+          absY += parent.props.y as number;
+          if (parent.type === ComponentType.CONTAINER) {
+            const paddingStr = parent.props.padding as string | number | undefined;
+            let paddingLeft = 0;
+            let paddingTop = 0;
+            if (paddingStr !== undefined) {
+              if (typeof paddingStr === 'number') {
+                paddingLeft = paddingTop = paddingStr;
+              } else {
+                const parts = String(paddingStr).trim().split(/\s+/);
+                if (parts.length >= 1) {
+                  paddingTop = parseFloat(parts[0]) || 0;
+                  paddingLeft = parts.length >= 4 ? (parseFloat(parts[3]) || 0) : (parts.length >= 2 ? (parseFloat(parts[1]) || 0) : paddingTop);
+                }
+              }
+            }
+            absX += paddingLeft;
+            absY += paddingTop;
+          }
+          currentParentId = parent.parentId;
+        } else {
+          break;
+        }
+      }
+      return { x: absX, y: absY };
+    };
+    
+    selectedComponentIds.forEach(id => {
+      const comp = allComponents.find(c => c.id === id);
+      if (comp) {
+        initialPositionsRef.current.set(id, {
+          x: comp.props.x as number,
+          y: comp.props.y as number,
+        });
+        // Store absolute position for accurate reparenting
+        initialAbsolutePositionsRef.current.set(id, getAbsolutePosition(comp, allComponents));
+      }
+    });
   };
   
   const handleDoubleClick = () => {
@@ -142,13 +202,44 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (mode !== 'edit' || selectedComponentIds.length > 1) return; // Disable resizing for multi-select
+    
+    // Parse width/height to numbers for resize calculations
+    // Also store the original units to preserve them during resize
+    const parseSizeToNumber = (size: any): number => {
+      if (typeof size === 'number') return size;
+      if (typeof size === 'string' && size.trim()) {
+        const match = size.trim().match(/^(\d+(?:\.\d+)?)(px|%)$/);
+        if (match) return parseFloat(match[1]);
+      }
+      return 400; // default
+    };
+    
+    const getSizeUnit = (size: any): string => {
+      if (typeof size === 'string' && size.trim()) {
+        const match = size.trim().match(/^(\d+(?:\.\d+)?)(px|%)$/);
+        if (match) return match[2];
+      }
+      return 'px'; // default to px
+    };
+    
+    // Store both numeric values and units for resize
+    const originalWidth = component.props.width;
+    const originalHeight = component.props.height;
+    const widthNum = parseSizeToNumber(originalWidth);
+    const heightNum = parseSizeToNumber(originalHeight);
+    const widthUnit = getSizeUnit(originalWidth);
+    const heightUnit = getSizeUnit(originalHeight);
+    
     setIsResizing(true);
     resizeStartInfo.current = {
       x: e.clientX,
       y: e.clientY,
-      width: component.props.width as number,
-      height: component.props.height as number,
-    };
+      width: widthNum,
+      height: heightNum,
+      // Store units in the ref so we can use them during resize
+      widthUnit: widthUnit,
+      heightUnit: heightUnit,
+    } as any;
   };
 
   useEffect(() => {
@@ -162,35 +253,104 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
         hasMoved.current = true;
       }
 
-      // FIX: Read from the refs to get the latest list of selected IDs and component data,
-      // ensuring all selected components move together correctly.
+      // Calculate updates based on initial positions (not current positions) for smoother drag
+      // This prevents accumulation errors and makes drag feel more responsive
       const updates = selectedIdsRef.current.map(id => {
-        const compToUpdate = allComponentsRef.current.find(c => c.id === id);
-        if (!compToUpdate) return null;
+        const initialPos = initialPositionsRef.current.get(id);
+        if (!initialPos) return null;
+        
+        // Calculate new position from initial position + total mouse movement
+        const totalDx = e.clientX - dragStartPos.current.x;
+        const totalDy = e.clientY - dragStartPos.current.y;
+        
         return {
           id,
           props: {
-            x: (compToUpdate.props.x as number) + dx,
-            y: (compToUpdate.props.y as number) + dy,
+            x: initialPos.x + totalDx,
+            y: initialPos.y + totalDy,
           }
         };
       }).filter((u): u is { id: string; props: { x: number; y: number; } } => u !== null);
 
+      // Throttle updates using requestAnimationFrame for smooth 60fps rendering
       if (updates.length > 0) {
-        onUpdateComponents(updates);
+        pendingUpdatesRef.current = updates;
+        if (rafIdRef.current === null) {
+          rafIdRef.current = requestAnimationFrame(() => {
+            if (pendingUpdatesRef.current && pendingUpdatesRef.current.length > 0) {
+              onUpdateComponents(pendingUpdatesRef.current);
+              pendingUpdatesRef.current = null;
+            }
+            rafIdRef.current = null;
+          });
+        }
       }
-      
-      dragStartPos.current = { x: e.clientX, y: e.clientY };
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e?: MouseEvent) => {
       if (isDragging) {
         setIsDragging(false);
-        // Only call reparentComponent if the component actually moved (was dragged, not just clicked)
-        if (hasMoved.current) {
-          selectedIdsRef.current.forEach(id => onReparentCheck(id));
+        
+        // Cancel any pending RAF and apply final update immediately
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
         }
+        
+        // Apply final position updates and reparent immediately
+        // Use requestAnimationFrame to ensure DOM updates complete, then reparent
+        if (pendingUpdatesRef.current && pendingUpdatesRef.current.length > 0) {
+          const finalUpdates = pendingUpdatesRef.current;
+          onUpdateComponents(finalUpdates);
+          pendingUpdatesRef.current = null;
+          
+          // Reparent immediately with absolute positions calculated from initial absolute + drag delta
+          // This ensures components are reparented using their final drop positions correctly
+          if (hasMoved.current && e) {
+            selectedIdsRef.current.forEach(id => {
+              const initialAbsPos = initialAbsolutePositionsRef.current.get(id);
+              const finalUpdate = finalUpdates.find(u => u.id === id);
+              
+              if (initialAbsPos && finalUpdate) {
+                // Calculate absolute position: initial absolute + drag delta
+                // The drag delta is the difference between final relative position and initial relative position
+                const initialRelPos = initialPositionsRef.current.get(id);
+                if (initialRelPos) {
+                  const dragDeltaX = (finalUpdate.props.x as number) - initialRelPos.x;
+                  const dragDeltaY = (finalUpdate.props.y as number) - initialRelPos.y;
+                  const finalAbsoluteX = initialAbsPos.x + dragDeltaX;
+                  const finalAbsoluteY = initialAbsPos.y + dragDeltaY;
+                  
+                  // Pass absolute position to reparentComponent
+                  onReparentCheck(id, { x: finalAbsoluteX, y: finalAbsoluteY });
+                } else {
+                  onReparentCheck(id);
+                }
+              } else {
+                onReparentCheck(id);
+              }
+            });
+          } else if (hasMoved.current) {
+            // Fallback: use relative position if we don't have absolute position
+            selectedIdsRef.current.forEach(id => {
+              const finalUpdate = finalUpdates.find(u => u.id === id);
+              if (finalUpdate) {
+                onReparentCheck(id, { x: finalUpdate.props.x, y: finalUpdate.props.y });
+              } else {
+                onReparentCheck(id);
+              }
+            });
+          }
+        } else {
+          // No pending updates, reparent immediately
+          if (hasMoved.current) {
+            selectedIdsRef.current.forEach(id => onReparentCheck(id));
+          }
+        }
+        
         hasMoved.current = false; // Reset for next interaction
+        initialPositionsRef.current.clear(); // Clear initial positions
+        initialAbsolutePositionsRef.current.clear(); // Clear initial absolute positions
       }
     };
 
@@ -201,6 +361,15 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      // Cancel any pending RAF and apply final update
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      if (pendingUpdatesRef.current && pendingUpdatesRef.current.length > 0) {
+        onUpdateComponents(pendingUpdatesRef.current);
+        pendingUpdatesRef.current = null;
+      }
     };
     // FIX: Removed `selectedComponentIds` from the dependency array. The event listener is now stable
     // throughout the drag operation and relies on refs for fresh data, preventing stale closures.
@@ -212,10 +381,39 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       if (!isResizing || mode !== 'edit') return;
       const dx = e.clientX - resizeStartInfo.current.x;
       const dy = e.clientY - resizeStartInfo.current.y;
-      onUpdate(component.id, {
-        width: Math.max(20, resizeStartInfo.current.width + dx),
-        height: Math.max(20, resizeStartInfo.current.height + dy),
-      });
+      
+      // Calculate new dimensions ensuring they're always valid positive numbers
+      // Round to avoid decimal precision issues
+      const newWidthNum = Math.max(20, Math.round(resizeStartInfo.current.width + dx));
+      const newHeightNum = Math.max(20, Math.round(resizeStartInfo.current.height + dy));
+      
+      // Check if this is a container component (supports string width/height with units)
+      const isContainer = plugin.isContainer;
+      
+      let widthValue: number | string;
+      let heightValue: number | string;
+      
+      if (isContainer) {
+        // For containers, use string values with units (px or %)
+        const widthUnit = (resizeStartInfo.current as any).widthUnit || 'px';
+        const heightUnit = (resizeStartInfo.current as any).heightUnit || 'px';
+        widthValue = `${newWidthNum}${widthUnit}`;
+        heightValue = `${newHeightNum}${heightUnit}`;
+      } else {
+        // For non-container components, use numeric values
+        widthValue = newWidthNum;
+        heightValue = newHeightNum;
+      }
+      
+      // Only update if values have actually changed to avoid unnecessary re-renders
+      const currentWidth = component.props.width;
+      const currentHeight = component.props.height;
+      if (currentWidth !== widthValue || currentHeight !== heightValue) {
+        onUpdate(component.id, {
+          width: widthValue,
+          height: heightValue,
+        });
+      }
     };
     const handleResizeMouseUp = () => setIsResizing(false);
     if (isResizing) {
@@ -258,14 +456,67 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
 
 
   const p = component.props;
+  // Ensure x, y are numbers (not expressions)
+  const x = typeof p.x === 'number' ? p.x : (typeof p.x === 'string' ? parseFloat(p.x) || 0 : 0);
+  const y = typeof p.y === 'number' ? p.y : (typeof p.y === 'string' ? parseFloat(p.y) || 0 : 0);
+  
+  // Parse width and height - support both px and % values
+  // For containers, width/height can be strings like "400px" or "50%"
+  const parseSize = (size: any, defaultValue: string): string => {
+    if (typeof size === 'number') {
+      return `${size}px`; // Convert number to px string
+    }
+    if (typeof size === 'string') {
+      const trimmed = size.trim();
+      // If it's already a valid format (number + px or %), use it
+      if (trimmed.match(/^\d+(?:\.\d+)?(px|%)$/)) {
+        return trimmed;
+      }
+      // If it's just a number, assume px
+      const numValue = parseFloat(trimmed);
+      if (!isNaN(numValue)) {
+        return `${numValue}px`;
+      }
+    }
+    return defaultValue;
+  };
+  
+  const width = parseSize(p.width, '400px');
+  const height = parseSize(p.height, '300px');
+  
+  // Calculate z-index based on nesting depth and component type
+  // Containers should have lower z-index (stay in background)
+  // Children should have higher z-index (always on top)
+  // Calculate nesting depth
+  const getNestingDepth = (compId: string, allComps: AppComponent[]): number => {
+    const comp = allComps.find(c => c.id === compId);
+    if (!comp || !comp.parentId) return 0;
+    return 1 + getNestingDepth(comp.parentId, allComps);
+  };
+  const nestingDepth = getNestingDepth(component.id, allComponents);
+  
+  // Base z-index: containers get lower values, non-containers get higher
+  // Selected components get a boost to show selection outline
+  // Children get higher z-index than parents
+  let baseZIndex: number;
+  if (plugin.isContainer) {
+    // Containers: lower z-index, deeper nesting = even lower
+    baseZIndex = 100 - (nestingDepth * 10);
+  } else {
+    // Non-container children: higher z-index, deeper nesting = even higher
+    baseZIndex = 200 + (nestingDepth * 10);
+  }
+  
+  // Selected components get a boost
+  const selectedBoost = isSelected ? 1000 : 0;
+  
   const componentStyle: React.CSSProperties = {
     position: 'absolute',
-    left: p.x,
-    top: p.y,
-    width: p.width,
-    height: p.height,
-    // Containers should also get higher z-index when selected to show selection outline
-    zIndex: plugin.isContainer ? (isSelected ? 10 : 0) : (isSelected ? 10 : 1),
+    left: x,
+    top: y,
+    width: width, // Can be "400px" or "50%" - CSS will handle it
+    height: height, // Can be "300px" or "50%" - CSS will handle it
+    zIndex: baseZIndex + selectedBoost,
     // In edit mode, hidden components should be visible but with reduced opacity to indicate they're hidden
     // In preview mode, use display: none to completely hide them
     ...(isHidden 

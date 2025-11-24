@@ -17,7 +17,7 @@ interface CanvasProps {
   updateComponents: (updates: Array<{ id: string; props: Partial<ComponentProps> }>) => void;
   onDeleteComponent: (id: string) => void;
   evaluationScope: Record<string, any>;
-  onReparentComponent: (componentId: string) => void;
+  onReparentComponent: (componentId: string, finalPosition?: { x: number; y: number }) => void;
   currentPageId: string;
 }
 

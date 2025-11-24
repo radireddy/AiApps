@@ -156,10 +156,12 @@ export function createBaseContainerRenderer(
       : styleExtensions;
     
     // Build container style - NO flex, NO grid, just absolute positioning container
+    // Width and height come from the parent RenderedComponent wrapper, not from here
+    // The container should fill its allocated space
     const containerStyle: React.CSSProperties = {
       position: 'relative', // Container itself is positioned absolutely by parent
-      width: '100%',
-      height: '100%',
+      width: '100%', // Fill the width allocated by parent
+      height: '100%', // Fill the height allocated by parent
       boxSizing: 'border-box',
       ...backgroundStyle,
       opacity,

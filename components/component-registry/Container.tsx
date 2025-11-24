@@ -50,8 +50,8 @@ export const ContainerPlugin = createContainerComponent({
     })
   ),
   defaultProps: {
-    width: 400,
-    height: 300,
+    width: '400px',
+    height: '300px',
     backgroundColor: '{{theme.colors.surface}}',
     borderWidth: '{{theme.border.width}}',
     borderColor: '{{theme.colors.border}}',

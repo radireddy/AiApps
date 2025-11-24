@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PropertyMetadata, PropertyContext } from './metadata';
 import { ComponentProps } from '../../types';
 
@@ -231,7 +231,9 @@ const NumberPropertyInput: React.FC<PropertyInputProps> = ({
   isMixed,
 }) => {
   const inputId = `prop-${metadata.id}`;
-  const displayValue = isMixed ? '— Mixed —' : (value ?? metadata.defaultValue ?? 0);
+  // Use empty string for mixed values to avoid HTML5 number input validation error
+  // The placeholder will show "— Mixed —" via CSS or we can show it in a label
+  const displayValue = isMixed ? '' : (value ?? metadata.defaultValue ?? 0);
 
   return (
     <div className="mb-3" data-testid={`prop-input-${metadata.id}`}>
@@ -243,15 +245,24 @@ const NumberPropertyInput: React.FC<PropertyInputProps> = ({
           </span>
         )}
       </label>
+      {isMixed && (
+        <div className="text-xs text-gray-400 italic mb-1">— Mixed —</div>
+      )}
       <input
         id={inputId}
         type="number"
         value={displayValue}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        onChange={(e) => {
+          // Guard against parsing "— Mixed —" or empty strings
+          const numValue = e.target.value === '' || e.target.value === '— Mixed —' 
+            ? 0 
+            : parseFloat(e.target.value) || 0;
+          onChange(numValue);
+        }}
         className={`w-full bg-gray-50 border rounded-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
           error ? 'border-red-500' : 'border-gray-300'
         } ${isMixed ? 'italic text-gray-400' : ''}`}
-        placeholder={metadata.placeholder}
+        placeholder={isMixed ? '— Mixed —' : metadata.placeholder}
         disabled={isMixed}
       />
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
@@ -330,7 +341,89 @@ const ColorPropertyInput: React.FC<PropertyInputProps> = ({
   };
 
   const inputId = `prop-${metadata.id}`;
-  const displayValue = isMixed ? '#000000' : (value ?? '#000000');
+  // Convert 'transparent' to rgba(0,0,0,0) for color input compatibility
+  // HTML5 color inputs require hex format, so we use a fallback
+  const getColorValue = (val: any): string => {
+    if (isMixed) return '#000000';
+    if (!val || val === 'transparent') return '#000000'; // Use black with opacity 0 as fallback
+    if (typeof val === 'string' && val.startsWith('{{')) return '#000000'; // Expression mode
+    return val ?? '#000000';
+  };
+  
+  // Get the hex value for display (normalize to uppercase, ensure # prefix)
+  const getHexValue = (val: any): string => {
+    if (isMixed) return '— Mixed —';
+    if (!val || val === 'transparent') return '#000000';
+    if (typeof val === 'string' && val.startsWith('{{')) return val; // Keep expressions as-is
+    // Ensure value has # prefix and is uppercase
+    const hex = val.toString().trim();
+    if (hex.startsWith('#')) {
+      return hex.toUpperCase();
+    }
+    // If it's a valid hex without #, add it
+    if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+      return `#${hex.toUpperCase()}`;
+    }
+    return hex;
+  };
+  
+  const displayValue = getColorValue(value);
+  const hexValue = getHexValue(value);
+  const [copied, setCopied] = useState(false);
+  const [hexInput, setHexInput] = useState(hexValue);
+
+  // Update hex input when value changes
+  useEffect(() => {
+    setHexInput(getHexValue(value));
+  }, [value]);
+
+  const handleCopyHex = async () => {
+    try {
+      await navigator.clipboard.writeText(hexValue);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handlePasteHex = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').trim();
+    // Validate hex format
+    if (/^#?[0-9A-Fa-f]{6}$/.test(pasted)) {
+      const normalized = pasted.startsWith('#') ? pasted.toUpperCase() : `#${pasted.toUpperCase()}`;
+      onChange(normalized);
+      setHexInput(normalized);
+    }
+  };
+
+  const handleHexInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value.trim();
+    setHexInput(newValue);
+    
+    // If it's a valid hex format, apply it
+    if (/^#?[0-9A-Fa-f]{0,6}$/.test(newValue)) {
+      if (newValue.length === 6 || (newValue.startsWith('#') && newValue.length === 7)) {
+        const normalized = newValue.startsWith('#') ? newValue.toUpperCase() : `#${newValue.toUpperCase()}`;
+        if (/^#[0-9A-Fa-f]{6}$/.test(normalized)) {
+          onChange(normalized);
+        }
+      }
+    }
+  };
+
+  const handleHexInputBlur = () => {
+    // Normalize on blur
+    const normalized = hexInput.startsWith('#') ? hexInput.toUpperCase() : `#${hexInput.toUpperCase()}`;
+    if (/^#[0-9A-Fa-f]{6}$/.test(normalized)) {
+      onChange(normalized);
+      setHexInput(normalized);
+    } else {
+      // Revert to current value if invalid
+      setHexInput(getHexValue(value));
+    }
+  };
 
   return (
     <div className="mb-3" data-testid={`prop-input-${metadata.id}`}>
@@ -342,44 +435,94 @@ const ColorPropertyInput: React.FC<PropertyInputProps> = ({
           </span>
         )}
       </label>
-      <div className="flex items-center">
-        <input
-          id={inputId}
-          type={isFxMode ? 'text' : 'color'}
-          value={typeof displayValue === 'string' ? displayValue.toUpperCase() : displayValue}
-          onChange={(e) => onChange(e.target.value)}
-          className={`w-full bg-gray-50 border rounded-l-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
-            error ? 'border-red-500' : 'border-gray-300'
-          }`}
-          disabled={isMixed}
-        />
-        {supportsExpression && (
-          <>
-            <button
-              onClick={handleToggleFx}
-              className={`px-2 py-2 border-t border-b border-l ${
-                isFxMode
-                  ? 'bg-blue-100 text-blue-700 border-blue-500'
-                  : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
-              } ${!(onOpenExpressionEditor && isFxMode) ? 'border-r rounded-r-md' : ''}`}
-              title="Toggle JavaScript Expression"
-            >
-              <span className="font-mono text-xs font-bold">fx</span>
-            </button>
-            {onOpenExpressionEditor && isFxMode && (
+      {/* Hex input as primary/default input */}
+      {!isFxMode && !isMixed && (
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={hexInput}
+              onChange={handleHexInputChange}
+              onBlur={handleHexInputBlur}
+              onPaste={handlePasteHex}
+              placeholder="#000000"
+              className="w-full bg-gray-50 border border-gray-300 rounded-l-md px-3 py-2 text-sm font-mono text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              disabled={isMixed}
+            />
+            {/* Color preview swatch */}
+            <div
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded border border-gray-300 pointer-events-none"
+              style={{ backgroundColor: /^#[0-9A-Fa-f]{6}$/.test(hexInput) ? hexInput : displayValue }}
+            />
+          </div>
+          <input
+            type="color"
+            value={typeof displayValue === 'string' ? displayValue.toUpperCase() : displayValue}
+            onChange={(e) => {
+              // If user selects a color, use it directly
+              const newValue = e.target.value;
+              onChange(newValue);
+              setHexInput(newValue.toUpperCase());
+            }}
+            className="w-12 h-10 bg-gray-50 border border-gray-300 rounded-md cursor-pointer"
+            disabled={isMixed}
+            title="Color picker"
+          />
+          <button
+            onClick={handleCopyHex}
+            className="px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md text-gray-700 transition-colors"
+            title="Copy hex value"
+          >
+            {copied ? '✓' : 'Copy'}
+          </button>
+        </div>
+      )}
+      {/* Expression mode input */}
+      {isFxMode && (
+        <div className="flex items-center">
+          <input
+            id={inputId}
+            type="text"
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            className={`w-full bg-gray-50 border rounded-l-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+              error ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder={metadata.placeholder || '{{ expression }}'}
+            disabled={isMixed}
+          />
+          {supportsExpression && (
+            <>
               <button
-                onClick={() => onOpenExpressionEditor(value, onChange)}
-                className="p-2 border-t border-b border-r rounded-r-md bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200"
-                title="Open Expression Editor"
+                onClick={handleToggleFx}
+                className={`px-2 py-2 border-t border-b border-l ${
+                  isFxMode
+                    ? 'bg-blue-100 text-blue-700 border-blue-500'
+                    : 'bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200'
+                } ${!(onOpenExpressionEditor && isFxMode) ? 'border-r rounded-r-md' : ''}`}
+                title="Toggle JavaScript Expression"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v-4h-4" />
-                </svg>
+                <span className="font-mono text-xs font-bold">fx</span>
               </button>
-            )}
-          </>
-        )}
-      </div>
+              {onOpenExpressionEditor && isFxMode && (
+                <button
+                  onClick={() => onOpenExpressionEditor(value, onChange)}
+                  className="p-2 border-t border-b border-r rounded-r-md bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200"
+                  title="Open Expression Editor"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v-4h-4" />
+                  </svg>
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {/* Mixed state display */}
+      {isMixed && (
+        <div className="text-xs text-gray-400 italic py-2">— Mixed —</div>
+      )}
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
     </div>
   );
@@ -528,18 +671,219 @@ const CompositePropertyInput: React.FC<PropertyInputProps> = ({
             <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
             <input
               type={field.type}
-              value={isMixed ? '—' : (compositeValue[field.id] ?? field.defaultValue ?? '')}
-              onChange={(e) =>
-                handleFieldChange(
-                  field.id,
-                  field.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value
-                )
-              }
+              value={isMixed ? '' : (compositeValue[field.id] ?? field.defaultValue ?? '')}
+              onChange={(e) => {
+                // Guard against parsing "—" or "— Mixed —" for number fields
+                if (field.type === 'number') {
+                  const numValue = e.target.value === '' || e.target.value === '—' || e.target.value === '— Mixed —'
+                    ? 0
+                    : parseFloat(e.target.value) || 0;
+                  handleFieldChange(field.id, numValue);
+                } else {
+                  handleFieldChange(field.id, e.target.value);
+                }
+              }}
               className="w-full bg-gray-50 border border-gray-300 rounded-md p-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              placeholder={isMixed ? '—' : ''}
               disabled={isMixed}
             />
           </div>
         ))}
+      </div>
+      {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+    </div>
+  );
+};
+
+/**
+ * Custom renderer for width/height properties that supports both px and % values
+ */
+export const WidthHeightPropertyInput: React.FC<PropertyInputProps> = ({
+  metadata,
+  value,
+  onChange,
+  context,
+  error,
+  isMixed,
+}) => {
+  const inputId = `prop-${metadata.id}`;
+  // Normalize value - handle both number and string types, ensure it's always a valid string
+  const normalizeValue = (val: any): string => {
+    if (isMixed) return '— Mixed —';
+    if (val === null || val === undefined) return metadata.defaultValue ?? '400px';
+    if (typeof val === 'number') return `${val}px`; // Convert number to px string
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed === '') return metadata.defaultValue ?? '400px';
+      return trimmed; // Return the string as-is
+    }
+    return String(val); // Fallback: convert to string
+  };
+  const displayValue = normalizeValue(value);
+
+  // Validate that the value is in the format: number + 'px' or number + '%'
+  const validateValue = (val: string): boolean => {
+    if (!val || val.trim() === '') return false;
+    const trimmed = val.trim();
+    const match = trimmed.match(/^(\d+(?:\.\d+)?)(px|%)$/);
+    return match !== null;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value.trim();
+    if (newValue === '') {
+      onChange(metadata.defaultValue || '400px');
+      return;
+    }
+    
+    // If it's a valid format (number + px or %), use it
+    if (validateValue(newValue)) {
+      onChange(newValue);
+    } else {
+      // Allow typing - don't auto-convert while user is typing
+      // This allows users to type "50%" without it being converted to "50px" first
+      // Only store the raw value while typing
+      onChange(newValue);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const val = e.target.value.trim();
+    
+    // If empty on blur, restore to current value or default
+    if (val === '') {
+      const currentValue = value;
+      if (currentValue && typeof currentValue === 'string' && currentValue.trim()) {
+        // Restore to current value if it exists
+        onChange(currentValue);
+      } else {
+        // Use default if no current value
+        onChange(metadata.defaultValue || '400px');
+      }
+      return;
+    }
+    
+    // On blur, normalize the value
+    if (validateValue(val)) {
+      // Valid format, keep it as is (normalized)
+      onChange(val);
+    } else {
+      // Try to parse and normalize
+      const numValue = parseFloat(val);
+      if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0) {
+        // If it's just a number, default to px
+        onChange(`${numValue}px`);
+      } else {
+        // Check if it ends with % or px but has invalid format
+        if (val.endsWith('%')) {
+          const num = parseFloat(val.slice(0, -1));
+          if (!isNaN(num) && isFinite(num) && num >= 0) {
+            onChange(`${num}%`);
+            return;
+          }
+        } else if (val.endsWith('px')) {
+          const num = parseFloat(val.slice(0, -2));
+          if (!isNaN(num) && isFinite(num) && num >= 0) {
+            onChange(`${num}px`);
+            return;
+          }
+        }
+        // Invalid format, revert to current value or default
+        const currentValue = value;
+        if (currentValue && typeof currentValue === 'string' && currentValue.trim()) {
+          onChange(currentValue);
+        } else {
+          onChange(metadata.defaultValue || '400px');
+        }
+      }
+    }
+  };
+
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTooltip]);
+
+  return (
+    <div className="mb-3" data-testid={`prop-input-${metadata.id}`}>
+      <label htmlFor={inputId} className="block text-xs font-medium text-gray-500 mb-1">
+        <span className="flex items-center gap-1">
+          {metadata.label}
+          {metadata.tooltip && (
+            <span className="relative" ref={tooltipRef}>
+              <span 
+                className="ml-1 text-blue-500 cursor-help hover:text-blue-700 transition-colors"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowTooltip(!showTooltip);
+                }}
+                title="Click for more info"
+              >
+                ℹ️
+              </span>
+              {showTooltip && (
+                <div className="absolute z-50 left-0 mt-1 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg pointer-events-none">
+                  {metadata.tooltip}
+                </div>
+              )}
+            </span>
+          )}
+        </span>
+      </label>
+      {isMixed && (
+        <div className="text-xs text-gray-400 italic mb-1">— Mixed —</div>
+      )}
+      <div className="relative">
+        <input
+          id={inputId}
+          type="text"
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          className={`w-full bg-gray-50 border rounded-md p-2 pr-16 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+            error ? 'border-red-500' : 'border-gray-300'
+          } ${isMixed ? 'italic text-gray-400' : ''}`}
+          placeholder={metadata.placeholder || 'e.g. 400px or 50%'}
+          disabled={isMixed}
+        />
+        {/* Unit indicator - shows current unit or placeholder */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-gray-400 pointer-events-none">
+          {displayValue && displayValue !== '— Mixed —' && !isMixed ? (
+            <>
+              {displayValue.endsWith('%') ? (
+                <span className="text-gray-500 font-medium">%</span>
+              ) : displayValue.endsWith('px') ? (
+                <span className="text-gray-500 font-medium">px</span>
+              ) : (
+                <span className="text-gray-300">px / %</span>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-300">px / %</span>
+          )}
+        </div>
+      </div>
+      {/* Helper text showing format */}
+      <div className="text-xs text-gray-400 mt-1">
+        Format: <span className="font-mono">400px</span> or <span className="font-mono">50%</span>
       </div>
       {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
     </div>
