@@ -7,6 +7,25 @@ import { componentRegistry } from './component-registry/registry';
 import { useJavaScriptRenderer } from '../property-renderers/useJavaScriptRenderer';
 import { parsePadding } from './component-registry/common';
 import { evaluateHidden } from '../utils/disabled-helper';
+import { dragState } from '../utils/dragState';
+
+// ============================================================================
+// DEBUG_LOGGING: Remove this entire section before production
+// ============================================================================
+const DEBUG_OPERATIONS = true; // Set to false to disable all debug logs
+
+const debugLog = (operation: string, details: any, isError: boolean = false) => {
+  if (!DEBUG_OPERATIONS) return;
+  const logMethod = isError ? console.error : console.warn;
+  const prefix = isError ? '❌ OPERATION FAILED' : '⚠️ OPERATION INFO';
+  logMethod(`[${prefix}] ${operation}`, {
+    timestamp: new Date().toISOString(),
+    ...details,
+  });
+};
+// ============================================================================
+// END DEBUG_LOGGING
+// ============================================================================
 
 interface RenderedComponentProps {
   component: AppComponent;
@@ -44,14 +63,17 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isEditingInline, setIsEditingInline] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragOverCheckRef = useRef<number | null>(null); // For throttling drag over checks
   const dragStartPos = useRef({ x: 0, y: 0 });
   const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0, widthUnit: 'px', heightUnit: 'px' });
   const componentRef = useRef<HTMLDivElement>(null);
   const hasMoved = useRef(false); // Track if component actually moved during drag
   const initialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map()); // Store initial positions on drag start
   const initialAbsolutePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map()); // Store initial absolute positions on drag start
-  const rafIdRef = useRef<number | null>(null); // RAF ID for throttling
-  const pendingUpdatesRef = useRef<Array<{ id: string; props: { x: number; y: number; } }> | null>(null); // Pending updates
+  const initialScreenPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map()); // Store initial screen positions (getBoundingClientRect) on drag start
+  const dragOffsetRef = useRef({ x: 0, y: 0 }); // Current drag offset for CSS transform
+  const parentContainerOverflowRef = useRef<Map<string, string>>(new Map()); // Store original overflow values of parent containers during drag
 
   // This ref will hold the latest `allComponents` array to avoid stale closures in event handlers.
   const allComponentsRef = useRef(allComponents);
@@ -79,6 +101,69 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     }
   }, [isSelected]);
 
+  // Subscribe to global drag state for visual feedback on containers
+  // Only highlights the innermost container under the mouse
+  useEffect(() => {
+    if (!plugin.isContainer || mode !== 'edit') return;
+    
+    let lastCheckTime = 0;
+    const THROTTLE_MS = 16; // Check at ~60fps for smoother updates
+    
+    const checkDragOver = () => {
+      const now = performance.now();
+      if (now - lastCheckTime < THROTTLE_MS) {
+        return; // Skip if too soon
+      }
+      lastCheckTime = now;
+      
+      const state = dragState.getState();
+      // Only show highlight if dragging and not dragging this component itself
+      if (state.isDragging && !state.draggedComponentIds.includes(component.id) && componentRef.current) {
+        const rect = componentRef.current.getBoundingClientRect();
+        const isOverContainer = (
+          state.mouseX >= rect.left &&
+          state.mouseX <= rect.right &&
+          state.mouseY >= rect.top &&
+          state.mouseY <= rect.bottom
+        );
+        
+        // Only highlight if this is the highlighted container (innermost one)
+        const shouldHighlight = isOverContainer && state.highlightedContainerId === component.id;
+        
+        // Throttle drag over state updates to avoid excessive re-renders
+        if (dragOverCheckRef.current !== null) {
+          cancelAnimationFrame(dragOverCheckRef.current);
+        }
+        
+        dragOverCheckRef.current = requestAnimationFrame(() => {
+          setIsDragOver(shouldHighlight);
+          dragOverCheckRef.current = null;
+        });
+      } else {
+        if (dragOverCheckRef.current !== null) {
+          cancelAnimationFrame(dragOverCheckRef.current);
+          dragOverCheckRef.current = null;
+        }
+        setIsDragOver(false);
+      }
+    };
+    
+    const unsubscribe = dragState.subscribe(() => {
+      checkDragOver();
+    });
+    
+    // Also check on mount in case drag is already in progress
+    checkDragOver();
+    
+    return () => {
+      unsubscribe();
+      if (dragOverCheckRef.current !== null) {
+        cancelAnimationFrame(dragOverCheckRef.current);
+        dragOverCheckRef.current = null;
+      }
+    };
+  }, [plugin.isContainer, mode, component.id]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode !== 'edit' || isEditingInline) return;
     if ((e.target as HTMLElement).dataset.resizeHandle) return;
@@ -105,6 +190,14 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     // allowing containers to be selected and moved properly.
     e.stopPropagation();
     
+    // CRITICAL FIX: Determine which components will be selected for this drag
+    // If this component is not selected, it will become the only selected component
+    // Otherwise, use the current selection
+    const componentsToDrag = !isSelected ? [component.id] : selectedComponentIds;
+    
+    // CRITICAL: Update selectedIdsRef immediately to ensure handleMouseUp has correct IDs
+    selectedIdsRef.current = componentsToDrag;
+    
     if (!isSelected) {
       onSelect(component.id, e);
     }
@@ -112,9 +205,27 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     hasMoved.current = false; // Reset move tracking
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     
+    // Update global drag state with the actual components that will be dragged
+    dragState.startDrag(componentsToDrag);
+    
     // Store initial positions of all selected components for smooth drag
     initialPositionsRef.current.clear();
     initialAbsolutePositionsRef.current.clear();
+    initialScreenPositionsRef.current.clear();
+    dragOffsetRef.current = { x: 0, y: 0 };
+    
+    // Store initial screen positions (getBoundingClientRect) for fixed positioning during drag
+    // Use componentsToDrag instead of selectedComponentIds to include the newly selected component
+    componentsToDrag.forEach(id => {
+      const element = document.querySelector(`[data-component-id="${id}"]`) as HTMLElement;
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        initialScreenPositionsRef.current.set(id, {
+          x: rect.left,
+          y: rect.top,
+        });
+      }
+    });
     
     // Helper to calculate absolute position
     const getAbsolutePosition = (comp: AppComponent, allComps: AppComponent[]): { x: number; y: number } => {
@@ -156,7 +267,9 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       return { x: absX, y: absY };
     };
     
-    selectedComponentIds.forEach(id => {
+    // Collect refs to all dragged components for direct DOM manipulation
+    // Use componentsToDrag to ensure we store positions for the component being clicked
+    componentsToDrag.forEach(id => {
       const comp = allComponents.find(c => c.id === id);
       if (comp) {
         initialPositionsRef.current.set(id, {
@@ -165,7 +278,49 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
         });
         // Store absolute position for accurate reparenting
         initialAbsolutePositionsRef.current.set(id, getAbsolutePosition(comp, allComponents));
+        
+        // Find all ancestor containers and temporarily set overflow to visible to prevent clipping during drag
+        // This handles nested containers (e.g., Container -> Container -> Component)
+        let currentParentId = comp.parentId;
+        while (currentParentId) {
+          const parentElement = document.querySelector(`[data-component-id="${currentParentId}"]`) as HTMLElement;
+          if (parentElement) {
+            // The container element is the first direct child div of the RenderedComponent wrapper
+            // (BaseContainerRenderer/PanelRenderer creates a div with overflow: hidden)
+            const containerElement = parentElement.firstElementChild as HTMLElement;
+            if (containerElement && containerElement.tagName === 'DIV') {
+              const computedStyle = window.getComputedStyle(containerElement);
+              const originalOverflow = containerElement.style.overflow || computedStyle.overflow;
+              if (originalOverflow === 'hidden') {
+                // Only store and modify if we haven't already done so for this parent
+                if (!parentContainerOverflowRef.current.has(currentParentId)) {
+                  parentContainerOverflowRef.current.set(currentParentId, originalOverflow);
+                  containerElement.style.overflow = 'visible';
+                }
+              }
+            }
+          }
+          // Move up to the next parent
+          const parentComp = allComponents.find(c => c.id === currentParentId);
+          currentParentId = parentComp?.parentId || null;
+        }
+      } else {
+        // DEBUG_LOGGING: Component not found when storing initial position
+        debugLog('DRAG_START_COMPONENT_NOT_FOUND', {
+          componentId: id,
+          availableComponentIds: allComponents.map(c => c.id),
+          componentsToDrag,
+        }, true);
       }
+    });
+    
+    // DEBUG_LOGGING: Log what we stored
+    debugLog('DRAG_START_STORED_POSITIONS', {
+      componentsToDrag,
+      storedInitialPositions: Array.from(initialPositionsRef.current.keys()),
+      storedAbsolutePositions: Array.from(initialAbsolutePositionsRef.current.keys()),
+      storedScreenPositions: Array.from(initialScreenPositionsRef.current.keys()),
+      selectedIdsRefValue: selectedIdsRef.current,
     });
   };
   
@@ -243,133 +398,299 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   };
 
   useEffect(() => {
+    let rafId: number | null = null;
+    
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging || mode !== 'edit') return;
+      
       const dx = e.clientX - dragStartPos.current.x;
       const dy = e.clientY - dragStartPos.current.y;
 
       // Only consider it a move if the mouse has moved more than a few pixels
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+      const moved = Math.abs(dx) > 2 || Math.abs(dy) > 2;
+      if (moved) {
         hasMoved.current = true;
       }
 
-      // Calculate updates based on initial positions (not current positions) for smoother drag
-      // This prevents accumulation errors and makes drag feel more responsive
-      const updates = selectedIdsRef.current.map(id => {
-        const initialPos = initialPositionsRef.current.get(id);
-        if (!initialPos) return null;
+      // Only update global drag state and find containers if we've actually moved
+      // This prevents unnecessary state updates and container highlighting on simple clicks
+      if (hasMoved.current) {
+        dragState.updateMousePosition(e.clientX, e.clientY);
         
-        // Calculate new position from initial position + total mouse movement
-        const totalDx = e.clientX - dragStartPos.current.x;
-        const totalDy = e.clientY - dragStartPos.current.y;
+        // Find the innermost container under the mouse cursor
+        // Check all containers and find the smallest one (innermost) that contains the mouse
+        let innermostContainerId: string | null = null;
+        let smallestArea = Infinity;
         
-        return {
-          id,
-          props: {
-            x: initialPos.x + totalDx,
-            y: initialPos.y + totalDy,
+        allComponentsRef.current.forEach(comp => {
+          const compPlugin = componentRegistry[comp.type];
+          // Skip if not a container, is being dragged, or not on the same page
+          if (!compPlugin?.isContainer || 
+              selectedIdsRef.current.includes(comp.id) ||
+              comp.pageId !== component.pageId) {
+            return;
           }
-        };
-      }).filter((u): u is { id: string; props: { x: number; y: number; } } => u !== null);
-
-      // Throttle updates using requestAnimationFrame for smooth 60fps rendering
-      if (updates.length > 0) {
-        pendingUpdatesRef.current = updates;
-        if (rafIdRef.current === null) {
-          rafIdRef.current = requestAnimationFrame(() => {
-            if (pendingUpdatesRef.current && pendingUpdatesRef.current.length > 0) {
-              onUpdateComponents(pendingUpdatesRef.current);
-              pendingUpdatesRef.current = null;
+          
+          const containerElement = document.querySelector(`[data-component-id="${comp.id}"]`) as HTMLElement;
+          if (!containerElement) return;
+          
+          const rect = containerElement.getBoundingClientRect();
+          // Check if mouse is within container bounds
+          if (e.clientX >= rect.left && 
+              e.clientX <= rect.right && 
+              e.clientY >= rect.top && 
+              e.clientY <= rect.bottom) {
+            // Calculate area - smaller area means more nested/innermost
+            const area = rect.width * rect.height;
+            if (area < smallestArea) {
+              smallestArea = area;
+              innermostContainerId = comp.id;
             }
-            rafIdRef.current = null;
-          });
-        }
+          }
+        });
+        
+        // Update highlighted container (only the innermost one)
+        dragState.setHighlightedContainer(innermostContainerId);
       }
+
+      // Update drag offset for CSS transform (no state updates during drag)
+      dragOffsetRef.current = { x: dx, y: dy };
+
+      // Use CSS transforms for smooth drag preview without React re-renders
+      // Apply transform directly to DOM elements for instant visual feedback
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      
+      rafId = requestAnimationFrame(() => {
+        selectedIdsRef.current.forEach(id => {
+          // Find the component element in the DOM (cached lookup)
+          const element = document.querySelector(`[data-component-id="${id}"]`) as HTMLElement;
+          if (element) {
+            // CRITICAL FIX: Only apply transforms/styles if component has actually moved
+            // This prevents components from jumping or having their layout messed up on simple clicks
+            if (hasMoved.current) {
+              // Use transform instead of fixed positioning to avoid layout issues
+              // Transform doesn't affect the component's actual position, preventing layout jumps
+              element.style.transform = `translate(${dx}px, ${dy}px)`;
+              element.style.willChange = 'transform';
+              element.style.pointerEvents = 'none'; // Prevent interaction during drag
+              // Increase z-index to ensure dragged component stays on top
+              if (element.style.zIndex !== '10000') {
+                element.style.zIndex = '10000';
+              }
+            }
+            // If not moved yet, don't apply any transforms at all - this prevents layout issues
+          }
+        });
+        rafId = null;
+      });
     };
 
     const handleMouseUp = (e?: MouseEvent) => {
       if (isDragging) {
         setIsDragging(false);
+        setIsDragOver(false); // Clear drag over state when drag ends
         
-        // Cancel any pending RAF and apply final update immediately
-        if (rafIdRef.current !== null) {
-          cancelAnimationFrame(rafIdRef.current);
-          rafIdRef.current = null;
+        // Cancel any pending RAF
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
         }
         
-        // Apply final position updates and reparent immediately
-        // Use requestAnimationFrame to ensure DOM updates complete, then reparent
-        if (pendingUpdatesRef.current && pendingUpdatesRef.current.length > 0) {
-          const finalUpdates = pendingUpdatesRef.current;
-          onUpdateComponents(finalUpdates);
-          pendingUpdatesRef.current = null;
+        // Calculate position updates first
+        const updates: Array<{ id: string; props: { x: number; y: number; } }> = [];
+        const dx = dragOffsetRef.current.x;
+        const dy = dragOffsetRef.current.y;
+        
+        // DEBUG_LOGGING: Log drag operation
+        debugLog('DRAG_END', {
+          componentId: component.id,
+          hasMoved: hasMoved.current,
+          dragOffset: { dx, dy },
+          selectedIds: selectedIdsRef.current,
+          initialPositions: Array.from(initialPositionsRef.current.entries()),
+        });
+        
+        // Only update positions if component actually moved
+        if (hasMoved.current && (dx !== 0 || dy !== 0)) {
+          selectedIdsRef.current.forEach(id => {
+            const initialPos = initialPositionsRef.current.get(id);
+            if (initialPos) {
+              updates.push({
+                id,
+                props: {
+                  x: initialPos.x + dx,
+                  y: initialPos.y + dy,
+                }
+              });
+            } else {
+              // DEBUG_LOGGING: Missing initial position
+              debugLog('DRAG_FAILED_MISSING_INITIAL_POS', {
+                componentId: id,
+                allInitialPositions: Array.from(initialPositionsRef.current.keys()),
+              }, true);
+            }
+          });
+          
+          // Apply position updates FIRST - this triggers React re-render with correct position
+          if (updates.length > 0) {
+            try {
+              onUpdateComponents(updates);
+              debugLog('DRAG_POSITION_UPDATED', {
+                updates: updates,
+                updateCount: updates.length,
+              });
+            } catch (error) {
+              debugLog('DRAG_UPDATE_FAILED', {
+                error: error instanceof Error ? error.message : String(error),
+                updates: updates,
+                stack: error instanceof Error ? error.stack : undefined,
+              }, true);
+            }
+          } else {
+            debugLog('DRAG_NO_UPDATES', {
+              reason: 'No updates generated despite movement',
+              hasMoved: hasMoved.current,
+              dragOffset: { dx, dy },
+            }, true);
+          }
           
           // Reparent immediately with absolute positions calculated from initial absolute + drag delta
-          // This ensures components are reparented using their final drop positions correctly
-          if (hasMoved.current && e) {
+          if (e) {
             selectedIdsRef.current.forEach(id => {
               const initialAbsPos = initialAbsolutePositionsRef.current.get(id);
-              const finalUpdate = finalUpdates.find(u => u.id === id);
+              const initialRelPos = initialPositionsRef.current.get(id);
               
-              if (initialAbsPos && finalUpdate) {
-                // Calculate absolute position: initial absolute + drag delta
-                // The drag delta is the difference between final relative position and initial relative position
-                const initialRelPos = initialPositionsRef.current.get(id);
-                if (initialRelPos) {
-                  const dragDeltaX = (finalUpdate.props.x as number) - initialRelPos.x;
-                  const dragDeltaY = (finalUpdate.props.y as number) - initialRelPos.y;
-                  const finalAbsoluteX = initialAbsPos.x + dragDeltaX;
-                  const finalAbsoluteY = initialAbsPos.y + dragDeltaY;
+              try {
+                if (initialAbsPos && initialRelPos) {
+                  const finalAbsoluteX = initialAbsPos.x + dx;
+                  const finalAbsoluteY = initialAbsPos.y + dy;
                   
                   // Pass absolute position to reparentComponent
                   onReparentCheck(id, { x: finalAbsoluteX, y: finalAbsoluteY });
+                  debugLog('DRAG_REPARENT_CALLED', {
+                    componentId: id,
+                    finalAbsolutePosition: { x: finalAbsoluteX, y: finalAbsoluteY },
+                    initialAbsolutePosition: initialAbsPos,
+                    initialRelativePosition: initialRelPos,
+                    dragOffset: { dx, dy },
+                  });
                 } else {
                   onReparentCheck(id);
+                  debugLog('DRAG_REPARENT_WITHOUT_POSITION', {
+                    componentId: id,
+                    hasInitialAbsPos: !!initialAbsPos,
+                    hasInitialRelPos: !!initialRelPos,
+                  }, true);
                 }
-              } else {
-                onReparentCheck(id);
-              }
-            });
-          } else if (hasMoved.current) {
-            // Fallback: use relative position if we don't have absolute position
-            selectedIdsRef.current.forEach(id => {
-              const finalUpdate = finalUpdates.find(u => u.id === id);
-              if (finalUpdate) {
-                onReparentCheck(id, { x: finalUpdate.props.x, y: finalUpdate.props.y });
-              } else {
-                onReparentCheck(id);
+              } catch (error) {
+                debugLog('DRAG_REPARENT_FAILED', {
+                  componentId: id,
+                  error: error instanceof Error ? error.message : String(error),
+                  stack: error instanceof Error ? error.stack : undefined,
+                  initialAbsPos,
+                  initialRelPos,
+                  dragOffset: { dx, dy },
+                }, true);
               }
             });
           }
         } else {
-          // No pending updates, reparent immediately
-          if (hasMoved.current) {
-            selectedIdsRef.current.forEach(id => onReparentCheck(id));
-          }
+          debugLog('DRAG_NO_MOVEMENT', {
+            componentId: component.id,
+            hasMoved: hasMoved.current,
+            dragOffset: { dx, dy },
+          });
         }
+        
+        // CRITICAL: Clean up drag styles AFTER state update, but use requestAnimationFrame
+        // to ensure React has had time to apply the new styles from props before we remove transforms
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => { // Double RAF to ensure render has completed
+            selectedIdsRef.current.forEach(id => {
+              const element = document.querySelector(`[data-component-id="${id}"]`) as HTMLElement;
+              if (element) {
+                // Remove all drag-specific inline styles we added
+                element.style.removeProperty('transform');
+                element.style.removeProperty('will-change');
+                element.style.removeProperty('pointer-events');
+                // Only clear z-index if we set it to a very high value during drag
+                if (element.style.zIndex === '10000') {
+                  element.style.removeProperty('z-index');
+                }
+              }
+            });
+            
+            // Restore parent container overflow values
+            parentContainerOverflowRef.current.forEach((originalOverflow, parentId) => {
+              const parentElement = document.querySelector(`[data-component-id="${parentId}"]`) as HTMLElement;
+              if (parentElement) {
+                const containerElement = parentElement.firstElementChild as HTMLElement;
+                if (containerElement && containerElement.tagName === 'DIV') {
+                  containerElement.style.overflow = originalOverflow;
+                }
+              }
+            });
+            parentContainerOverflowRef.current.clear();
+          });
+        });
+        
+        // Clear highlighted container and end global drag state
+        dragState.setHighlightedContainer(null);
+        dragState.endDrag();
         
         hasMoved.current = false; // Reset for next interaction
         initialPositionsRef.current.clear(); // Clear initial positions
         initialAbsolutePositionsRef.current.clear(); // Clear initial absolute positions
+        initialScreenPositionsRef.current.clear(); // Clear initial screen positions
+        dragOffsetRef.current = { x: 0, y: 0 };
       }
     };
 
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
       window.addEventListener('mouseup', handleMouseUp);
     }
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      // Cancel any pending RAF and apply final update
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
+      // Cancel any pending RAF
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
-      if (pendingUpdatesRef.current && pendingUpdatesRef.current.length > 0) {
-        onUpdateComponents(pendingUpdatesRef.current);
-        pendingUpdatesRef.current = null;
-      }
+      // Clean up any drag styles - restore original positioning
+      // Always cleanup to ensure no leftover styles interfere with normal rendering
+      setTimeout(() => {
+        selectedIdsRef.current.forEach(id => {
+          const element = document.querySelector(`[data-component-id="${id}"]`) as HTMLElement;
+          if (element) {
+            // Remove all drag-specific inline styles we added during drag
+            element.style.removeProperty('transform');
+            element.style.removeProperty('will-change');
+            element.style.removeProperty('pointer-events');
+            // Only clear z-index if it was set to a very high value during drag
+            if (element.style.zIndex === '10000') {
+              element.style.removeProperty('z-index');
+            }
+            // Force a reflow to ensure styles are applied
+            void element.offsetHeight;
+          }
+        });
+        
+        // Restore parent container overflow values
+        parentContainerOverflowRef.current.forEach((originalOverflow, parentId) => {
+          const parentElement = document.querySelector(`[data-component-id="${parentId}"]`) as HTMLElement;
+          if (parentElement) {
+            const containerElement = parentElement.firstElementChild as HTMLElement;
+            if (containerElement && containerElement.tagName === 'DIV') {
+              containerElement.style.overflow = originalOverflow;
+            }
+          }
+        });
+        parentContainerOverflowRef.current.clear();
+      }, 0);
     };
     // FIX: Removed `selectedComponentIds` from the dependency array. The event listener is now stable
     // throughout the drag operation and relies on refs for fresh data, preventing stale closures.
@@ -382,37 +703,65 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       const dx = e.clientX - resizeStartInfo.current.x;
       const dy = e.clientY - resizeStartInfo.current.y;
       
-      // Calculate new dimensions ensuring they're always valid positive numbers
-      // Round to avoid decimal precision issues
-      const newWidthNum = Math.max(20, Math.round(resizeStartInfo.current.width + dx));
-      const newHeightNum = Math.max(20, Math.round(resizeStartInfo.current.height + dy));
-      
-      // Check if this is a container component (supports string width/height with units)
-      const isContainer = plugin.isContainer;
-      
-      let widthValue: number | string;
-      let heightValue: number | string;
-      
-      if (isContainer) {
-        // For containers, use string values with units (px or %)
-        const widthUnit = (resizeStartInfo.current as any).widthUnit || 'px';
-        const heightUnit = (resizeStartInfo.current as any).heightUnit || 'px';
-        widthValue = `${newWidthNum}${widthUnit}`;
-        heightValue = `${newHeightNum}${heightUnit}`;
-      } else {
-        // For non-container components, use numeric values
-        widthValue = newWidthNum;
-        heightValue = newHeightNum;
-      }
-      
-      // Only update if values have actually changed to avoid unnecessary re-renders
-      const currentWidth = component.props.width;
-      const currentHeight = component.props.height;
-      if (currentWidth !== widthValue || currentHeight !== heightValue) {
-        onUpdate(component.id, {
-          width: widthValue,
-          height: heightValue,
-        });
+      try {
+        // Calculate new dimensions ensuring they're always valid positive numbers
+        // Round to avoid decimal precision issues
+        const newWidthNum = Math.max(20, Math.round(resizeStartInfo.current.width + dx));
+        const newHeightNum = Math.max(20, Math.round(resizeStartInfo.current.height + dy));
+        
+        // Check if this is a container component (supports string width/height with units)
+        const isContainer = plugin.isContainer;
+        
+        let widthValue: number | string;
+        let heightValue: number | string;
+        
+        if (isContainer) {
+          // For containers, use string values with units (px or %)
+          const widthUnit = (resizeStartInfo.current as any).widthUnit || 'px';
+          const heightUnit = (resizeStartInfo.current as any).heightUnit || 'px';
+          widthValue = `${newWidthNum}${widthUnit}`;
+          heightValue = `${newHeightNum}${heightUnit}`;
+        } else {
+          // For non-container components, use numeric values
+          widthValue = newWidthNum;
+          heightValue = newHeightNum;
+        }
+        
+        // Only update if values have actually changed to avoid unnecessary re-renders
+        const currentWidth = component.props.width;
+        const currentHeight = component.props.height;
+        if (currentWidth !== widthValue || currentHeight !== heightValue) {
+          debugLog('RESIZE_UPDATE', {
+            componentId: component.id,
+            oldSize: { width: currentWidth, height: currentHeight },
+            newSize: { width: widthValue, height: heightValue },
+            resizeDelta: { dx, dy },
+            isContainer,
+          });
+          
+          try {
+            onUpdate(component.id, {
+              width: widthValue,
+              height: heightValue,
+            });
+          } catch (error) {
+            debugLog('RESIZE_UPDATE_FAILED', {
+              componentId: component.id,
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              newSize: { width: widthValue, height: heightValue },
+              resizeDelta: { dx, dy },
+            }, true);
+          }
+        }
+      } catch (error) {
+        debugLog('RESIZE_EXCEPTION', {
+          componentId: component.id,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          resizeStartInfo: resizeStartInfo.current,
+          mousePosition: { x: e.clientX, y: e.clientY },
+        }, true);
       }
     };
     const handleResizeMouseUp = () => setIsResizing(false);
@@ -429,29 +778,104 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const handleDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!componentRef.current || !plugin.isContainer) return;
+    setIsDragOver(false);
+    
+    // DEBUG_LOGGING: Log drop attempt
+    debugLog('DROP_ATTEMPT', {
+      componentId: component.id,
+      componentType: component.type,
+      isContainer: plugin.isContainer,
+      hasComponentRef: !!componentRef.current,
+      dropPosition: { clientX: event.clientX, clientY: event.clientY },
+    });
+    
+    if (!componentRef.current || !plugin.isContainer) {
+      debugLog('DROP_FAILED_INVALID_TARGET', {
+        componentId: component.id,
+        hasComponentRef: !!componentRef.current,
+        isContainer: plugin.isContainer,
+      }, true);
+      return;
+    }
 
     const type = event.dataTransfer.getData('application/reactflow') as ComponentType;
-    if (!type) return;
+    if (!type) {
+      debugLog('DROP_FAILED_NO_TYPE', {
+        componentId: component.id,
+        dataTransferTypes: event.dataTransfer.types,
+        availableData: Array.from(event.dataTransfer.types).map(t => ({
+          type: t,
+          data: event.dataTransfer.getData(t),
+        })),
+      }, true);
+      return;
+    }
 
-    const rect = componentRef.current.getBoundingClientRect();
-    
-    // Calculate padding offset - account for container's padding
-    const { left: paddingLeft, top: paddingTop } = parsePadding(component.props.padding);
-    
-    // Position relative to padding edge (content area), not border edge
-    // The position should be relative to the container's content area (after padding)
-    const x = event.clientX - rect.left - paddingLeft;
-    const y = event.clientY - rect.top - paddingTop;
+    try {
+      const rect = componentRef.current.getBoundingClientRect();
+      
+      // Calculate padding offset - account for container's padding
+      const { left: paddingLeft, top: paddingTop } = parsePadding(component.props.padding);
+      
+      // Position relative to padding edge (content area), not border edge
+      // The position should be relative to the container's content area (after padding)
+      const x = event.clientX - rect.left - paddingLeft;
+      const y = event.clientY - rect.top - paddingTop;
 
-    onDrop({ type }, x, y, component.id);
-  }, [onDrop, component.id, component.props.padding, plugin.isContainer]);
+      debugLog('DROP_CALCULATED_POSITION', {
+        componentId: component.id,
+        droppedType: type,
+        containerRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        padding: { left: paddingLeft, top: paddingTop },
+        calculatedPosition: { x, y },
+        clientPosition: { x: event.clientX, y: event.clientY },
+      });
+
+      onDrop({ type }, x, y, component.id);
+      
+      debugLog('DROP_SUCCESS', {
+        componentId: component.id,
+        droppedType: type,
+        position: { x, y },
+        parentId: component.id,
+      });
+    } catch (error) {
+      debugLog('DROP_EXCEPTION', {
+        componentId: component.id,
+        droppedType: type,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      }, true);
+    }
+  }, [onDrop, component.id, component.type, component.props.padding, plugin.isContainer]);
 
   const handleDragOver = (event: React.DragEvent) => {
-    if (plugin.isContainer) {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
+    if (plugin.isContainer && mode === 'edit') {
+      // Check if something is being dragged
+      // Note: getData might not work during dragover in some browsers, so we check types instead
+      const hasDragData = event.dataTransfer.types.length > 0;
+      
+      // Show visual feedback if dragging anything (new component from palette or existing component)
+      if (hasDragData) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'move';
+        setIsDragOver(true);
+      }
     }
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    // Only clear if we're actually leaving the element (not just moving to a child)
+    const relatedTarget = event.relatedTarget as HTMLElement;
+    const currentTarget = event.currentTarget as HTMLElement;
+    if (!currentTarget.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDropEnd = () => {
+    setIsDragOver(false);
   };
 
 
@@ -509,14 +933,16 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   
   // Selected components get a boost
   const selectedBoost = isSelected ? 1000 : 0;
+  // Dragged components get an even higher z-index to stay visible above all containers
+  const dragBoost = isDragging ? 10000 : 0;
   
   const componentStyle: React.CSSProperties = {
     position: 'absolute',
-    left: x,
-    top: y,
+    left: `${x}px`, // Ensure pixel units for proper CSS rendering
+    top: `${y}px`, // Ensure pixel units for proper CSS rendering
     width: width, // Can be "400px" or "50%" - CSS will handle it
     height: height, // Can be "300px" or "50%" - CSS will handle it
-    zIndex: baseZIndex + selectedBoost,
+    zIndex: baseZIndex + selectedBoost + dragBoost,
     // In edit mode, hidden components should be visible but with reduced opacity to indicate they're hidden
     // In preview mode, use display: none to completely hide them
     ...(isHidden 
@@ -531,18 +957,25 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
   const selectionClass = isSelected && mode === 'edit' ? 'outline outline-2 outline-blue-500 outline-offset-2' : '';
   const cursorClass = mode === 'edit' ? 'cursor-grab' : '';
   const activeCursorClass = isDragging ? 'cursor-grabbing' : '';
+  // Visual feedback when dragging over a container/panel - smooth transition
+  const dragOverClass = isDragOver && plugin.isContainer && mode === 'edit' 
+    ? 'ring-4 ring-blue-400 ring-offset-2 bg-blue-50/50 border-2 border-blue-400 border-dashed transition-all duration-150 ease-out' 
+    : '';
   
   const children = allComponents.filter(c => c.parentId === component.id);
 
   return (
     <div
       ref={componentRef}
+      data-component-id={component.id}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDragEnd={handleDropEnd}
       style={componentStyle}
-      className={`${mode === 'edit' ? 'select-none' : ''} ${selectionClass} ${cursorClass} ${activeCursorClass}`}
+      className={`${mode === 'edit' ? 'select-none' : ''} ${selectionClass} ${cursorClass} ${activeCursorClass} ${dragOverClass}`}
       aria-label={`${component.type} component`}
     >
       <ComponentRenderer

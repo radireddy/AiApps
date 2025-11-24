@@ -121,6 +121,8 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     selectPage,
     alignAndDistribute,
     arrangeContainerChildren,
+    reorderComponent,
+    moveComponentToParent,
   } = useAppData(initialAppDefinition, onSave) as any;
 
   const [isExporting, setIsExporting] = useState(false);
@@ -375,6 +377,8 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
                         onSelectPage={selectPage}
                         onSelectComponent={handleSelectComponentFromTree}
                         onDeleteComponent={deleteComponent}
+                        onReorderComponent={reorderComponent}
+                        onMoveComponentToParent={moveComponentToParent}
                     />;
         case 'components':
             return <ComponentPalette width={leftPanelWidth} isCollapsed={isLeftPanelCollapsed} onToggleCollapse={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)} />;

@@ -5,6 +5,24 @@ import { componentRegistry } from '../components/component-registry/registry';
 import { dataSourceRegistry } from '../data-sources/registry';
 import { get, set } from '../utils/data-helpers';
 
+// ============================================================================
+// DEBUG_LOGGING: Remove this entire section before production
+// ============================================================================
+const DEBUG_OPERATIONS = true; // Set to false to disable all debug logs
+
+const debugLog = (operation: string, details: any, isError: boolean = false) => {
+  if (!DEBUG_OPERATIONS) return;
+  const logMethod = isError ? console.error : console.warn;
+  const prefix = isError ? '❌ OPERATION FAILED' : '⚠️ OPERATION INFO';
+  logMethod(`[${prefix}] ${operation}`, {
+    timestamp: new Date().toISOString(),
+    ...details,
+  });
+};
+// ============================================================================
+// END DEBUG_LOGGING
+// ============================================================================
+
 
 const parseInitialValue = (value: any, type: AppVariable['type']) => {
     try {
@@ -371,12 +389,18 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     if (updates.length === 0) return; // Early exit if no updates
     
     setAppDefinitionState(prev => {
+        // Create a Set of IDs to update for O(1) lookup
+        const updateIds = new Set(updates.map(u => u.id));
         const updatesMap = new Map(updates.map(u => [u.id, u.props]));
         
         // Only create new array if there are actual changes
         let hasChanges = false;
-        const newComponents = prev.components.map(c => {
-            if (updatesMap.has(c.id)) {
+        // Pre-allocate array for better performance
+        const newComponents = new Array(prev.components.length);
+        
+        for (let i = 0; i < prev.components.length; i++) {
+            const c = prev.components[i];
+            if (updateIds.has(c.id)) {
                 const newProps = updatesMap.get(c.id)!;
                 // Check if props actually changed to avoid unnecessary re-renders
                 const xChanged = 'x' in newProps && (c.props as any).x !== (newProps as any).x;
@@ -385,7 +409,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                 if (xChanged || yChanged) {
                     hasChanges = true;
                     // Only merge the changed props, not all props
-                    return { 
+                    newComponents[i] = { 
                         ...c, 
                         props: { 
                             ...c.props, 
@@ -393,10 +417,13 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                             ...(yChanged ? { y: (newProps as any).y } : {}),
                         } 
                     };
+                } else {
+                    newComponents[i] = c; // No change, keep same reference
                 }
+            } else {
+                newComponents[i] = c; // Not updated, keep same reference
             }
-            return c; // Return same reference if unchanged
-        });
+        }
         
         // Only update state if there are actual changes
         if (!hasChanges) {
@@ -497,8 +524,18 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
    * @param componentId - The ID of the component being moved.
    */
   const reparentComponent = useCallback((componentId: string, finalPosition?: { x: number; y: number }) => {
+    // DEBUG_LOGGING: Log reparent attempt
+    debugLog('REPARENT_ATTEMPT', {
+      componentId,
+      finalPosition,
+    });
+    
     // Prevent infinite loops by checking if this component is already being reparented
     if (isReparentingRef.current.has(componentId)) {
+      debugLog('REPARENT_SKIPPED_ALREADY_PROCESSING', {
+        componentId,
+        currentlyProcessing: Array.from(isReparentingRef.current),
+      }, true);
       return;
     }
     isReparentingRef.current.add(componentId);
@@ -524,6 +561,17 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             };
         }
         return { left: 0, top: 0, right: 0, bottom: 0 };
+    };
+
+    // Helper to parse width/height to number (handles "400px", "50%", or number)
+    const parseSizeToNumber = (size: any): number => {
+        if (typeof size === 'number') return size;
+        if (typeof size === 'string' && size.trim()) {
+            // Extract numeric value from strings like "400px" or "50%"
+            const match = size.trim().match(/^(\d+(?:\.\d+)?)/);
+            if (match) return parseFloat(match[1]);
+        }
+        return 0;
     };
 
     // Helper to get the absolute position of a component (border position on canvas)
@@ -587,7 +635,14 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     setAppDefinitionState(prev => {
         const allComponents = prev.components;
         const componentToReparent = allComponents.find(c => c.id === componentId);
-        if (!componentToReparent) return prev;
+        if (!componentToReparent) {
+          debugLog('REPARENT_FAILED_COMPONENT_NOT_FOUND', {
+            componentId,
+            availableComponentIds: allComponents.map(c => c.id),
+            totalComponents: allComponents.length,
+          }, true);
+          return prev;
+        }
 
         // Use finalPosition if provided (from drag drop), otherwise calculate from current state
         let absoluteX: number;
@@ -604,28 +659,36 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             absoluteX = pos.x;
             absoluteY = pos.y;
         }
-        const centerX = absoluteX + componentToReparent.props.width / 2;
-        const centerY = absoluteY + componentToReparent.props.height / 2;
+        // Parse component dimensions to numbers
+        const componentWidth = parseSizeToNumber(componentToReparent.props.width);
+        const componentHeight = parseSizeToNumber(componentToReparent.props.height);
+        const centerX = absoluteX + componentWidth / 2;
+        const centerY = absoluteY + componentHeight / 2;
 
         // Helper to get parent's border position (not including padding)
+        // This calculates the absolute position of the parent's border on the canvas
         const getParentBorderPosition = (parentId: string): { x: number, y: number } => {
             if (!parentId) return { x: 0, y: 0 };
             const parent = allComponents.find(p => p.id === parentId);
             if (!parent) return { x: 0, y: 0 };
             
-            let borderX = parent.props.x;
-            let borderY = parent.props.y;
+            // Start with parent's relative position
+            let borderX = parent.props.x as number;
+            let borderY = parent.props.y as number;
             let currentParentId = parent.parentId;
             const visited = new Set<string>();
             
+            // Walk up the parent chain to calculate absolute position
             while (currentParentId) {
                 if (visited.has(currentParentId)) break;
                 visited.add(currentParentId);
                 const grandParent = allComponents.find(p => p.id === currentParentId);
                 if (grandParent) {
-                    borderX += grandParent.props.x;
-                    borderY += grandParent.props.y;
-                    // For Container grandparents, add their padding
+                    // Add grandparent's relative position
+                    borderX += grandParent.props.x as number;
+                    borderY += grandParent.props.y as number;
+                    // For Container grandparents, child positions are relative to padding edge
+                    // So we need to add padding to get the absolute border position
                     if (grandParent.type === ComponentType.CONTAINER) {
                         const grandParentPadding = parsePaddingValue(grandParent.props.padding);
                         borderX += grandParentPadding.left;
@@ -658,34 +721,38 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             // For Container type, check if component is still within content area bounds (accounting for padding)
             // For other containers, use center point check
             let isWithinBounds: boolean;
+            // Parse parent dimensions to numbers
+            const parentWidth = parseSizeToNumber(parent.props.width);
+            const parentHeight = parseSizeToNumber(parent.props.height);
+            
             if (parent.type === ComponentType.CONTAINER) {
                 const parentPadding = parsePaddingValue(parent.props.padding);
                 // Check if component fits within the content area (border - padding on all sides)
                 // Use threshold to make it easier to drag into container
                 const contentLeft = parentBorderPos.x + parentPadding.left;
                 const contentTop = parentBorderPos.y + parentPadding.top;
-                const contentRight = parentBorderPos.x + parent.props.width - parentPadding.right;
-                const contentBottom = parentBorderPos.y + parent.props.height - parentPadding.bottom;
+                const contentRight = parentBorderPos.x + parentWidth - parentPadding.right;
+                const contentBottom = parentBorderPos.y + parentHeight - parentPadding.bottom;
                 
                 // Component is considered inside if it's mostly inside (using threshold)
                 // This makes it easier to drag components into containers
                 isWithinBounds = (
                     absoluteX >= contentLeft - CONTAINER_THRESHOLD &&
-                    absoluteX + componentToReparent.props.width <= contentRight + CONTAINER_THRESHOLD &&
+                    absoluteX + componentWidth <= contentRight + CONTAINER_THRESHOLD &&
                     absoluteY >= contentTop - CONTAINER_THRESHOLD &&
-                    absoluteY + componentToReparent.props.height <= contentBottom + CONTAINER_THRESHOLD
+                    absoluteY + componentHeight <= contentBottom + CONTAINER_THRESHOLD
                 );
             } else {
                 isWithinBounds = (
                     centerX >= parentBorderPos.x &&
-                    centerX <= parentBorderPos.x + parent.props.width &&
+                    centerX <= parentBorderPos.x + parentWidth &&
                     centerY >= parentBorderPos.y &&
-                    centerY <= parentBorderPos.y + parent.props.height
+                    centerY <= parentBorderPos.y + parentHeight
                 );
             }
             
             if (isWithinBounds) {
-                const area = parent.props.width * parent.props.height;
+                const area = parentWidth * parentHeight;
                 if (area < smallestArea) {
                     smallestArea = area;
                     newParent = parent;
@@ -704,39 +771,56 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             if (oldParent && oldParent.type === ComponentType.CONTAINER) {
                 const oldParentBorderPos = getParentBorderPosition(oldParentId);
                 const oldParentPadding = parsePaddingValue(oldParent.props.padding);
+                const oldParentWidth = parseSizeToNumber(oldParent.props.width);
+                const oldParentHeight = parseSizeToNumber(oldParent.props.height);
                 const contentLeft = oldParentBorderPos.x + oldParentPadding.left;
                 const contentTop = oldParentBorderPos.y + oldParentPadding.top;
-                const contentRight = oldParentBorderPos.x + oldParent.props.width - oldParentPadding.right;
-                const contentBottom = oldParentBorderPos.y + oldParent.props.height - oldParentPadding.bottom;
+                const contentRight = oldParentBorderPos.x + oldParentWidth - oldParentPadding.right;
+                const contentBottom = oldParentBorderPos.y + oldParentHeight - oldParentPadding.bottom;
                 
                 // Check if component is still completely within the original container's content area
                 // Use threshold to account for floating-point precision
                 const stillInOriginalContainer = (
                     absoluteX >= contentLeft - CONTAINMENT_THRESHOLD &&
-                    absoluteX + componentToReparent.props.width <= contentRight + CONTAINMENT_THRESHOLD &&
+                    absoluteX + componentWidth <= contentRight + CONTAINMENT_THRESHOLD &&
                     absoluteY >= contentTop - CONTAINMENT_THRESHOLD &&
-                    absoluteY + componentToReparent.props.height <= contentBottom + CONTAINMENT_THRESHOLD
+                    absoluteY + componentHeight <= contentBottom + CONTAINMENT_THRESHOLD
                 );
                 
                 // If still in original container, keep it there (don't reparent)
                 if (stillInOriginalContainer) {
-                    return prev; // No change needed - component stays in original container
+                  debugLog('REPARENT_NO_CHANGE_STILL_IN_ORIGINAL', {
+                    componentId,
+                    oldParentId,
+                    absolutePosition: { x: absoluteX, y: absoluteY },
+                    containerBounds: { contentLeft, contentTop, contentRight, contentBottom },
+                    componentSize: { width: componentWidth, height: componentHeight },
+                  });
+                  return prev; // No change needed - component stays in original container
                 }
                 
                 // If not in original container, check if it's completely outside
                 // Component is completely outside if no part of it overlaps the content area
                 // Use threshold to make it easier to drag out
                 const completelyOutside = (
-                    absoluteX + componentToReparent.props.width <= contentLeft + CONTAINMENT_THRESHOLD ||
+                    absoluteX + componentWidth <= contentLeft + CONTAINMENT_THRESHOLD ||
                     absoluteX >= contentRight - CONTAINMENT_THRESHOLD ||
-                    absoluteY + componentToReparent.props.height <= contentTop + CONTAINMENT_THRESHOLD ||
+                    absoluteY + componentHeight <= contentTop + CONTAINMENT_THRESHOLD ||
                     absoluteY >= contentBottom - CONTAINMENT_THRESHOLD
                 );
                 
                 // Only allow moving out if completely outside
                 // If partially overlapping, don't change parent (keep in original container)
                 if (!completelyOutside) {
-                    return prev; // Partially overlapping - keep in original container
+                  debugLog('REPARENT_NO_CHANGE_PARTIALLY_OVERLAPPING', {
+                    componentId,
+                    oldParentId,
+                    absolutePosition: { x: absoluteX, y: absoluteY },
+                    containerBounds: { contentLeft, contentTop, contentRight, contentBottom },
+                    componentSize: { width: componentWidth, height: componentHeight },
+                    completelyOutside,
+                  });
+                  return prev; // Partially overlapping - keep in original container
                 }
             }
         }
@@ -744,15 +828,20 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const newParentId = newParent ? newParent.id : null;
 
         if (oldParentId === newParentId) {
-            return prev; // No change needed
+          debugLog('REPARENT_NO_CHANGE_SAME_PARENT', {
+            componentId,
+            parentId: oldParentId,
+          });
+          return prev; // No change needed
         }
 
-        const newParentAbsPos = newParent ? getParentBorderPosition(newParent.id) : { x: 0, y: 0 };
-        // For Container, position should be relative to padding edge (content area)
-        // For other containers, position is relative to border edge
-        let newRelativeX: number;
-        let newRelativeY: number;
-        if (newParent && newParent.type === ComponentType.CONTAINER) {
+        try {
+          const newParentAbsPos = newParent ? getParentBorderPosition(newParent.id) : { x: 0, y: 0 };
+          // For Container, position should be relative to padding edge (content area)
+          // For other containers, position is relative to border edge
+          let newRelativeX: number;
+          let newRelativeY: number;
+          if (newParent && newParent.type === ComponentType.CONTAINER) {
             const newParentPadding = parsePaddingValue(newParent.props.padding);
             // Calculate relative position to padding edge (content area)
             newRelativeX = absoluteX - newParentAbsPos.x - newParentPadding.left;
@@ -760,27 +849,49 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             // Clamp to ensure non-negative
             newRelativeX = Math.max(0, newRelativeX);
             newRelativeY = Math.max(0, newRelativeY);
-        } else {
+          } else {
             newRelativeX = absoluteX - newParentAbsPos.x;
             newRelativeY = absoluteY - newParentAbsPos.y;
-        }
+          }
 
-        const updatedComponents = allComponents.map(c => {
+          const updatedComponents = allComponents.map(c => {
             if (c.id === componentId) {
-                return {
-                    ...c,
-                    parentId: newParentId,
-                    props: {
-                        ...c.props,
-                        x: newRelativeX,
-                        y: newRelativeY,
-                    },
-                };
+              return {
+                ...c,
+                parentId: newParentId,
+                props: {
+                  ...c.props,
+                  x: newRelativeX,
+                  y: newRelativeY,
+                },
+              };
             }
             return c;
-        });
+          });
 
-        return { ...prev, components: updatedComponents };
+          debugLog('REPARENT_SUCCESS', {
+            componentId,
+            oldParentId,
+            newParentId,
+            oldPosition: { x: componentToReparent.props.x, y: componentToReparent.props.y },
+            newPosition: { x: newRelativeX, y: newRelativeY },
+            absolutePosition: { x: absoluteX, y: absoluteY },
+            newParentAbsPos,
+            newParentType: newParent?.type,
+          });
+
+          return { ...prev, components: updatedComponents };
+        } catch (error) {
+          debugLog('REPARENT_EXCEPTION', {
+            componentId,
+            oldParentId,
+            newParentId,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            absolutePosition: { x: absoluteX, y: absoluteY },
+          }, true);
+          return prev;
+        }
     });
     
     // Remove from processing set after a short delay to allow state update to complete
@@ -943,9 +1054,20 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
 
     const arrangeContainerChildren = useCallback((panelId: string, opts: { direction?: string; justifyContent?: string; alignItems?: string }) => {
+        debugLog('ARRANGE_CONTAINER_ATTEMPT', {
+          panelId,
+          opts,
+        });
+        
         setAppDefinitionState(prev => {
             const parent = prev.components.find(c => c.id === panelId);
-            if (!parent) return prev;
+            if (!parent) {
+              debugLog('ARRANGE_CONTAINER_FAILED_PARENT_NOT_FOUND', {
+                panelId,
+                availableComponentIds: prev.components.map(c => c.id),
+              }, true);
+              return prev;
+            }
             const panelProps: any = parent.props;
             // Use opts values first, then fall back to current props, then defaults
             const direction = (opts.direction as any) || panelProps.direction || 'horizontal';
@@ -1040,6 +1162,12 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
             if (updates.length > 0) {
                 const updatesMap = new Map(updates.map(u => [u.id, u.props]));
+                debugLog('ARRANGE_CONTAINER_SUCCESS', {
+                  panelId,
+                  childrenCount: children.length,
+                  updatesCount: updates.length,
+                  updates: updates.map(u => ({ id: u.id, props: u.props })),
+                });
                 return {
                     ...prev,
                     components: prev.components.map(c => {
@@ -1049,11 +1177,398 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                         return c;
                     }),
                 };
+            } else {
+              debugLog('ARRANGE_CONTAINER_NO_UPDATES', {
+                panelId,
+                childrenCount: children.length,
+                reason: 'No updates generated',
+              }, true);
             }
             return prev;
         });
     }, [setAppDefinitionState]);
 
+  /**
+   * Reorders a component within the same parent.
+   * Moves the component to a new position in the sibling list.
+   * @param componentId - The component to reorder
+   * @param newIndex - The new index position (0-based)
+   * @param parentId - The parent ID (null for root/page level)
+   * @param pageId - The page ID
+   */
+  const reorderComponent = useCallback((componentId: string, newIndex: number, parentId: string | null, pageId: string) => {
+    setAppDefinitionState(prev => {
+      const component = prev.components.find(c => c.id === componentId);
+      if (!component) return prev;
+      
+      // Verify the component is on the correct page
+      if (component.pageId !== pageId) return prev;
+      
+      // Get all siblings (components with the same parent)
+      const siblings = prev.components
+        .filter(c => {
+          const cParentId = c.parentId || null;
+          return cParentId === parentId && c.pageId === pageId && c.id !== componentId;
+        })
+        .sort((a, b) => {
+          // Sort by current order in the array (preserve existing order)
+          const aIndex = prev.components.indexOf(a);
+          const bIndex = prev.components.indexOf(b);
+          return aIndex - bIndex;
+        });
+      
+      // Clamp newIndex to valid range
+      const clampedIndex = Math.max(0, Math.min(newIndex, siblings.length));
+      
+      // Create new array with component inserted at new position
+      const newSiblings = [...siblings];
+      newSiblings.splice(clampedIndex, 0, component);
+      
+      // Rebuild components array maintaining order
+      const otherComponents = prev.components.filter(c => {
+        const cParentId = c.parentId || null;
+        return !(cParentId === parentId && c.pageId === pageId);
+      });
+      
+      // Insert siblings in order after other components
+      const reorderedComponents = [...otherComponents, ...newSiblings];
+      
+      return {
+        ...prev,
+        components: reorderedComponents,
+      };
+    });
+  }, []);
+
+  /**
+   * Moves a component from one parent to another (or to root).
+   * Also handles reordering within the new parent.
+   * This function properly updates parentId and calculates relative positions.
+   * If the move fails validation, it automatically rolls back to the original position.
+   * @param componentId - The component to move
+   * @param newParentId - The new parent ID (null for root/page level)
+   * @param newIndex - Optional new index position within new parent (0-based)
+   * @param pageId - The page ID
+   */
+  const moveComponentToParent = useCallback((componentId: string, newParentId: string | null, newIndex: number | null, pageId: string) => {
+    debugLog('MOVE_COMPONENT_ATTEMPT', {
+      componentId,
+      newParentId,
+      newIndex,
+      pageId,
+    });
+    
+    setAppDefinitionState(prev => {
+      const component = prev.components.find(c => c.id === componentId);
+      if (!component) {
+        debugLog('MOVE_COMPONENT_FAILED_NOT_FOUND', {
+          componentId,
+          availableIds: prev.components.map(c => c.id),
+        }, true);
+        return prev;
+      }
+      
+      // Verify the component is on the correct page
+      if (component.pageId !== pageId) {
+        debugLog('MOVE_COMPONENT_FAILED_WRONG_PAGE', {
+          componentId,
+          componentPageId: component.pageId,
+          requestedPageId: pageId,
+        }, true);
+        return prev;
+      }
+      
+      // Store original state for rollback if move fails
+      const originalParentId = component.parentId || null;
+      const originalX = component.props.x as number;
+      const originalY = component.props.y as number;
+      
+      // Helper to get absolute position of a component
+      const getAbsolutePosition = (cId: string, allComps: AppComponent[]): { x: number, y: number } => {
+        const comp = allComps.find(c => c.id === cId);
+        if (!comp) return { x: 0, y: 0 };
+        
+        let absX = comp.props.x as number;
+        let absY = comp.props.y as number;
+        let currentParentId = comp.parentId;
+        
+        while (currentParentId) {
+          const parent = allComps.find(p => p.id === currentParentId);
+          if (parent) {
+            absX += parent.props.x as number;
+            absY += parent.props.y as number;
+            // For Container type, add padding to get absolute border position
+            if (parent.type === ComponentType.CONTAINER) {
+              const parsePaddingValue = (padding?: string | number): { left: number; top: number; right: number; bottom: number } => {
+                if (padding === undefined) return { left: 0, top: 0, right: 0, bottom: 0 };
+                if (typeof padding === 'number') return { left: padding, top: padding, right: padding, bottom: padding };
+                const parts = String(padding).trim().split(/\s+/);
+                if (parts.length === 1) {
+                  const value = parseFloat(parts[0]) || 0;
+                  return { left: value, top: value, right: value, bottom: value };
+                } else if (parts.length === 2) {
+                  const top = parseFloat(parts[0]) || 0;
+                  const right = parseFloat(parts[1]) || 0;
+                  return { top, right, bottom: top, left: right };
+                } else if (parts.length === 4) {
+                  return {
+                    top: parseFloat(parts[0]) || 0,
+                    right: parseFloat(parts[1]) || 0,
+                    bottom: parseFloat(parts[2]) || 0,
+                    left: parseFloat(parts[3]) || 0,
+                  };
+                }
+                return { left: 0, top: 0, right: 0, bottom: 0 };
+              };
+              const parentPadding = parsePaddingValue(parent.props.padding);
+              absX += parentPadding.left;
+              absY += parentPadding.top;
+            }
+            currentParentId = parent.parentId;
+          } else {
+            break;
+          }
+        }
+        return { x: absX, y: absY };
+      };
+      
+      // Helper to check if a component is a descendant (prevent circular references)
+      const isDescendant = (childId: string, parentId: string, allComps: AppComponent[]): boolean => {
+        const child = allComps.find(c => c.id === childId);
+        if (!child || !child.parentId) return false;
+        if (child.parentId === parentId) return true;
+        return isDescendant(child.parentId, parentId, allComps);
+      };
+      
+      // Prevent moving component into itself or its own descendant
+      if (newParentId && (component.id === newParentId || isDescendant(newParentId, component.id, prev.components))) {
+        debugLog('MOVE_COMPONENT_FAILED_CIRCULAR_REFERENCE', {
+          componentId,
+          newParentId,
+          isSelf: component.id === newParentId,
+          isDescendant: isDescendant(newParentId, component.id, prev.components),
+        }, true);
+        return prev; // Rollback - return original state
+      }
+      
+      // Verify new parent exists and is a container (if not null) - validate BEFORE attempting move
+      if (newParentId) {
+        const newParent = prev.components.find(c => c.id === newParentId);
+        if (!newParent) {
+          debugLog('MOVE_COMPONENT_FAILED_PARENT_NOT_FOUND', {
+            componentId,
+            newParentId,
+            availableParentIds: prev.components.filter(c => componentRegistry[c.type]?.isContainer).map(c => c.id),
+          }, true);
+          return prev; // Rollback - return original state
+        }
+        
+        const plugin = componentRegistry[newParent.type];
+        if (!plugin || !plugin.isContainer) {
+          debugLog('MOVE_COMPONENT_FAILED_NOT_CONTAINER', {
+            componentId,
+            newParentId,
+            newParentType: newParent.type,
+            isContainer: plugin?.isContainer,
+          }, true);
+          return prev; // Rollback - return original state
+        }
+        
+        // Verify new parent is on the same page
+        if (newParent.pageId !== pageId) {
+          debugLog('MOVE_COMPONENT_FAILED_PARENT_WRONG_PAGE', {
+            componentId,
+            newParentId,
+            newParentPageId: newParent.pageId,
+            requestedPageId: pageId,
+          }, true);
+          return prev; // Rollback - return original state
+        }
+      }
+      
+      const oldParentId = component.parentId || null;
+      
+      // If parent hasn't changed and no reordering needed, return early
+      if (oldParentId === newParentId && newIndex === null) {
+        return prev;
+      }
+      
+      // Get absolute position of the component
+      const absolutePos = getAbsolutePosition(componentId, prev.components);
+      
+      // Calculate new relative position based on new parent
+      let newRelativeX: number;
+      let newRelativeY: number;
+      
+      if (newParentId) {
+        const newParent = prev.components.find(c => c.id === newParentId)!;
+        const newParentAbsPos = getAbsolutePosition(newParentId, prev.components);
+        
+        // For Container type, position should be relative to padding edge (content area)
+        // For other containers, position is relative to border edge
+        if (newParent.type === ComponentType.CONTAINER) {
+          const parsePaddingValue = (padding?: string | number): { left: number; top: number; right: number; bottom: number } => {
+            if (padding === undefined) return { left: 0, top: 0, right: 0, bottom: 0 };
+            if (typeof padding === 'number') return { left: padding, top: padding, right: padding, bottom: padding };
+            const parts = String(padding).trim().split(/\s+/);
+            if (parts.length === 1) {
+              const value = parseFloat(parts[0]) || 0;
+              return { left: value, top: value, right: value, bottom: value };
+            } else if (parts.length === 2) {
+              const top = parseFloat(parts[0]) || 0;
+              const right = parseFloat(parts[1]) || 0;
+              return { top, right, bottom: top, left: right };
+            } else if (parts.length === 4) {
+              return {
+                top: parseFloat(parts[0]) || 0,
+                right: parseFloat(parts[1]) || 0,
+                bottom: parseFloat(parts[2]) || 0,
+                left: parseFloat(parts[3]) || 0,
+              };
+            }
+            return { left: 0, top: 0, right: 0, bottom: 0 };
+          };
+          const newParentPadding = parsePaddingValue(newParent.props.padding);
+          // Calculate relative position to padding edge (content area)
+          newRelativeX = absolutePos.x - newParentAbsPos.x - newParentPadding.left;
+          newRelativeY = absolutePos.y - newParentAbsPos.y - newParentPadding.top;
+          // Clamp to ensure non-negative
+          newRelativeX = Math.max(0, newRelativeX);
+          newRelativeY = Math.max(0, newRelativeY);
+        } else {
+          newRelativeX = absolutePos.x - newParentAbsPos.x;
+          newRelativeY = absolutePos.y - newParentAbsPos.y;
+        }
+      } else {
+        // Moving to root level - use absolute position
+        newRelativeX = absolutePos.x;
+        newRelativeY = absolutePos.y;
+      }
+      
+      // Get siblings in new parent (excluding the component being moved)
+      const newSiblings = prev.components
+        .filter(c => {
+          const cParentId = c.parentId || null;
+          return cParentId === newParentId && c.pageId === pageId && c.id !== componentId;
+        })
+        .sort((a, b) => {
+          // Sort by current order in the array
+          const aIndex = prev.components.indexOf(a);
+          const bIndex = prev.components.indexOf(b);
+          return aIndex - bIndex;
+        });
+      
+      // If newIndex is specified, insert at that position
+      let finalSiblings: AppComponent[];
+      if (newIndex !== null && newIndex >= 0) {
+        const clampedIndex = Math.max(0, Math.min(newIndex, newSiblings.length));
+        const updatedComponent = {
+          ...component,
+          parentId: newParentId, // CRITICAL: Update parentId
+          props: {
+            ...component.props,
+            x: newRelativeX,
+            y: newRelativeY,
+          },
+        };
+        finalSiblings = [...newSiblings];
+        finalSiblings.splice(clampedIndex, 0, updatedComponent);
+      } else {
+        // Append to end
+        finalSiblings = [
+          ...newSiblings,
+          {
+            ...component,
+            parentId: newParentId, // CRITICAL: Update parentId
+            props: {
+              ...component.props,
+              x: newRelativeX,
+              y: newRelativeY,
+            },
+          },
+        ];
+      }
+      
+      // Rebuild components array
+      const otherComponents = prev.components.filter(c => {
+        const cParentId = c.parentId || null;
+        return !(cParentId === newParentId && c.pageId === pageId);
+      });
+      
+      const reorderedComponents = [...otherComponents, ...finalSiblings];
+      
+      // Validate the move: check if the component exists and has correct parentId
+      const updatedComponent = reorderedComponents.find(c => c.id === componentId);
+      if (!updatedComponent) {
+        // Component not found - rollback
+        debugLog('MOVE_COMPONENT_FAILED_NOT_FOUND_AFTER_MOVE', {
+          componentId,
+          reorderedComponentIds: reorderedComponents.map(c => c.id),
+          totalComponents: reorderedComponents.length,
+        }, true);
+        return prev;
+      }
+      
+      // Validate parent relationship - this is the critical check
+      const actualParentId = updatedComponent.parentId || null;
+      if (actualParentId !== newParentId) {
+        // Parent mismatch - rollback
+        debugLog('MOVE_COMPONENT_FAILED_PARENT_MISMATCH', {
+          componentId,
+          expectedParentId: newParentId,
+          actualParentId,
+          updatedComponent: {
+            id: updatedComponent.id,
+            parentId: updatedComponent.parentId,
+            pageId: updatedComponent.pageId,
+          },
+        }, true);
+        return prev;
+      }
+      
+      // If newParentId is set, do a final validation that parent exists and is a container
+      if (newParentId) {
+        const newParent = reorderedComponents.find(c => c.id === newParentId);
+        if (!newParent) {
+          // Parent not found - rollback
+          debugLog('MOVE_COMPONENT_FAILED_PARENT_NOT_FOUND_AFTER_MOVE', {
+            componentId,
+            newParentId,
+            reorderedComponentIds: reorderedComponents.map(c => c.id),
+          }, true);
+          return prev;
+        }
+        
+        const plugin = componentRegistry[newParent.type];
+        if (!plugin || !plugin.isContainer) {
+          // Parent is not a container - rollback
+          debugLog('MOVE_COMPONENT_FAILED_PARENT_NOT_CONTAINER_AFTER_MOVE', {
+            componentId,
+            newParentId,
+            newParentType: newParent.type,
+            isContainer: plugin?.isContainer,
+          }, true);
+          return prev;
+        }
+      }
+      
+      // Move successful - component is now a child of the new parent
+      debugLog('MOVE_COMPONENT_SUCCESS', {
+        componentId,
+        oldParentId,
+        newParentId,
+        oldPosition: { x: originalX, y: originalY },
+        newPosition: { x: newRelativeX, y: newRelativeY },
+        newIndex,
+        absolutePosition: absolutePos,
+      });
+      
+      return {
+        ...prev,
+        components: reorderedComponents,
+      };
+    });
+  }, []);
 
   // --- DYNAMIC DATA ACTIONS ---
   const handleCreateRecord = useCallback(async (dataSourceName: string, newRecord: any) => {
@@ -1195,6 +1710,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     reparentComponent,
     selectPage,
     alignAndDistribute,
-        arrangeContainerChildren,
+    arrangeContainerChildren,
+    reorderComponent,
+    moveComponentToParent,
   };
 };
