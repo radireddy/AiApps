@@ -59,8 +59,16 @@ const parseInitialValue = (value: any, type: AppVariable['type']) => {
                 // Default to empty object
                 return {};
             case 'array':
+            case 'array_of_objects':
                 // If already an array, return it
                 if (Array.isArray(value)) {
+                    // For array_of_objects, validate that all items are objects
+                    if (type === 'array_of_objects') {
+                        if (!value.every(item => typeof item === 'object' && item !== null && !Array.isArray(item))) {
+                            console.warn('Array contains non-object items, returning empty array');
+                            return [];
+                        }
+                    }
                     return value;
                 }
                 // If it's a string, try to parse it
@@ -70,7 +78,19 @@ const parseInitialValue = (value: any, type: AppVariable['type']) => {
                     if (!trimmed) return [];
                     // Try to parse the JSON string directly first
                     try {
-                        return JSON.parse(trimmed);
+                        const parsed = JSON.parse(trimmed);
+                        // For array_of_objects, validate that it's an array of objects
+                        if (type === 'array_of_objects') {
+                            if (!Array.isArray(parsed)) {
+                                console.warn('Value is not an array, returning empty array');
+                                return [];
+                            }
+                            if (!parsed.every(item => typeof item === 'object' && item !== null && !Array.isArray(item))) {
+                                console.warn('Array contains non-object items, returning empty array');
+                                return [];
+                            }
+                        }
+                        return parsed;
                     } catch (parseError) {
                         // If parsing fails, try to extract JSON array from the string
                         // This handles cases where there might be extra content, semicolons, or formatting
@@ -96,7 +116,19 @@ const parseInitialValue = (value: any, type: AppVariable['type']) => {
                         if (startIndex !== -1 && endIndex !== -1) {
                             const jsonString = trimmed.substring(startIndex, endIndex + 1);
                             try {
-                                return JSON.parse(jsonString);
+                                const parsed = JSON.parse(jsonString);
+                                // For array_of_objects, validate that it's an array of objects
+                                if (type === 'array_of_objects') {
+                                    if (!Array.isArray(parsed)) {
+                                        console.warn('Value is not an array, returning empty array');
+                                        return [];
+                                    }
+                                    if (!parsed.every(item => typeof item === 'object' && item !== null && !Array.isArray(item))) {
+                                        console.warn('Array contains non-object items, returning empty array');
+                                        return [];
+                                    }
+                                }
+                                return parsed;
                             } catch (e) {
                                 // If extracted part still fails, throw original error
                                 throw parseError;
@@ -117,7 +149,8 @@ const parseInitialValue = (value: any, type: AppVariable['type']) => {
         // Return safe defaults based on type
         switch(type) {
             case 'object': return {};
-            case 'array': return [];
+            case 'array':
+            case 'array_of_objects': return [];
             case 'string': return '';
             case 'number': return 0;
             case 'boolean': return false;
@@ -245,6 +278,31 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         ...prev,
         variables: [...(prev.variables || []), variable]
     }));
+  }, [appDefinition.variables]);
+
+  const updateVariable = useCallback((variableId: string, updates: Partial<AppVariable>) => {
+    setAppDefinitionState(prev => ({
+        ...prev,
+        variables: (prev.variables || []).map(v => 
+            v.id === variableId ? { ...v, ...updates } : v
+        )
+    }));
+  }, []);
+
+  const deleteVariable = useCallback((variableId: string) => {
+    setAppDefinitionState(prev => ({
+        ...prev,
+        variables: (prev.variables || []).filter(v => v.id !== variableId)
+    }));
+    // Also remove from variable state
+    const variable = appDefinition.variables.find(v => v.id === variableId);
+    if (variable) {
+        setVariableState(prev => {
+            const newState = { ...prev };
+            delete newState[variable.name];
+            return newState;
+        });
+    }
   }, [appDefinition.variables]);
   
   const updateTheme = useCallback((category: keyof Theme, prop: string, value: string) => {
@@ -1810,6 +1868,8 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     refreshDataSource, // Expose for manual refresh
     variables,
     addVariable,
+    updateVariable,
+    deleteVariable,
     variableState,
     dataSourceContents, // Expose for preview
     updateTheme,

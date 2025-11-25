@@ -15,6 +15,7 @@ const generateInitialValue = (variable: AppVariable): string => {
                 return String(initialValue === 'true' || initialValue === true);
             case AppVariableType.OBJECT:
             case AppVariableType.ARRAY:
+            case AppVariableType.ARRAY_OF_OBJECTS:
                 if (typeof initialValue === 'object' && initialValue !== null) {
                     return JSON.stringify(initialValue);
                 }
@@ -27,7 +28,7 @@ const generateInitialValue = (variable: AppVariable): string => {
                 return JSON.stringify(initialValue);
         }
     } catch {
-        return type === AppVariableType.OBJECT ? '{}' : (type === AppVariableType.ARRAY ? '[]' : '""');
+        return type === AppVariableType.OBJECT ? '{}' : (type === AppVariableType.ARRAY || type === AppVariableType.ARRAY_OF_OBJECTS ? '[]' : '""');
     }
 };
 

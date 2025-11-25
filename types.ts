@@ -375,6 +375,7 @@ export enum AppVariableType {
     BOOLEAN = 'boolean',
     OBJECT = 'object',
     ARRAY = 'array',
+    ARRAY_OF_OBJECTS = 'array_of_objects',
 }
 
 export interface AppVariable {

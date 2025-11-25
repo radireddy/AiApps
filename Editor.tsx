@@ -113,6 +113,8 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     refreshDataSource,
     variables,
     addVariable,
+    updateVariable,
+    deleteVariable,
     variableState,
     dataSourceContents,
     updateTheme,
@@ -395,6 +397,8 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
                         onToggleCollapse={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
                         variables={variables}
                         onAddVariable={addVariable}
+                        onUpdateVariable={updateVariable}
+                        onDeleteVariable={deleteVariable}
                     />;
         case 'theme':
              return <ThemePanel
