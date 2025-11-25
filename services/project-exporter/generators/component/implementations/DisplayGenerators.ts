@@ -1,7 +1,9 @@
 
 import { BaseComponentGenerator } from '../ComponentGeneratorStrategy';
-import { AppComponent, AppDefinition } from '../../../../../types';
+import { AppComponent, AppDefinition, ComponentType } from '../../../../../types';
 import { translateExpression } from '../../../utils/expressionTranslator';
+import { ComponentGeneratorFactory } from '../ComponentGeneratorFactory';
+import { toPascalCase } from '../../../utils/stringUtils';
 
 /**
  * Generator for Label components.
@@ -181,6 +183,297 @@ export class TableGenerator extends BaseComponentGenerator {
         </table>`;
         
         return this.buildTag('div', attributes, `\n${tableContent}\n`);
+    }
+}
+
+/**
+ * Generator for List components.
+ * Renders a list with data-driven repetition using template children.
+ */
+export class ListGenerator extends BaseComponentGenerator {
+    generate(component: AppComponent, allComponents: AppComponent[], appDef: AppDefinition): string {
+        const listProps = component.props as any;
+        
+        // Get template children - these are the components that will be repeated for each item
+        const templateChildrenIds = listProps.templateChildren || [];
+        let templateChildren = allComponents.filter(c => templateChildrenIds.includes(c.id));
+        
+        // Fallback: if templateChildrenIds is empty, use all children with parentId === component.id
+        // This matches the behavior in the runtime List component
+        if (templateChildren.length === 0) {
+            templateChildren = allComponents.filter(c => c.parentId === component.id);
+        }
+        
+        // Evaluate data expression
+        const dataExpression = translateExpression(listProps.data || '[]', appDef, 'raw-js');
+        
+        // Evaluate template height and item spacing
+        const templateHeight = translateExpression(listProps.templateHeight || 120, appDef, 'raw-js');
+        const itemSpacing = translateExpression(listProps.itemSpacing || 8, appDef, 'raw-js');
+        
+        // Evaluate empty state text
+        const emptyState = translateExpression(listProps.emptyState || 'No items found', appDef, 'raw-js');
+        
+        // Evaluate item key expression (for React keys)
+        const itemKeyExpr = listProps.itemKey ? translateExpression(listProps.itemKey, appDef, 'raw-js') : 'index';
+        
+        // Build scope object for expression evaluation
+        const scopeObject = `{
+            theme,
+            dataStore,
+            get,
+            ${appDef.variables.map(v => `${v.name}`).join(',\n            ')}
+        }`;
+        
+        // Helper function to recursively generate template children with dynamic IDs
+        // The generated code will be inserted into a template literal where ${index} is available
+        const generateTemplateChildrenRecursive = (children: AppComponent[], parentIdPrefix: string): string => {
+            if (children.length === 0) {
+                return '';
+            }
+            
+            return children.map(child => {
+                const childGenerator = ComponentGeneratorFactory.create(child.type);
+                const nestedChildren = allComponents.filter(c => c.parentId === child.id);
+                
+                // Check if this is a container component
+                const isContainer = child.type === ComponentType.PANEL || 
+                                   child.type === ComponentType.CONTAINER || 
+                                   child.type === ComponentType.H_STACK || 
+                                   child.type === ComponentType.V_STACK;
+                
+                if (isContainer) {
+                    // For containers, we need to generate children separately and inject them
+                    // First generate nested children code
+                    const nestedCode = nestedChildren.length > 0
+                        ? generateTemplateChildrenRecursive(nestedChildren, child.id)
+                        : '';
+                    
+                    // Generate container with a temporary ID
+                    const tempChild: AppComponent = {
+                        ...child,
+                        id: `${child.id}_IDX_PLACEHOLDER`,
+                        parentId: `${parentIdPrefix}_IDX_PLACEHOLDER`,
+                    };
+                    
+                    // Generate container code
+                    let containerCode = childGenerator.generate(tempChild, allComponents, appDef);
+                    
+                    // Replace placeholder in id attribute - convert from string to template literal
+                    // We need \\${index} to produce \${index} in the output, which becomes ${index} when evaluated
+                    containerCode = containerCode.replace(/id="([^"]*)_IDX_PLACEHOLDER"/g, (match, prefix) => {
+                        return `id={\`${prefix}_item_\\\${index}\`}`;
+                    });
+                    containerCode = containerCode.replace(/id='([^']*)_IDX_PLACEHOLDER'/g, (match, prefix) => {
+                        return `id={\`${prefix}_item_\\\${index}\`}`;
+                    });
+                    
+                    // Replace any remaining placeholders
+                    containerCode = containerCode.replace(/_IDX_PLACEHOLDER/g, `_item_\${index}`);
+                    containerCode = containerCode.replace(/IDX_PLACEHOLDER/g, `\${index}`);
+                    
+                    // Inject nested children into the container
+                    // Containers have structure: <div ...><div ...>...</div></div>
+                    // We need to inject children before the inner closing </div>
+                    if (nestedCode) {
+                        // Find the inner div closing tag (second to last </div>)
+                        const divMatches = containerCode.match(/<\/div>/g);
+                        if (divMatches && divMatches.length >= 2) {
+                            // Find the position of the second-to-last </div>
+                            let pos = containerCode.length;
+                            for (let i = 0; i < divMatches.length - 1; i++) {
+                                pos = containerCode.lastIndexOf('</div>', pos - 1);
+                            }
+                            // Insert nested children before this closing tag
+                            containerCode = containerCode.substring(0, pos) + '\n' + nestedCode + '\n' + containerCode.substring(pos);
+                        }
+                    }
+                    
+                    return containerCode;
+                } else {
+                    // For non-containers, generate directly with ID substitution
+                    const tempChild: AppComponent = {
+                        ...child,
+                        id: `${child.id}_IDX_PLACEHOLDER`,
+                        parentId: `${parentIdPrefix}_IDX_PLACEHOLDER`,
+                    };
+                    
+                    let childCode = childGenerator.generate(tempChild, allComponents, appDef);
+                    
+                    // Replace placeholder in id attribute - convert from string to template literal
+                    // Pattern: id="COMPONENT_ID_IDX_PLACEHOLDER" -> id={`COMPONENT_ID_item_${index}`}
+                    // Note: We need to escape $ so it becomes a literal ${index} in the generated code
+                    childCode = childCode.replace(/id="([^"]*)_IDX_PLACEHOLDER"/g, (match, prefix) => {
+                        return `id={\`${prefix}_item_\${index}\`}`;
+                    });
+                    childCode = childCode.replace(/id='([^']*)_IDX_PLACEHOLDER'/g, (match, prefix) => {
+                        return `id={\`${prefix}_item_\${index}\`}`;
+                    });
+                    
+                    // For buttons, replace handler name with inline handler
+                    // Button generator creates: onClick={handleComponentIdClick}
+                    // The handler name will be: handleComponentIdIdxPlaceholderClick (with placeholder)
+                    // We need: onClick={() => { /* handler body */ }}
+                    if (child.type === ComponentType.BUTTON) {
+                        const btnProps = child.props as any;
+                        // The handler name includes the placeholder: handleButtonIdIdxPlaceholderClick
+                        // Use tempChild.id to match what ButtonGenerator actually generated
+                        const handlerNameWithPlaceholder = `handle${toPascalCase(tempChild.id)}Click`;
+                        let handlerBody = 'console.warn("Button in list item - handler not implemented")';
+                        
+                        switch(btnProps.actionType) {
+                            case 'alert':
+                                handlerBody = `alert(${translateExpression(btnProps.actionAlertMessage, appDef, 'raw-js')})`;
+                                break;
+                            case 'updateData':
+                                if (btnProps.actionUpdateKey) {
+                                    handlerBody = `updateDataStore('${btnProps.actionUpdateKey}', ${translateExpression(btnProps.actionUpdateValue, appDef, 'raw-js')})`;
+                                }
+                                break;
+                            case 'updateVariable':
+                                if (btnProps.actionVariableName) {
+                                    const setterName = `set${toPascalCase(btnProps.actionVariableName)}`;
+                                    const valueExpr = translateExpression(btnProps.actionVariableValue, appDef, 'raw-js') || 'undefined';
+                                    if (valueExpr.includes(btnProps.actionVariableName)) {
+                                        handlerBody = `${setterName}((${btnProps.actionVariableName}) => ${valueExpr})`;
+                                    } else {
+                                        handlerBody = `${setterName}(${valueExpr})`;
+                                    }
+                                }
+                                break;
+                            case 'executeCode':
+                                if (btnProps.actionCodeToExecute) {
+                                    handlerBody = translateExpression(btnProps.actionCodeToExecute, appDef, 'code-block');
+                                }
+                                break;
+                            case 'createRecord':
+                            case 'updateRecord':
+                            case 'deleteRecord':
+                                handlerBody = `console.warn('Data source actions (Create/Update/Delete) are not yet fully supported in the exported React app.')`;
+                                break;
+                        }
+                        
+                        // Replace handler reference with inline handler
+                        // Escape special regex characters in handler name
+                        const escapedHandlerName = handlerNameWithPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        childCode = childCode.replace(
+                            new RegExp(`onClick=\\{${escapedHandlerName}\\}`, 'g'),
+                            `onClick={() => { ${handlerBody} }}`
+                        );
+                    }
+                    
+                    // Replace any remaining placeholders in other contexts
+                    // Use \${index} so it becomes ${index} in the generated code (evaluated at runtime)
+                    childCode = childCode.replace(/_IDX_PLACEHOLDER/g, `_item_\${index}`);
+                    childCode = childCode.replace(/IDX_PLACEHOLDER/g, `\${index}`);
+                    
+                    // Non-containers shouldn't have nested children, but handle it just in case
+                    if (nestedChildren.length > 0) {
+                        const nestedCode = generateTemplateChildrenRecursive(nestedChildren, child.id);
+                        return childCode + '\n' + nestedCode;
+                    }
+                    
+                    return childCode;
+                }
+            }).join('\n');
+        };
+        
+        // Generate template children code
+        const templateChildrenCode = templateChildren.length > 0
+            ? generateTemplateChildrenRecursive(templateChildren, component.id)
+            : '';
+        
+        // Container style with overflow for scrolling
+        const containerStyle = {
+            position: `'relative'`,
+            width: `'100%'`,
+            overflowY: `'auto'`,
+        };
+        
+        // Build the list container
+        const attributes = [
+            ...this.getCommonAttributes(component, appDef),
+            this.generateStyleAttribute(component.props, appDef, containerStyle),
+            `className="w-full h-full"`
+        ];
+        
+        // Generate list content
+        // Note: dataExpression is already translated JavaScript code, so we evaluate it directly
+        const listContent = `{(() => {
+            const data = (() => {
+                try {
+                    return ${dataExpression};
+                } catch (error) {
+                    return [];
+                }
+            })();
+            const listData = Array.isArray(data) ? data : [];
+            const templateHeight = typeof ${templateHeight} === 'number' ? ${templateHeight} : (typeof ${templateHeight} === 'string' ? parseFloat(${templateHeight}) || 120 : 120);
+            const itemSpacing = typeof ${itemSpacing} === 'number' ? ${itemSpacing} : (typeof ${itemSpacing} === 'string' ? parseFloat(${itemSpacing}) || 8 : 8);
+            const totalHeight = listData.length > 0 
+                ? (templateHeight + itemSpacing) * listData.length - itemSpacing 
+                : templateHeight;
+            
+            if (listData.length === 0) {
+                return (
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: \`\${templateHeight}px\`,
+                            color: '#6b7280',
+                            fontSize: '14px',
+                        }}
+                    >
+                        {${emptyState} || 'No items found'}
+                    </div>
+                );
+            }
+            
+            return (
+                <div style={{ position: 'relative', width: '100%', minHeight: \`\${totalHeight}px\` }}>
+                    {listData.map((currentItem, index) => {
+                        const itemKey = ${itemKeyExpr === 'index' ? 'String(index)' : `(() => {
+                            try {
+                                const keyScope = { ...${scopeObject}, currentItem, index };
+                                const keyResult = ${itemKeyExpr};
+                                return String(keyResult ?? index);
+                            } catch (error) {
+                                return String(index);
+                            }
+                        })()`};
+                        const topOffset = index * (templateHeight + itemSpacing);
+                        const itemScope = { ...${scopeObject}, currentItem, index };
+                        
+                        return (
+                            <div
+                                key={itemKey}
+                                style={{
+                                    position: 'absolute',
+                                    top: \`\${topOffset}px\`,
+                                    left: '0',
+                                    width: '100%',
+                                    height: \`\${templateHeight}px\`,
+                                }}
+                                ${listProps.onItemClick ? `onClick={() => {
+                                    try {
+                                        const clickScope = { ...itemScope, actions };
+                                        ${translateExpression(listProps.onItemClick, appDef, 'code-block')};
+                                    } catch (error) {
+                                        console.error('Error executing onItemClick:', error);
+                                    }
+                                }}` : ''}
+                            >
+                                ${templateChildrenCode || '<!-- No template children -->'}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        })()}`;
+        
+        return this.buildTag('div', attributes, `\n${listContent}\n`);
     }
 }
 

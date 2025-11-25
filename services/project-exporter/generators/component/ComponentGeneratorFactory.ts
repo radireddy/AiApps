@@ -3,7 +3,7 @@ import { ComponentType } from '../../../../types';
 import { IComponentGeneratorStrategy } from './ComponentGeneratorStrategy';
 import { ContainerGenerator } from './implementations/ContainerGenerators';
 import { ButtonGenerator, InputGenerator, TextareaGenerator, SelectGenerator, CheckboxGenerator, RadioGroupGenerator, SwitchGenerator } from './implementations/InputGenerators';
-import { LabelGenerator, ImageGenerator, DividerGenerator, TableGenerator, FallbackGenerator } from './implementations/DisplayGenerators';
+import { LabelGenerator, ImageGenerator, DividerGenerator, TableGenerator, ListGenerator, FallbackGenerator } from './implementations/DisplayGenerators';
 
 /**
  * Factory class responsible for instantiating the correct component generator based on component type.
@@ -26,6 +26,7 @@ export class ComponentGeneratorFactory {
         [ComponentType.RADIO_GROUP]: new RadioGroupGenerator(),
         [ComponentType.SWITCH]: new SwitchGenerator(),
         [ComponentType.TABLE]: new TableGenerator(),
+        [ComponentType.LIST]: new ListGenerator(),
     };
 
     private static fallback = new FallbackGenerator();
