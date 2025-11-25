@@ -92,6 +92,7 @@ export enum ComponentType {
   SWITCH = 'SWITCH',
   TABLE = 'TABLE',
   CONTAINER = 'CONTAINER',
+  LIST = 'LIST',
 }
 
 /**
@@ -318,7 +319,28 @@ export interface ContainerProps extends Omit<BaseProps, 'width' | 'height'>, Bor
   onClick?: string;
 }
 
-export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ContainerProps;
+export interface ListProps extends ContainerProps {
+  /** Data source array (expression that evaluates to an array) */
+  data?: string;
+  /** Unique key for each item (expression, defaults to index) */
+  itemKey?: string;
+  /** Height of each template item in pixels */
+  templateHeight?: number | string;
+  /** Spacing between items in pixels */
+  itemSpacing?: number | string;
+  /** Empty state text (shown when data is empty) */
+  emptyState?: string;
+  /** Event handler for item click */
+  onItemClick?: string;
+  /** Event handler for item selection */
+  onItemSelect?: string;
+  /** Event handler for data change */
+  onDataChange?: string;
+  /** Template children IDs (stored separately from regular children) */
+  templateChildren?: string[];
+}
+
+export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ContainerProps | ListProps;
 
 /**
  * Represents a single instance of a UI component in the application.

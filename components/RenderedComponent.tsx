@@ -8,6 +8,7 @@ import { useJavaScriptRenderer } from '../property-renderers/useJavaScriptRender
 import { parsePadding } from './component-registry/common';
 import { evaluateHidden } from '../utils/disabled-helper';
 import { dragState } from '../utils/dragState';
+import { ListContext } from './component-registry/ListContext';
 
 // ============================================================================
 // DEBUG_LOGGING: Remove this entire section before production
@@ -241,7 +242,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
         if (parent) {
           absX += parent.props.x as number;
           absY += parent.props.y as number;
-          if (parent.type === ComponentType.CONTAINER) {
+          if (parent.type === ComponentType.CONTAINER || parent.type === ComponentType.LIST) {
             const paddingStr = parent.props.padding as string | number | undefined;
             let paddingLeft = 0;
             let paddingTop = 0;
@@ -989,37 +990,54 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
       className={`${mode === 'edit' ? 'select-none' : ''} ${selectionClass} ${cursorClass} ${activeCursorClass} ${dragOverClass}`}
       aria-label={`${component.type} component`}
     >
-      <ComponentRenderer
-        component={component}
-        mode={mode}
-        dataStore={dataStore}
-        onUpdateDataStore={onUpdateDataStore}
-        actions={actions}
-        isEditingInline={isEditingInline}
-        onCommitInlineEdit={handleCommitInlineEdit}
-        evaluationScope={evaluationScope}
+      <ListContext.Provider
+        value={{
+          allComponents,
+          selectedComponentIds,
+          onSelect,
+          onUpdate,
+          onUpdateComponents,
+          onDelete,
+          onDrop,
+          onReparentCheck,
+          dataStore,
+          onUpdateDataStore,
+          actions,
+          currentComponentId: component.id, // Add current component id for List components
+        } as any}
       >
-        {/* Render children recursively */}
-        {children.map(child => (
-          <RenderedComponent
-            key={child.id}
-            component={child}
-            allComponents={allComponents}
-            selectedComponentIds={selectedComponentIds}
-            onSelect={onSelect}
-            onUpdate={onUpdate}
-            onUpdateComponents={onUpdateComponents}
-            onDelete={onDelete}
-            onDrop={onDrop}
-            mode={mode}
-            dataStore={dataStore}
-            onUpdateDataStore={onUpdateDataStore}
-            actions={actions}
-            evaluationScope={evaluationScope}
-            onReparentCheck={onReparentCheck}
-          />
-        ))}
-      </ComponentRenderer>
+        <ComponentRenderer
+          component={component}
+          mode={mode}
+          dataStore={dataStore}
+          onUpdateDataStore={onUpdateDataStore}
+          actions={actions}
+          isEditingInline={isEditingInline}
+          onCommitInlineEdit={handleCommitInlineEdit}
+          evaluationScope={evaluationScope}
+        >
+          {/* Render children recursively */}
+          {children.map(child => (
+            <RenderedComponent
+              key={child.id}
+              component={child}
+              allComponents={allComponents}
+              selectedComponentIds={selectedComponentIds}
+              onSelect={onSelect}
+              onUpdate={onUpdate}
+              onUpdateComponents={onUpdateComponents}
+              onDelete={onDelete}
+              onDrop={onDrop}
+              mode={mode}
+              dataStore={dataStore}
+              onUpdateDataStore={onUpdateDataStore}
+              actions={actions}
+              evaluationScope={evaluationScope}
+              onReparentCheck={onReparentCheck}
+            />
+          ))}
+        </ComponentRenderer>
+      </ListContext.Provider>
       
       {/* Delete button and resize handle rendered after ComponentRenderer to ensure they're on top */}
       {isSelected && mode === 'edit' && !isEditingInline && (

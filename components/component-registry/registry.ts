@@ -14,6 +14,7 @@ import { SwitchPlugin } from './Switch';
 import { TablePlugin } from './Table';
 import { TextareaPlugin } from './Textarea';
 import { VStackPlugin } from './VStack';
+import { ListPlugin } from './List';
 import React from 'react';
 
 export const componentRegistry: Record<ComponentType, ComponentPlugin> = {
@@ -32,4 +33,5 @@ export const componentRegistry: Record<ComponentType, ComponentPlugin> = {
     [ComponentType.RADIO_GROUP]: RadioGroupPlugin,
     [ComponentType.SWITCH]: SwitchPlugin,
     [ComponentType.CONTAINER]: ContainerPlugin,
+    [ComponentType.LIST]: ListPlugin,
 };

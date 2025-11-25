@@ -22,6 +22,7 @@ import { switchSchema } from './switch';
 import { imageSchema } from './image';
 import { tableSchema } from './table';
 import { containerSchema } from './container';
+import { listSchema } from './list';
 
 // Register all schemas
 // Components using metadata-driven system will use PropertyTabs with smart layout to preserve original UX with efficient layouts
@@ -42,4 +43,5 @@ export function registerAllPropertySchemas(): void {
   registerPropertySchema(imageSchema); // ✅ Image uses metadata backend
   registerPropertySchema(tableSchema); // ✅ Table uses metadata backend
   registerPropertySchema(containerSchema); // ✅ Container uses metadata backend
+  registerPropertySchema(listSchema); // ✅ List uses metadata backend
 }

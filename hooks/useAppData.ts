@@ -27,16 +27,102 @@ const debugLog = (operation: string, details: any, isError: boolean = false) => 
 const parseInitialValue = (value: any, type: AppVariable['type']) => {
     try {
         switch(type) {
-            case 'string': return String(value);
-            case 'number': return Number(value);
-            case 'boolean': return value === 'true' || value === true;
+            case 'string': 
+                return String(value ?? '');
+            case 'number': 
+                return Number(value ?? 0);
+            case 'boolean': 
+                return value === 'true' || value === true || value === 'True';
             case 'object':
-            case 'array': return JSON.parse(value);
-            default: return value;
+                // If already an object, return it
+                if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                    return value;
+                }
+                // If it's a string, try to parse it
+                if (typeof value === 'string') {
+                    // Handle empty string
+                    const trimmed = value.trim();
+                    if (!trimmed) return {};
+                    // Try to parse the JSON string
+                    try {
+                        return JSON.parse(trimmed);
+                    } catch (parseError) {
+                        // If parsing fails, try to extract JSON from the string
+                        // This handles cases where there might be extra content
+                        const jsonMatch = trimmed.match(/^[\s\n]*(\[[\s\S]*\]|{[\s\S]*})[\s\n]*/);
+                        if (jsonMatch && jsonMatch[1]) {
+                            return JSON.parse(jsonMatch[1]);
+                        }
+                        throw parseError;
+                    }
+                }
+                // Default to empty object
+                return {};
+            case 'array':
+                // If already an array, return it
+                if (Array.isArray(value)) {
+                    return value;
+                }
+                // If it's a string, try to parse it
+                if (typeof value === 'string') {
+                    // Handle empty string
+                    const trimmed = value.trim();
+                    if (!trimmed) return [];
+                    // Try to parse the JSON string directly first
+                    try {
+                        return JSON.parse(trimmed);
+                    } catch (parseError) {
+                        // If parsing fails, try to extract JSON array from the string
+                        // This handles cases where there might be extra content, semicolons, or formatting
+                        // Look for array pattern: [ ... ] and extract just that part
+                        // Match from first [ to matching ] (handles nested arrays/objects)
+                        let bracketCount = 0;
+                        let startIndex = -1;
+                        let endIndex = -1;
+                        
+                        for (let i = 0; i < trimmed.length; i++) {
+                            if (trimmed[i] === '[') {
+                                if (startIndex === -1) startIndex = i;
+                                bracketCount++;
+                            } else if (trimmed[i] === ']') {
+                                bracketCount--;
+                                if (bracketCount === 0 && startIndex !== -1) {
+                                    endIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (startIndex !== -1 && endIndex !== -1) {
+                            const jsonString = trimmed.substring(startIndex, endIndex + 1);
+                            try {
+                                return JSON.parse(jsonString);
+                            } catch (e) {
+                                // If extracted part still fails, throw original error
+                                throw parseError;
+                            }
+                        }
+                        
+                        // If no array pattern found, throw the original error
+                        throw parseError;
+                    }
+                }
+                // Default to empty array
+                return [];
+            default: 
+                return value;
         }
     } catch(e) {
-        console.error("Invalid initial value for variable:", e);
-        return type === 'object' ? {} : (type === 'array' ? [] : '');
+        console.error("Invalid initial value for variable:", e, "Value:", value, "Type:", type);
+        // Return safe defaults based on type
+        switch(type) {
+            case 'object': return {};
+            case 'array': return [];
+            case 'string': return '';
+            case 'number': return 0;
+            case 'boolean': return false;
+            default: return value;
+        }
     }
 };
 
@@ -209,12 +295,23 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             if (parentId) {
                 const parent = prev.components.find(c => c.id === parentId);
                 if (parent) {
-                    // For Container type, use the provided position directly (no auto-arrangement)
-                    if (parent.type === ComponentType.CONTAINER) {
-                        // Container uses absolute positioning - position is already relative to padding edge
-                        // Ensure position is not negative (clamp to 0)
-                        (newComp.props as any).x = Math.max(0, (newComp.props as any).x);
-                        (newComp.props as any).y = Math.max(0, (newComp.props as any).y);
+                    // For Container and List types, use the provided position directly (no auto-arrangement)
+                    // Both use absolute positioning - position is already relative to padding edge
+                    if (parent.type === ComponentType.CONTAINER || parent.type === ComponentType.LIST) {
+                        // Container/List uses absolute positioning - position is already relative to padding edge
+                        // Ensure position is not negative (clamp to 0) and is a valid number
+                        const x = typeof (newComp.props as any).x === 'number' 
+                            ? (newComp.props as any).x 
+                            : (typeof (newComp.props as any).x === 'string' 
+                                ? parseFloat((newComp.props as any).x) || 0 
+                                : 0);
+                        const y = typeof (newComp.props as any).y === 'number' 
+                            ? (newComp.props as any).y 
+                            : (typeof (newComp.props as any).y === 'string' 
+                                ? parseFloat((newComp.props as any).y) || 0 
+                                : 0);
+                        (newComp.props as any).x = Math.max(0, x);
+                        (newComp.props as any).y = Math.max(0, y);
                     } else {
                         // For other container types (Panel, HStack, VStack), use auto-arrangement
                         const parentProps: any = parent.props as any;
@@ -594,9 +691,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                 // Add parent's border position
                 absX += parent.props.x;
                 absY += parent.props.y;
-                // For Container type, child positions are relative to padding edge (content area)
+                // For Container and List types, child positions are relative to padding edge (content area)
                 // So we need to add padding to get the absolute border position
-                if (parent.type === ComponentType.CONTAINER) {
+                if (parent.type === ComponentType.CONTAINER || parent.type === ComponentType.LIST) {
                     const parentPadding = parsePaddingValue(parent.props.padding);
                     absX += parentPadding.left;
                     absY += parentPadding.top;
@@ -672,9 +769,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                     // Add grandparent's relative position
                     borderX += grandParent.props.x as number;
                     borderY += grandParent.props.y as number;
-                    // For Container grandparents, child positions are relative to padding edge
+                    // For Container and List grandparents, child positions are relative to padding edge
                     // So we need to add padding to get the absolute border position
-                    if (grandParent.type === ComponentType.CONTAINER) {
+                    if (grandParent.type === ComponentType.CONTAINER || grandParent.type === ComponentType.LIST) {
                         const grandParentPadding = parsePaddingValue(grandParent.props.padding);
                         borderX += grandParentPadding.left;
                         borderY += grandParentPadding.top;
@@ -721,7 +818,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             const parentWidth = parseSizeToNumber(parent.props.width);
             const parentHeight = parseSizeToNumber(parent.props.height);
             
-            if (parent.type === ComponentType.CONTAINER) {
+            if (parent.type === ComponentType.CONTAINER || parent.type === ComponentType.LIST) {
                 const parentPadding = parsePaddingValue(parent.props.padding);
                 // Check if component fits within the content area (border - padding on all sides)
                 // Use threshold to make it easier to drag into container
@@ -749,11 +846,12 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
             
             if (isWithinBounds) {
                 const area = parentWidth * parentHeight;
-                const bounds = parent.type === ComponentType.CONTAINER ? {
-                    contentLeft: parentBorderPos.x + (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).left : 0),
-                    contentTop: parentBorderPos.y + (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).top : 0),
-                    contentRight: parentBorderPos.x + parentWidth - (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).right : 0),
-                    contentBottom: parentBorderPos.y + parentHeight - (parent.type === ComponentType.CONTAINER ? parsePaddingValue(parent.props.padding).bottom : 0),
+                const isContainerOrList = parent.type === ComponentType.CONTAINER || parent.type === ComponentType.LIST;
+                const bounds = isContainerOrList ? {
+                    contentLeft: parentBorderPos.x + (isContainerOrList ? parsePaddingValue(parent.props.padding).left : 0),
+                    contentTop: parentBorderPos.y + (isContainerOrList ? parsePaddingValue(parent.props.padding).top : 0),
+                    contentRight: parentBorderPos.x + parentWidth - (isContainerOrList ? parsePaddingValue(parent.props.padding).right : 0),
+                    contentBottom: parentBorderPos.y + parentHeight - (isContainerOrList ? parsePaddingValue(parent.props.padding).bottom : 0),
                 } : {
                     left: parentBorderPos.x,
                     top: parentBorderPos.y,
@@ -794,13 +892,13 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const oldParentId = componentToReparent.parentId || null;
         const newParentId = newParent ? newParent.id : null;
         
-        // If component is currently in a Container and we found a new parent, check if we should reparent
+        // If component is currently in a Container/List and we found a new parent, check if we should reparent
         // For nested containers, we allow reparenting even if still within old parent's bounds
         // (e.g., moving from C1 to C2 where C2 is nested in C1)
         const CONTAINMENT_THRESHOLD = 0.5;
         if (oldParentId && oldParentId !== newParentId) {
             const oldParent = allComponents.find(p => p.id === oldParentId);
-            if (oldParent && oldParent.type === ComponentType.CONTAINER) {
+            if (oldParent && (oldParent.type === ComponentType.CONTAINER || oldParent.type === ComponentType.LIST)) {
                 const oldParentBorderPos = getParentBorderPosition(oldParentId);
                 const oldParentPadding = parsePaddingValue(oldParent.props.padding);
                 const oldParentWidth = parseSizeToNumber(oldParent.props.width);
@@ -857,11 +955,11 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
         try {
           const newParentAbsPos = newParent ? getParentBorderPosition(newParent.id) : { x: 0, y: 0 };
-          // For Container, position should be relative to padding edge (content area)
+          // For Container and List, position should be relative to padding edge (content area)
           // For other containers, position is relative to border edge
           let newRelativeX: number;
           let newRelativeY: number;
-          if (newParent && newParent.type === ComponentType.CONTAINER) {
+          if (newParent && (newParent.type === ComponentType.CONTAINER || newParent.type === ComponentType.LIST)) {
             const newParentPadding = parsePaddingValue(newParent.props.padding);
             // Calculate relative position to padding edge (content area)
             newRelativeX = absoluteX - newParentAbsPos.x - newParentPadding.left;

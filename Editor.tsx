@@ -325,12 +325,13 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     if (finalParentId) {
         const parent = components.find(c => c.id === finalParentId);
         if (parent) {
-            // For Container type, the x/y passed in is already relative to padding edge
+            // For Container and List types, the x/y passed in is already relative to padding edge
             // For other containers, convert from absolute to relative
-            if (parent.type === ComponentType.CONTAINER) {
+            if (parent.type === ComponentType.CONTAINER || parent.type === ComponentType.LIST) {
                 // Position is already relative to padding edge, use as-is
-                finalX = x;
-                finalY = y;
+                // Ensure values are valid numbers and not negative
+                finalX = Math.max(0, typeof x === 'number' ? x : (parseFloat(String(x)) || 0));
+                finalY = Math.max(0, typeof y === 'number' ? y : (parseFloat(String(y)) || 0));
             } else {
                 // Convert from absolute canvas coordinates to relative coordinates
                 finalX = x - parent.props.x;
