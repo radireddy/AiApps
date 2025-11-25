@@ -1,6 +1,6 @@
 import { ComponentType } from '../../../types';
 import { ComponentPropertySchema, PropertyMetadata, PropertyGroup } from '../metadata';
-import { commonProperties, commonTabs, commonGroups, createPropertySchema } from '../registry';
+import { commonProperties, commonTabs, commonGroups, createPropertySchema, DEFAULT_GROUP_ORDER } from '../registry';
 
 /**
  * Image-specific property definitions
@@ -63,7 +63,9 @@ const imageProperties: PropertyMetadata[] = [
  * Image-specific groups
  * Order values use DEFAULT_GROUP_ORDER from registry for consistency
  */
-const imageGroups: PropertyGroup[] = [];
+const imageGroups: PropertyGroup[] = [
+  { id: 'Basic', label: 'Basic', tab: 'General', order: DEFAULT_GROUP_ORDER['Basic'], collapsible: true },
+];
 
 /**
  * Image property schema

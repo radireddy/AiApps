@@ -54,6 +54,70 @@ const TemplateContainerRenderer: React.FC<TemplateContainerRendererProps> = ({
   // In preview mode, template is not directly editable
   const templateMode = isTemplateEditing ? 'edit' : 'preview';
 
+  // For design-time expression evaluation, provide a sample currentItem in the evaluation scope
+  // This allows expressions like {{currentItem.name}} to be evaluated and displayed in the designer
+  const designTimeEvaluationScope = useMemo(() => {
+    if (mode === 'edit') {
+      // Create a sample item based on the actual data if available, or use a generic sample
+      const listProps = listComponent?.props as ListProps;
+      const dataExpression = listProps?.data;
+      
+      // Try to evaluate the data expression to get actual data
+      // Use the same evaluation logic as ListComponentRenderer
+      let sampleItem: any = null;
+      try {
+        if (dataExpression) {
+          // Evaluate using the same approach as ListComponentRenderer
+          let dataResult: any;
+          if (typeof dataExpression === 'string') {
+            // Check if it's a pure expression
+            if (dataExpression.startsWith('{{') && dataExpression.endsWith('}}')) {
+              const expr = dataExpression.substring(2, dataExpression.length - 2).trim();
+              dataResult = safeEval(expr, evaluationScope);
+            } else {
+              // Try to evaluate as expression
+              dataResult = safeEval(dataExpression, evaluationScope);
+            }
+          } else {
+            // Already a value, use it directly
+            dataResult = dataExpression;
+          }
+          
+          // If result is an array, use the first item
+          if (Array.isArray(dataResult) && dataResult.length > 0) {
+            sampleItem = dataResult[0];
+          } else if (dataResult && typeof dataResult === 'object' && !Array.isArray(dataResult)) {
+            // If it's a single object, use it as the sample
+            sampleItem = dataResult;
+          }
+        }
+      } catch (e) {
+        // If evaluation fails, use generic sample (silently fail for design-time)
+      }
+      
+      // If no actual data available, create a generic sample object
+      if (!sampleItem || typeof sampleItem !== 'object' || sampleItem === null) {
+        sampleItem = {
+          id: 1,
+          name: 'Sample Item',
+          title: 'Sample Title',
+          description: 'Sample Description',
+          value: 'Sample Value',
+        };
+      }
+      
+      // Return evaluation scope with sample currentItem and index for design-time evaluation
+      return {
+        ...evaluationScope,
+        currentItem: sampleItem,
+        index: 0, // Use index 0 for design-time preview
+      };
+    }
+    
+    // In preview mode, use the original evaluation scope (currentItem will be set by ListItemRenderer)
+    return evaluationScope;
+  }, [mode, evaluationScope, listComponent]);
+
   return (
     <div
       style={{
@@ -80,7 +144,7 @@ const TemplateContainerRenderer: React.FC<TemplateContainerRendererProps> = ({
           dataStore={context.dataStore}
           onUpdateDataStore={context.onUpdateDataStore}
           actions={context.actions}
-          evaluationScope={evaluationScope}
+          evaluationScope={designTimeEvaluationScope}
           onReparentCheck={context.onReparentCheck}
         />
       ))}

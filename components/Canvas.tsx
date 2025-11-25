@@ -17,6 +17,7 @@ interface CanvasProps {
   updateComponents: (updates: Array<{ id: string; props: Partial<ComponentProps> }>) => void;
   onDeleteComponent: (id: string) => void;
   evaluationScope: Record<string, any>;
+  dataStore: Record<string, any>;
   onReparentComponent: (componentId: string, finalPosition?: { x: number; y: number }) => void;
   currentPageId: string;
 }
@@ -32,7 +33,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   updateComponent,
   updateComponents, 
   onDeleteComponent, 
-  evaluationScope, 
+  evaluationScope,
+  dataStore,
   onReparentComponent,
   currentPageId,
 }) => {
@@ -192,7 +194,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           onDelete={onDeleteComponent}
           onDrop={onDrop}
           mode="edit"
-          dataStore={{}}
+          dataStore={dataStore}
           evaluationScope={evaluationScope}
           onReparentCheck={onReparentComponent}
         />

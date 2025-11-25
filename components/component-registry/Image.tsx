@@ -13,6 +13,11 @@ const ImageRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, evaluationScope }) => {
   const p = component.props;
+  
+  // Evaluate src and alt as expressions to support dynamic image URLs
+  const src = useJavaScriptRenderer(p.src, evaluationScope, 'https://picsum.photos/200/200');
+  const alt = useJavaScriptRenderer(p.alt, evaluationScope, 'Image');
+  
   const style = {
     borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
     borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
@@ -22,7 +27,8 @@ const ImageRenderer: React.FC<{
     opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
   };
-  return <img src={p.src} alt={p.alt} style={style} className="w-full h-full" />;
+  
+  return <img src={src} alt={alt} style={style} className="w-full h-full" />;
 };
 
 const ImageProperties: React.FC<{

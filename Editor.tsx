@@ -117,6 +117,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     deleteVariable,
     variableState,
     dataSourceContents,
+    dataStore,
     updateTheme,
     applyTheme,
     reparentComponent,
@@ -497,6 +498,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
                 updateComponents={updateComponents}
                 onDeleteComponent={deleteComponent}
                 evaluationScope={evaluationScope}
+                dataStore={dataStore}
                 onReparentComponent={reparentComponent}
                 currentPageId={currentPageId}
              />
