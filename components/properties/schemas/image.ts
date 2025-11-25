@@ -76,3 +76,4 @@ export const imageSchema: ComponentPropertySchema = createPropertySchema(
 );
 
 
+
