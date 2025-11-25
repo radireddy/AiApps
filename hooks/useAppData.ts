@@ -892,11 +892,16 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
         const oldParentId = componentToReparent.parentId || null;
         const newParentId = newParent ? newParent.id : null;
         
-        // If component is currently in a Container/List and we found a new parent, check if we should reparent
-        // For nested containers, we allow reparenting even if still within old parent's bounds
-        // (e.g., moving from C1 to C2 where C2 is nested in C1)
-        const CONTAINMENT_THRESHOLD = 0.5;
-        if (oldParentId && oldParentId !== newParentId) {
+        // CRITICAL FIX: If we found a new parent that's different from the old parent,
+        // always allow reparenting. This fixes the issue where components dragged outside
+        // and back into containers were not being reparented.
+        // The user's intent is clear when they drag a component to a new container.
+        if (newParentId && newParentId !== oldParentId) {
+            // User explicitly dragged component to a new container - allow reparenting
+            // Skip the containment checks below since user intent is clear
+        } else if (oldParentId && oldParentId !== newParentId) {
+            // Component has an old parent but no new parent found, or same parent
+            // Check if component should be unparented (dragged outside)
             const oldParent = allComponents.find(p => p.id === oldParentId);
             if (oldParent && (oldParent.type === ComponentType.CONTAINER || oldParent.type === ComponentType.LIST)) {
                 const oldParentBorderPos = getParentBorderPosition(oldParentId);
@@ -909,6 +914,7 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                 const contentBottom = oldParentBorderPos.y + oldParentHeight - oldParentPadding.bottom;
                 
                 // Check if component is still completely within the original container's content area
+                const CONTAINMENT_THRESHOLD = 0.5;
                 const stillInOriginalContainer = (
                     absoluteX >= contentLeft - CONTAINMENT_THRESHOLD &&
                     absoluteX + componentWidth <= contentRight + CONTAINMENT_THRESHOLD &&
@@ -916,23 +922,12 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                     absoluteY + componentHeight <= contentBottom + CONTAINMENT_THRESHOLD
                 );
                 
-                // If we found a new parent, check if it's nested in the old parent
-                // If so, allow the reparenting (this handles moving to nested containers)
-                let allowReparentToNested = false;
-                if (newParentId) {
-                    const newParentComp = allComponents.find(p => p.id === newParentId);
-                    if (newParentComp && isNestedIn(newParentId, oldParentId, allComponents)) {
-                        // New parent is nested in old parent - allow reparenting
-                        allowReparentToNested = true;
-                    }
+                // If still in original container and no new parent found, keep it there
+                if (stillInOriginalContainer && !newParentId) {
+                    return prev; // No change needed - component stays in original container
                 }
                 
-                // If still in original container and not moving to a nested container, keep it there
-                if (stillInOriginalContainer && !allowReparentToNested) {
-                  return prev; // No change needed - component stays in original container
-                }
-                
-                // If not in original container, check if it's completely outside
+                // If not in original container and no new parent found, allow unparenting
                 // Component is completely outside if no part of it overlaps the content area
                 const completelyOutside = (
                     absoluteX + componentWidth <= contentLeft + CONTAINMENT_THRESHOLD ||
@@ -941,10 +936,9 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
                     absoluteY >= contentBottom - CONTAINMENT_THRESHOLD
                 );
                 
-                // Only prevent reparenting if completely outside AND not moving to a nested container
-                // If partially overlapping and not moving to nested container, don't change parent
-                if (!completelyOutside && !allowReparentToNested) {
-                  return prev; // Partially overlapping - keep in original container
+                // If partially overlapping and no new parent, keep in original container
+                if (!completelyOutside && !newParentId) {
+                    return prev; // Partially overlapping - keep in original container
                 }
             }
         }
