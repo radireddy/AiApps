@@ -4,7 +4,6 @@ import { AppMetadata, GlobalTheme, AppTemplate } from './types';
 import { CreateAppModal } from './CreateAppModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { RenameAppModal } from './RenameAppModal';
-import { ImportConfirmationModal } from './ImportConfirmationModal';
 import { ThemeEditorModal } from './ThemeEditorModal';
 import { SaveAsTemplateModal } from './components/SaveAsTemplateModal';
 import { TemplateSelectionModal } from './components/TemplateSelectionModal';
@@ -110,7 +109,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [appToDelete, setAppToDelete] = useState<AppMetadata | null>(null);
   const [appToRename, setAppToRename] = useState<AppMetadata | null>(null);
-  const [importData, setImportData] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [themeToEdit, setThemeToEdit] = useState<GlobalTheme | null>(null);
@@ -211,32 +209,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
     const text = await file.text();
     try {
       const data = JSON.parse(text);
-      if (Array.isArray(data)) { // Full backup
-        setImportData(text);
-      } else { // Single app
-        await storageService.importApps(text);
-        alert('App imported successfully!');
-        fetchAllData();
-      }
+      const isArray = Array.isArray(data);
+      await storageService.importApps(text);
+      const message = isArray 
+        ? `${data.length} app(s) imported successfully as new apps!`
+        : 'App imported successfully as a new app!';
+      alert(message);
+      fetchAllData();
     } catch (error) {
       console.error("Failed to import apps:", error);
       alert(`Failed to import apps. Please make sure the file is valid. Error: ${error}`);
     }
     event.target.value = '';
-  };
-
-  const handleConfirmImport = async () => {
-    if (!importData) return;
-    try {
-        await storageService.importApps(importData);
-        alert('Full backup imported successfully!');
-        fetchAllData();
-    } catch (error) {
-        console.error("Failed to import apps:", error);
-        alert(`Failed to import apps. Error: ${error}`);
-    } finally {
-        setImportData(null);
-    }
   };
   
   const handleSaveTheme = async (theme: GlobalTheme) => {
@@ -437,12 +421,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onEditApp, onCreateApp }) 
             currentName={appToRename.name}
             onClose={() => setAppToRename(null)}
             onSave={handleRenameApp}
-        />
-      )}
-       {importData && (
-        <ImportConfirmationModal
-          onClose={() => setImportData(null)}
-          onConfirm={handleConfirmImport}
         />
       )}
       {isThemeEditorOpen && (
