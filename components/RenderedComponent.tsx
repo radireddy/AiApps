@@ -974,7 +974,14 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
     ? 'ring-4 ring-blue-400 ring-offset-2 bg-blue-50/50 border-2 border-blue-400 border-dashed transition-all duration-150 ease-out' 
     : '';
   
-  const children = allComponents.filter(c => c.parentId === component.id);
+  // For List components, don't render template children here because List handles its own children rendering:
+  // - In edit mode: TemplateContainerRenderer renders template children
+  // - In preview mode: ListItemRenderer renders cloned items
+  // If we render them here too, we get duplicate rendering
+  const shouldRenderChildren = component.type !== ComponentType.LIST;
+  const children = shouldRenderChildren 
+    ? allComponents.filter(c => c.parentId === component.id)
+    : [];
 
   return (
     <div
@@ -1017,6 +1024,7 @@ export const RenderedComponent: React.FC<RenderedComponentProps> = ({
           evaluationScope={evaluationScope}
         >
           {/* Render children recursively */}
+          {/* For List in preview mode, children are handled by ListComponentRenderer */}
           {children.map(child => (
             <RenderedComponent
               key={child.id}

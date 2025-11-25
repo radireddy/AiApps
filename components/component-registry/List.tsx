@@ -5,7 +5,7 @@
  * Uses a container-like template for building repeated UI.
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { ComponentType, ListProps, AppComponent, ActionHandlers } from '../../types';
 import { createBaseContainerRenderer, BaseContainerRendererOptions } from './base-container';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
@@ -126,17 +126,57 @@ const ListItemRenderer: React.FC<ListItemRendererProps> = ({
     index: index,
   }), [baseEvaluationScope, item, index]);
 
-  // Clone template children for this item
-  const itemChildren = useMemo(() => {
-    return templateChildren.map(templateChild => {
-      // Create a virtual clone of the template child for this item
-      return {
-        ...templateChild,
-        id: `${templateChild.id}_item_${index}`,
-        parentId: `${listComponent.id}_item_${index}`,
-      };
+  // Recursively clone a component and all its nested children
+  // Returns a map of originalId -> clonedComponent for quick lookup
+  const cloneComponentTree = useCallback((component: AppComponent, newParentId: string, allComponents: AppComponent[]): Map<string, AppComponent> => {
+    const clonedMap = new Map<string, AppComponent>();
+    
+    // Clone the component itself
+    const clonedComponent: AppComponent = {
+      ...component,
+      id: `${component.id}_item_${index}`,
+      parentId: newParentId,
+    };
+    clonedMap.set(component.id, clonedComponent);
+    
+    // Find all children of this component
+    const children = allComponents.filter(c => c.parentId === component.id);
+    
+    // Recursively clone all children
+    children.forEach(child => {
+      const childClones = cloneComponentTree(child, clonedComponent.id, allComponents);
+      childClones.forEach((cloned, originalId) => {
+        clonedMap.set(originalId, cloned);
+      });
     });
-  }, [templateChildren, index, listComponent.id]);
+    
+    return clonedMap;
+  }, [index]);
+
+  // Clone template children for this item (recursively including all nested children)
+  // We need all cloned components in a flat array for allComponents, but only render top-level ones
+  const { allClonedComponents, topLevelCloned } = useMemo(() => {
+    const allClonedMap = new Map<string, AppComponent>();
+    const topLevel: AppComponent[] = [];
+    const itemParentId = `${listComponent.id}_item_${index}`;
+    
+    templateChildren.forEach(templateChild => {
+      const clonedTree = cloneComponentTree(templateChild, itemParentId, context.allComponents);
+      clonedTree.forEach((cloned, originalId) => {
+        allClonedMap.set(originalId, cloned);
+      });
+      // Only add the direct template child clone to topLevel
+      const clonedChild = clonedTree.get(templateChild.id);
+      if (clonedChild) {
+        topLevel.push(clonedChild);
+      }
+    });
+    
+    return {
+      allClonedComponents: Array.from(allClonedMap.values()),
+      topLevelCloned: topLevel,
+    };
+  }, [templateChildren, index, listComponent.id, context.allComponents, cloneComponentTree]);
 
   const topOffset = index * (templateHeight + itemSpacing);
 
@@ -160,11 +200,12 @@ const ListItemRenderer: React.FC<ListItemRendererProps> = ({
       data-list-item="true"
       data-item-index={index}
     >
-      {itemChildren.map(child => (
+      {/* Only render top-level cloned children - RenderedComponent will recursively render nested children */}
+      {topLevelCloned.map(child => (
         <RenderedComponent
           key={child.id}
           component={child}
-          allComponents={[...context.allComponents, ...itemChildren]}
+          allComponents={[...context.allComponents, ...allClonedComponents]}
           selectedComponentIds={[]}
           onSelect={() => {}}
           onUpdate={() => {}}
