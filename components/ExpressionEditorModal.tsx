@@ -74,7 +74,7 @@ export const ExpressionEditorModal: React.FC<ExpressionEditorModalProps> = ({ is
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="expression-editor-title">
+    <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="expression-editor-title">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <header className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 id="expression-editor-title" className="text-lg font-semibold text-gray-800">Edit Expression</h2>
