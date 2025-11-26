@@ -1,7 +1,7 @@
 import React from 'react';
-import { InputProps } from '../../../types';
+import { InputActionType, CheckboxProps, RadioGroupProps, SelectProps, SwitchProps, TextareaProps, InputProps } from '../../../types';
 import { PropertyGroup, PropertyMetadata, PropertyContext } from '../metadata';
-import { PropFxInput, PropInput, PropSelect } from '../../component-registry/common';
+import { PropFxInput, PropSelect } from '../../component-registry/common';
 
 const actionOptions = [
   { value: 'none', label: 'None' },
@@ -9,7 +9,7 @@ const actionOptions = [
   { value: 'executeCode', label: 'Execute Code' },
 ];
 
-export const EventsGroupRenderer: React.FC<{
+export const SharedEventsGroupRenderer: React.FC<{
   group: PropertyGroup;
   properties: PropertyMetadata[];
   context: PropertyContext;
@@ -20,11 +20,11 @@ export const EventsGroupRenderer: React.FC<{
   isMixed: (propertyId: string) => boolean;
 }> = ({ properties, context, onUpdate, onOpenExpressionEditor, getValue, getError, isMixed }) => {
   const component = context.component;
-  const inputProps = component?.props as InputProps | undefined;
-  const onChangeActionType = inputProps?.onChangeActionType || 'none';
-  const onFocusActionType = inputProps?.onFocusActionType || 'none';
-  const onBlurActionType = inputProps?.onBlurActionType || 'none';
-  const onEnterActionType = inputProps?.onEnterActionType || 'none';
+  const componentProps = component?.props as InputProps | CheckboxProps | RadioGroupProps | SelectProps | SwitchProps | TextareaProps | undefined;
+  const onChangeActionType = componentProps?.onChangeActionType || 'none';
+  const onFocusActionType = componentProps?.onFocusActionType || 'none';
+  const onBlurActionType = componentProps?.onBlurActionType || 'none';
+  const onEnterActionType = componentProps?.onEnterActionType || 'none';
 
   // Filter and organize properties by event type
   const onChangeProps = properties.filter(p => 
@@ -101,6 +101,13 @@ export const EventsGroupRenderer: React.FC<{
 
   // Render properties in the same style as General tab (no custom headings, just dividers)
   const elements: React.ReactNode[] = [];
+
+  // On Change section header
+  if (onChangeProps.length > 0) {
+    elements.push(
+      <h5 key="onChange-header" className="text-xs font-semibold text-gray-700 mb-2">On Change</h5>
+    );
+  }
 
   // On Change properties
   sortProps(onChangeProps).forEach((prop) => {
@@ -204,3 +211,4 @@ export const EventsGroupRenderer: React.FC<{
 
   return <div className="space-y-4">{elements}</div>;
 };
+

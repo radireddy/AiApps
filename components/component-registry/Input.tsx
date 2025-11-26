@@ -5,109 +5,11 @@ import { InlineTextEditor, buildSpacingStyles } from './common';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
-import { BasePropertiesRenderer, PropertyGroup, PropertyConfig, PropertyGroupRendererProps, PropertyRenderer } from '../property-groups';
-import { safeEval } from '../../expressions/engine';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
+import { handleChangeEvent, handleFocusEvent, handleBlurEvent, handleEnterKeyPressEvent } from './event-handlers';
+import { EventsGroupRenderer } from './EventsGroupRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
-
-// Helper to evaluate event expressions
-const evaluateEventExpression = (expression: string | undefined, scope: Record<string, any>): void => {
-  if (!expression || typeof expression !== 'string') return;
-  
-  try {
-    const expr = expression.startsWith('{{') && expression.endsWith('}}')
-      ? expression.substring(2, expression.length - 2).trim()
-      : expression;
-    if (expr) {
-      // Always log scope for debugging variable access issues
-      console.log('[Expression Debug] Evaluating expression:', expr);
-      console.log('[Expression Debug] Available variables in scope:', Object.keys(scope).sort());
-      
-      // Check if common variable names are in scope
-      const commonVarNames = ['allHotels', 'hotels', 'hotel'];
-      const foundVars = commonVarNames.filter(name => name in scope);
-      if (foundVars.length > 0) {
-        console.log('[Expression Debug] Found matching variables:', foundVars.map(name => ({
-          name,
-          type: typeof scope[name],
-          isArray: Array.isArray(scope[name]),
-          value: Array.isArray(scope[name]) 
-            ? `Array(${scope[name].length})` 
-            : typeof scope[name] === 'object' && scope[name] !== null
-            ? `Object(${Object.keys(scope[name]).length} keys)`
-            : scope[name]
-        })));
-      }
-      
-      try {
-        const result = safeEval(expr, scope);
-        console.log('[Expression Debug] Expression result:', result);
-        return result;
-      } catch (evalError) {
-        // safeEval might throw errors - log them with full context
-        console.error('[Expression Runtime Error] Error in expression evaluation:', expr);
-        console.error('[Expression Runtime Error] Error details:', {
-          name: evalError instanceof Error ? evalError.name : typeof evalError,
-          message: evalError instanceof Error ? evalError.message : String(evalError),
-          stack: evalError instanceof Error ? evalError.stack : undefined
-        });
-        console.error('[Expression Runtime Error] Available scope keys:', Object.keys(scope).sort());
-        
-        // Show detailed info about variables that might be related
-        const errorMessage = evalError instanceof Error ? evalError.message : String(evalError);
-        const varNameMatch = errorMessage.match(/['"]?(\w+)['"]?/);
-        if (varNameMatch) {
-          const suspectedVarName = varNameMatch[1];
-          if (suspectedVarName in scope) {
-            console.log(`[Expression Runtime Error] Variable "${suspectedVarName}" IS in scope:`, {
-              type: typeof scope[suspectedVarName],
-              value: scope[suspectedVarName]
-            });
-          } else {
-            console.error(`[Expression Runtime Error] Variable "${suspectedVarName}" is NOT in scope`);
-            // Show similar variable names
-            const similar = Object.keys(scope).filter(key => 
-              key.toLowerCase().includes(suspectedVarName.toLowerCase()) || 
-              suspectedVarName.toLowerCase().includes(key.toLowerCase())
-            );
-            if (similar.length > 0) {
-              console.error(`[Expression Runtime Error] Did you mean one of these?`, similar);
-            }
-          }
-        }
-        
-        console.error('[Expression Runtime Error] Full scope values:', Object.keys(scope).reduce((acc, key) => {
-          const value = scope[key];
-          // Show type and preview of value (avoid logging huge objects)
-          if (value === null || value === undefined) {
-            acc[key] = value;
-          } else if (typeof value === 'object') {
-            if (Array.isArray(value)) {
-              acc[key] = `Array(${value.length})`;
-            } else {
-              acc[key] = `Object(${Object.keys(value).length} keys)`;
-            }
-          } else {
-            acc[key] = typeof value === 'string' && value.length > 100 
-              ? value.substring(0, 100) + '...' 
-              : value;
-          }
-          return acc;
-        }, {} as Record<string, any>));
-        // Don't re-throw - we've logged it, but allow execution to continue
-      }
-    }
-  } catch (error) {
-    // Catch any unexpected errors in expression parsing
-    console.error('[Expression Error] Unexpected error executing event expression:', expression);
-    console.error('[Expression Error] Error details:', {
-      name: error instanceof Error ? error.name : typeof error,
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    // Don't re-throw - we've logged it
-  }
-};
 
 const InputRenderer: React.FC<{
   component: { props: InputProps };
@@ -319,164 +221,44 @@ const InputRenderer: React.FC<{
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     
-    // Update dataStore if dataStoreKey is provided
-    if (p.dataStoreKey && onUpdateDataStore) {
-      onUpdateDataStore(p.dataStoreKey, newValue);
-    }
-    
     // Validate in preview mode
     if (mode === 'preview' && hasBlurred) {
       const error = validateInput(newValue);
       setValidationError(error);
     }
     
-    // Execute onChange action
-    if (mode === 'preview') {
-      const eventScope = {
-        ...evaluationScope,
-        console, // Explicitly ensure console is available
-        event: {
-          target: { value: newValue },
-        },
+    // Use shared event handler
+    handleChangeEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
         actions,
-      };
-      
-      // Handle new actionType-based onChange
-      if (p.onChangeActionType) {
-        switch (p.onChangeActionType) {
-          case 'alert':
-            if (p.onChangeAlertMessage) {
-              try {
-                let message = p.onChangeAlertMessage;
-                // If it's an expression, evaluate it
-                if (message.startsWith('{{') && message.endsWith('}}')) {
-                  const expr = message.substring(2, message.length - 2).trim();
-                  message = safeEval(expr, eventScope);
-                } else if (message.includes('{{')) {
-                  // Template literal
-                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
-                    const result = safeEval(expression, eventScope);
-                    return result !== undefined && result !== null ? String(result) : '';
-                  });
-                }
-                alert(String(message));
-              } catch (error) {
-                console.error('Error executing onChange alert:', error);
-              }
-            }
-            break;
-          case 'executeCode':
-            if (p.onChangeCodeToExecute) {
-              evaluateEventExpression(p.onChangeCodeToExecute, eventScope);
-            }
-            break;
-          case 'none':
-          default:
-            // Do nothing
-            break;
-        }
-      } else if (p.onChange) {
-        // Fallback to old onChange expression for backward compatibility
-        evaluateEventExpression(p.onChange, eventScope);
-      }
-    }
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
   };
 
   // Handle focus
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (mode === 'preview') {
-      // Prevent multiple rapid focus events (e.g., when alert causes focus loss/regain)
-      const now = Date.now();
-      const timeSinceLastFocus = now - lastFocusTimeRef.current;
-      const timeSinceLastAction = now - lastFocusActionTimeRef.current;
-      
-      // If we're already handling a focus event, ignore this one
-      if (isHandlingFocusRef.current) {
-        return;
-      }
-      
-      // Only fire if at least 1000ms have passed since last focus action was executed
-      // This prevents infinite loops when alerts cause focus loss/regain
-      if (timeSinceLastAction < 1000) {
-        return;
-      }
-      
-      // Only fire if at least 100ms have passed since last focus event (basic debounce)
-      if (timeSinceLastFocus < 100) {
-        return;
-      }
-      
-      // Set flags and timestamps IMMEDIATELY to prevent duplicate events
-      lastFocusTimeRef.current = now;
-      lastFocusActionTimeRef.current = now;
-      isHandlingFocusRef.current = true;
-      
-      const eventScope = {
-        ...evaluationScope,
-        console, // Explicitly ensure console is available
-        event: e,
+    handleFocusEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
         actions,
-      };
-      
-      // Handle new actionType-based onFocus
-      if (p.onFocusActionType) {
-        switch (p.onFocusActionType) {
-          case 'alert':
-            if (p.onFocusAlertMessage) {
-              try {
-                let message = p.onFocusAlertMessage;
-                // If it's an expression, evaluate it
-                if (message.startsWith('{{') && message.endsWith('}}')) {
-                  const expr = message.substring(2, message.length - 2).trim();
-                  message = safeEval(expr, eventScope);
-                } else if (message.includes('{{')) {
-                  // Template literal
-                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
-                    const result = safeEval(expression, eventScope);
-                    return result !== undefined && result !== null ? String(result) : '';
-                  });
-                }
-                // Show alert - the flag is already set, so duplicate focus events will be ignored
-                alert(String(message));
-                // Reset the flag after alert is dismissed (use setTimeout to ensure it happens after alert closes)
-                setTimeout(() => {
-                  isHandlingFocusRef.current = false;
-                }, 200);
-              } catch (error) {
-                console.error('Error executing onFocus alert:', error);
-                isHandlingFocusRef.current = false;
-              }
-            } else {
-              isHandlingFocusRef.current = false;
-            }
-            break;
-          case 'executeCode':
-            if (p.onFocusCodeToExecute) {
-              evaluateEventExpression(p.onFocusCodeToExecute, eventScope);
-              // Reset flag after a short delay to allow code execution
-              setTimeout(() => {
-                isHandlingFocusRef.current = false;
-              }, 200);
-            } else {
-              isHandlingFocusRef.current = false;
-            }
-            break;
-          case 'none':
-          default:
-            // Do nothing
-            isHandlingFocusRef.current = false;
-            break;
-        }
-      } else if (p.onFocus) {
-        // Fallback to old onFocus expression for backward compatibility
-        evaluateEventExpression(p.onFocus, eventScope);
-        setTimeout(() => {
-          isHandlingFocusRef.current = false;
-        }, 200);
-      } else {
-        isHandlingFocusRef.current = false;
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e,
+      {
+        lastFocusTime: lastFocusTimeRef,
+        lastFocusActionTime: lastFocusActionTimeRef,
+        isHandlingFocus: isHandlingFocusRef,
       }
-    }
+    );
   };
 
   // Handle blur
@@ -489,104 +271,33 @@ const InputRenderer: React.FC<{
       setValidationError(error);
     }
     
-    if (mode === 'preview') {
-      const eventScope = {
-        ...evaluationScope,
-        console, // Explicitly ensure console is available
-        event: e,
+    // Use shared event handler
+    handleBlurEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
         actions,
-      };
-      
-      // Handle new actionType-based onBlur
-      if (p.onBlurActionType) {
-        switch (p.onBlurActionType) {
-          case 'alert':
-            if (p.onBlurAlertMessage) {
-              try {
-                let message = p.onBlurAlertMessage;
-                // If it's an expression, evaluate it
-                if (message.startsWith('{{') && message.endsWith('}}')) {
-                  const expr = message.substring(2, message.length - 2).trim();
-                  message = safeEval(expr, eventScope);
-                } else if (message.includes('{{')) {
-                  // Template literal
-                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
-                    const result = safeEval(expression, eventScope);
-                    return result !== undefined && result !== null ? String(result) : '';
-                  });
-                }
-                alert(String(message));
-              } catch (error) {
-                console.error('Error executing onBlur alert:', error);
-              }
-            }
-            break;
-          case 'executeCode':
-            if (p.onBlurCodeToExecute) {
-              evaluateEventExpression(p.onBlurCodeToExecute, eventScope);
-            }
-            break;
-          case 'none':
-          default:
-            // Do nothing
-            break;
-        }
-      } else if (p.onBlur) {
-        // Fallback to old onBlur expression for backward compatibility
-        evaluateEventExpression(p.onBlur, eventScope);
-      }
-    }
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
   };
 
   // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && mode === 'preview') {
-      const eventScope = {
-        ...evaluationScope,
-        console, // Explicitly ensure console is available
-        event: e,
+    handleEnterKeyPressEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
         actions,
-      };
-      
-      // Handle new actionType-based onEnter
-      if (p.onEnterActionType) {
-        switch (p.onEnterActionType) {
-          case 'alert':
-            if (p.onEnterAlertMessage) {
-              try {
-                let message = p.onEnterAlertMessage;
-                // If it's an expression, evaluate it
-                if (message.startsWith('{{') && message.endsWith('}}')) {
-                  const expr = message.substring(2, message.length - 2).trim();
-                  message = safeEval(expr, eventScope);
-                } else if (message.includes('{{')) {
-                  // Template literal
-                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
-                    const result = safeEval(expression, eventScope);
-                    return result !== undefined && result !== null ? String(result) : '';
-                  });
-                }
-                alert(String(message));
-              } catch (error) {
-                console.error('Error executing onEnter alert:', error);
-              }
-            }
-            break;
-          case 'executeCode':
-            if (p.onEnterCodeToExecute) {
-              evaluateEventExpression(p.onEnterCodeToExecute, eventScope);
-            }
-            break;
-          case 'none':
-          default:
-            // Do nothing
-            break;
-        }
-      } else if (p.onEnterKeyPress) {
-        // Fallback to old onEnterKeyPress expression for backward compatibility
-        evaluateEventExpression(p.onEnterKeyPress, eventScope);
-      }
-    }
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
   };
 
   // Parse custom attributes
@@ -703,186 +414,6 @@ const InputProperties: React.FC<{
   updateProp: (key: keyof InputProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const actionOptions: { value: 'none' | 'alert' | 'executeCode', label: string }[] = [
-    { value: 'none', label: 'None' },
-    { value: 'alert', label: 'Alert' },
-    { value: 'executeCode', label: 'Execute Code' },
-  ];
-
-  // Custom renderer for Events group with dividers
-  const EventsGroupRenderer: React.FC<PropertyGroupRendererProps> = ({ rendererProps }) => {
-    const { props, updateProp, onOpenExpressionEditor } = rendererProps;
-    const inputProps = props as InputProps;
-
-    return (
-      <div className="space-y-4">
-        {/* On Change Section */}
-        <div>
-          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Change</h5>
-          <div className="space-y-2">
-            <PropertyRenderer
-              property={{
-                key: 'onChangeActionType',
-                label: 'Action Type',
-                type: 'select',
-                options: actionOptions,
-              }}
-              rendererProps={rendererProps}
-            />
-            {inputProps.onChangeActionType === 'alert' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onChangeAlertMessage',
-                  label: 'Alert Message',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ "Value changed: " + event.target.value }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-            {inputProps.onChangeActionType === 'executeCode' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onChangeCodeToExecute',
-                  label: 'Code to Execute',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ (() => { console.log(event.target.value); })() }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-300 my-4"></div>
-
-        {/* On Focus Section */}
-        <div>
-          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Focus</h5>
-          <div className="space-y-2">
-            <PropertyRenderer
-              property={{
-                key: 'onFocusActionType',
-                label: 'On Focus Action',
-                type: 'select',
-                options: actionOptions,
-                defaultValue: 'none',
-              }}
-              rendererProps={rendererProps}
-            />
-            {inputProps.onFocusActionType === 'alert' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onFocusAlertMessage',
-                  label: 'Alert Message',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ "Input focused" }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-            {inputProps.onFocusActionType === 'executeCode' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onFocusCodeToExecute',
-                  label: 'Code to Execute',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ (() => { console.log("Focused"); })() }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-300 my-4"></div>
-
-        {/* On Blur Section */}
-        <div>
-          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Blur</h5>
-          <div className="space-y-2">
-            <PropertyRenderer
-              property={{
-                key: 'onBlurActionType',
-                label: 'On Blur Action',
-                type: 'select',
-                options: actionOptions,
-                defaultValue: 'none',
-              }}
-              rendererProps={rendererProps}
-            />
-            {inputProps.onBlurActionType === 'alert' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onBlurAlertMessage',
-                  label: 'Alert Message',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ "Input blurred" }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-            {inputProps.onBlurActionType === 'executeCode' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onBlurCodeToExecute',
-                  label: 'Code to Execute',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ (() => { console.log("Blurred"); })() }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-gray-300 my-4"></div>
-
-        {/* On Enter Key Press Section */}
-        <div>
-          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Enter Key Press</h5>
-          <div className="space-y-2">
-            <PropertyRenderer
-              property={{
-                key: 'onEnterActionType',
-                label: 'On Enter Action',
-                type: 'select',
-                options: actionOptions,
-                defaultValue: 'none',
-              }}
-              rendererProps={rendererProps}
-            />
-            {inputProps.onEnterActionType === 'alert' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onEnterAlertMessage',
-                  label: 'Alert Message',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ "Enter key pressed" }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-            {inputProps.onEnterActionType === 'executeCode' && (
-              <PropertyRenderer
-                property={{
-                  key: 'onEnterCodeToExecute',
-                  label: 'Code to Execute',
-                  type: 'expression',
-                  placeholder: 'e.g., {{ (() => { console.log("Enter pressed"); })() }}',
-                }}
-                rendererProps={rendererProps}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const eventsGroup: PropertyGroup = {
     id: 'input-events',
     title: 'Events',
@@ -917,7 +448,7 @@ const InputProperties: React.FC<{
   return (
     <BasePropertiesRenderer
       component={{ ...component, type: ComponentType.INPUT }}
-      updateProp={updateProp}
+      updateProp={(key: string, value: any) => updateProp(key as keyof InputProps, value)}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}
     />

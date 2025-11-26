@@ -276,6 +276,27 @@ export interface TextareaProps extends BaseProps, BorderProps {
   /** Default value for the textarea field (supports expressions) */
   defaultValue?: string;
   accessibilityLabel?: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface SelectProps extends BaseProps, BorderProps {
@@ -290,25 +311,80 @@ export interface SelectProps extends BaseProps, BorderProps {
 export interface CheckboxProps extends BaseProps {
   dataStoreKey: string;
   label: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
   /** On Change Action */
   onChangeActionType?: InputActionType;
   onChangeAlertMessage?: string; // Expression for alert message
   onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface RadioGroupProps extends BaseProps {
   dataStoreKey: string;
   options: string; // comma-separated
   groupLabel?: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
   /** On Change Action */
   onChangeActionType?: InputActionType;
   onChangeAlertMessage?: string; // Expression for alert message
   onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface SwitchProps extends BaseProps {
   dataStoreKey: string;
   label: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface DividerProps extends BaseProps {
