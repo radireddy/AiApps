@@ -60,6 +60,16 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         // List iteration variables that should use safe get() for property access
         const listIterationVars = new Set(['currentItem', 'item', 'row', 'record', 'index']);
         
+        // First, preserve theme property access chains (e.g., theme.colors.onPrimary, theme.radius.default)
+        // This must happen before the general property access transformation to prevent theme properties
+        // from being incorrectly processed. Theme properties use camelCase and must be preserved exactly.
+        // Match: theme.property1.property2... (any depth of nesting)
+        let transformed = expr.replace(/\btheme\.([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*)/g, (match) => {
+            // Preserve the entire theme property access chain as-is
+            // This ensures camelCase property names like onPrimary, onSecondary are preserved
+            return match;
+        });
+        
         // First, handle property access patterns like "currentItem.hotelImage" or "item.name"
         // These should be converted to safe access: get(currentItem, 'hotelImage')
         // Pattern: identifier.property (where property is a valid identifier)
@@ -68,7 +78,13 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         // Use a more comprehensive regex that matches property access patterns but NOT method calls
         // This must run BEFORE the tokenizer to prevent currentItem from being converted to get(dataStore, 'currentItem')
         // Match: obj.prop or obj.prop[index] but NOT obj.method( or obj.prop.method(
-        let transformed = expr.replace(/(?<![\.\w])([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)(\[[^\]]*\])?(?!\s*\()/g, (match, objName, propName, arrayAccess) => {
+        // IMPORTANT: Exclude theme property access that was already preserved above
+        transformed = transformed.replace(/(?<![\.\w])([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)(\[[^\]]*\])?(?!\s*\()/g, (match, objName, propName, arrayAccess) => {
+            // Skip theme property access - it was already preserved above
+            if (objName === 'theme') {
+                return match;
+            }
+            
             // Skip if it's component.value (handled separately)
             if (propName === 'value') {
                 const component = componentMap.get(objName);
@@ -170,6 +186,19 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
                 return `get(${getArgs})?.${methodName}(`;
             });
         }
+
+        // Fix theme property names that may have been incorrectly lowercased
+        // This ensures camelCase property names like onPrimary, onSecondary are preserved correctly
+        // Pattern: theme.colors.onprimary -> theme.colors.onPrimary
+        // Pattern: theme.colors.onsecondary -> theme.colors.onSecondary
+        // Pattern: theme.radius.default -> theme.radius.default (already correct, no change)
+        // This handles cases where property names were lowercased during expression processing
+        // Match theme.property1.onprimary (where 'on' prefix properties need capitalization)
+        transformed = transformed.replace(/\btheme\.([a-zA-Z_]\w*)\.on([a-z])([a-zA-Z]*)\b/g, (match, themePath, firstLetter, rest) => {
+            // Convert onprimary -> onPrimary, onsecondary -> onSecondary, etc.
+            // Capitalize the first letter after 'on' and preserve the rest
+            return `theme.${themePath}.on${firstLetter.toUpperCase()}${rest}`;
+        });
 
         return transformed;
     };
