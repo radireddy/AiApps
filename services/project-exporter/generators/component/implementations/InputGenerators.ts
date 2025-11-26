@@ -21,25 +21,16 @@ export class InputGenerator extends BaseComponentGenerator {
         
         // Check if there's an onChange expression or action to execute
         if (inputProps.onChangeActionType === 'executeCode' && inputProps.onChangeCodeToExecute) {
-            // Build scope object for expression evaluation
-            const scopeObject = `{
-                theme,
-                dataStore,
-                get,
-                updateDataStore,
-                ${appDef.variables.map(v => `${v.name}`).join(',\n                ')}
-            }`;
-            
+            // Translate the expression to code that can be executed directly
+            // The code will have access to all page-level variables through closure
             const onChangeCode = translateExpression(inputProps.onChangeCodeToExecute, appDef, 'code-block');
             onChangeHandler = `(e) => {
             const newValue = e.target.value;
             updateDataStore('${inputProps.dataStoreKey}', newValue);
             try {
-                const eventScope = {
-                    ...${scopeObject},
-                    event: {
-                        target: { value: newValue }
-                    }
+                // Variables available through closure: theme, dataStore, get, updateDataStore, and all page props/variables
+                const event = {
+                    target: { value: newValue }
                 };
                 ${onChangeCode}
             } catch (error) {
@@ -48,24 +39,15 @@ export class InputGenerator extends BaseComponentGenerator {
         }`;
         } else if (inputProps.onChange) {
             // Fallback to old onChange expression for backward compatibility
-            const scopeObject = `{
-                theme,
-                dataStore,
-                get,
-                updateDataStore,
-                ${appDef.variables.map(v => `${v.name}`).join(',\n                ')}
-            }`;
-            
+            // Translate the expression to code that can be executed directly
             const onChangeExpr = translateExpression(inputProps.onChange, appDef, 'code-block');
             onChangeHandler = `(e) => {
             const newValue = e.target.value;
             updateDataStore('${inputProps.dataStoreKey}', newValue);
             try {
-                const eventScope = {
-                    ...${scopeObject},
-                    event: {
-                        target: { value: newValue }
-                    }
+                // Variables available through closure: theme, dataStore, get, updateDataStore, and all page props/variables
+                const event = {
+                    target: { value: newValue }
                 };
                 ${onChangeExpr}
             } catch (error) {
