@@ -123,6 +123,9 @@ const InputRenderer: React.FC<{
   const [validationError, setValidationError] = useState<string>('');
   const [hasBlurred, setHasBlurred] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastFocusTimeRef = useRef<number>(0);
+  const isHandlingFocusRef = useRef<boolean>(false);
+  const lastFocusActionTimeRef = useRef<number>(0);
 
   // Evaluate disabled property
   const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
@@ -381,14 +384,98 @@ const InputRenderer: React.FC<{
 
   // Handle focus
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (mode === 'preview' && p.onFocus) {
+    if (mode === 'preview') {
+      // Prevent multiple rapid focus events (e.g., when alert causes focus loss/regain)
+      const now = Date.now();
+      const timeSinceLastFocus = now - lastFocusTimeRef.current;
+      const timeSinceLastAction = now - lastFocusActionTimeRef.current;
+      
+      // If we're already handling a focus event, ignore this one
+      if (isHandlingFocusRef.current) {
+        return;
+      }
+      
+      // Only fire if at least 1000ms have passed since last focus action was executed
+      // This prevents infinite loops when alerts cause focus loss/regain
+      if (timeSinceLastAction < 1000) {
+        return;
+      }
+      
+      // Only fire if at least 100ms have passed since last focus event (basic debounce)
+      if (timeSinceLastFocus < 100) {
+        return;
+      }
+      
+      // Set flags and timestamps IMMEDIATELY to prevent duplicate events
+      lastFocusTimeRef.current = now;
+      lastFocusActionTimeRef.current = now;
+      isHandlingFocusRef.current = true;
+      
       const eventScope = {
         ...evaluationScope,
         console, // Explicitly ensure console is available
         event: e,
         actions,
       };
-      evaluateEventExpression(p.onFocus, eventScope);
+      
+      // Handle new actionType-based onFocus
+      if (p.onFocusActionType) {
+        switch (p.onFocusActionType) {
+          case 'alert':
+            if (p.onFocusAlertMessage) {
+              try {
+                let message = p.onFocusAlertMessage;
+                // If it's an expression, evaluate it
+                if (message.startsWith('{{') && message.endsWith('}}')) {
+                  const expr = message.substring(2, message.length - 2).trim();
+                  message = safeEval(expr, eventScope);
+                } else if (message.includes('{{')) {
+                  // Template literal
+                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
+                    const result = safeEval(expression, eventScope);
+                    return result !== undefined && result !== null ? String(result) : '';
+                  });
+                }
+                // Show alert - the flag is already set, so duplicate focus events will be ignored
+                alert(String(message));
+                // Reset the flag after alert is dismissed (use setTimeout to ensure it happens after alert closes)
+                setTimeout(() => {
+                  isHandlingFocusRef.current = false;
+                }, 200);
+              } catch (error) {
+                console.error('Error executing onFocus alert:', error);
+                isHandlingFocusRef.current = false;
+              }
+            } else {
+              isHandlingFocusRef.current = false;
+            }
+            break;
+          case 'executeCode':
+            if (p.onFocusCodeToExecute) {
+              evaluateEventExpression(p.onFocusCodeToExecute, eventScope);
+              // Reset flag after a short delay to allow code execution
+              setTimeout(() => {
+                isHandlingFocusRef.current = false;
+              }, 200);
+            } else {
+              isHandlingFocusRef.current = false;
+            }
+            break;
+          case 'none':
+          default:
+            // Do nothing
+            isHandlingFocusRef.current = false;
+            break;
+        }
+      } else if (p.onFocus) {
+        // Fallback to old onFocus expression for backward compatibility
+        evaluateEventExpression(p.onFocus, eventScope);
+        setTimeout(() => {
+          isHandlingFocusRef.current = false;
+        }, 200);
+      } else {
+        isHandlingFocusRef.current = false;
+      }
     }
   };
 
@@ -402,27 +489,103 @@ const InputRenderer: React.FC<{
       setValidationError(error);
     }
     
-    if (mode === 'preview' && p.onBlur) {
+    if (mode === 'preview') {
       const eventScope = {
         ...evaluationScope,
         console, // Explicitly ensure console is available
         event: e,
         actions,
       };
-      evaluateEventExpression(p.onBlur, eventScope);
+      
+      // Handle new actionType-based onBlur
+      if (p.onBlurActionType) {
+        switch (p.onBlurActionType) {
+          case 'alert':
+            if (p.onBlurAlertMessage) {
+              try {
+                let message = p.onBlurAlertMessage;
+                // If it's an expression, evaluate it
+                if (message.startsWith('{{') && message.endsWith('}}')) {
+                  const expr = message.substring(2, message.length - 2).trim();
+                  message = safeEval(expr, eventScope);
+                } else if (message.includes('{{')) {
+                  // Template literal
+                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
+                    const result = safeEval(expression, eventScope);
+                    return result !== undefined && result !== null ? String(result) : '';
+                  });
+                }
+                alert(String(message));
+              } catch (error) {
+                console.error('Error executing onBlur alert:', error);
+              }
+            }
+            break;
+          case 'executeCode':
+            if (p.onBlurCodeToExecute) {
+              evaluateEventExpression(p.onBlurCodeToExecute, eventScope);
+            }
+            break;
+          case 'none':
+          default:
+            // Do nothing
+            break;
+        }
+      } else if (p.onBlur) {
+        // Fallback to old onBlur expression for backward compatibility
+        evaluateEventExpression(p.onBlur, eventScope);
+      }
     }
   };
 
   // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && mode === 'preview' && p.onEnterKeyPress) {
+    if (e.key === 'Enter' && mode === 'preview') {
       const eventScope = {
         ...evaluationScope,
         console, // Explicitly ensure console is available
         event: e,
         actions,
       };
-      evaluateEventExpression(p.onEnterKeyPress, eventScope);
+      
+      // Handle new actionType-based onEnter
+      if (p.onEnterActionType) {
+        switch (p.onEnterActionType) {
+          case 'alert':
+            if (p.onEnterAlertMessage) {
+              try {
+                let message = p.onEnterAlertMessage;
+                // If it's an expression, evaluate it
+                if (message.startsWith('{{') && message.endsWith('}}')) {
+                  const expr = message.substring(2, message.length - 2).trim();
+                  message = safeEval(expr, eventScope);
+                } else if (message.includes('{{')) {
+                  // Template literal
+                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
+                    const result = safeEval(expression, eventScope);
+                    return result !== undefined && result !== null ? String(result) : '';
+                  });
+                }
+                alert(String(message));
+              } catch (error) {
+                console.error('Error executing onEnter alert:', error);
+              }
+            }
+            break;
+          case 'executeCode':
+            if (p.onEnterCodeToExecute) {
+              evaluateEventExpression(p.onEnterCodeToExecute, eventScope);
+            }
+            break;
+          case 'none':
+          default:
+            // Do nothing
+            break;
+        }
+      } else if (p.onEnterKeyPress) {
+        // Fallback to old onEnterKeyPress expression for backward compatibility
+        evaluateEventExpression(p.onEnterKeyPress, eventScope);
+      }
     }
   };
 
@@ -479,7 +642,7 @@ const InputRenderer: React.FC<{
   }
 
   if (p.required) {
-    const requiredValue = useJavaScriptRenderer(p.required, evaluationScope, false);
+    const requiredValue = useJavaScriptRenderer(p.required, evaluationScope, p.required);
     const isRequired = (() => {
       if (typeof requiredValue === 'string') {
         const lower = requiredValue.toLowerCase().trim();
@@ -600,13 +763,36 @@ const InputProperties: React.FC<{
           <div className="space-y-2">
             <PropertyRenderer
               property={{
-                key: 'onFocus',
-                label: 'Code to Execute',
-                type: 'expression',
-                placeholder: 'e.g., {{ (() => { console.log("Focused"); })() }}',
+                key: 'onFocusActionType',
+                label: 'On Focus Action',
+                type: 'select',
+                options: actionOptions,
+                defaultValue: 'none',
               }}
               rendererProps={rendererProps}
             />
+            {inputProps.onFocusActionType === 'alert' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onFocusAlertMessage',
+                  label: 'Alert Message',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ "Input focused" }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
+            {inputProps.onFocusActionType === 'executeCode' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onFocusCodeToExecute',
+                  label: 'Code to Execute',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ (() => { console.log("Focused"); })() }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
           </div>
         </div>
 
@@ -619,13 +805,36 @@ const InputProperties: React.FC<{
           <div className="space-y-2">
             <PropertyRenderer
               property={{
-                key: 'onBlur',
-                label: 'Code to Execute',
-                type: 'expression',
-                placeholder: 'e.g., {{ (() => { console.log("Blurred"); })() }}',
+                key: 'onBlurActionType',
+                label: 'On Blur Action',
+                type: 'select',
+                options: actionOptions,
+                defaultValue: 'none',
               }}
               rendererProps={rendererProps}
             />
+            {inputProps.onBlurActionType === 'alert' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onBlurAlertMessage',
+                  label: 'Alert Message',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ "Input blurred" }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
+            {inputProps.onBlurActionType === 'executeCode' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onBlurCodeToExecute',
+                  label: 'Code to Execute',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ (() => { console.log("Blurred"); })() }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
           </div>
         </div>
 
@@ -638,13 +847,36 @@ const InputProperties: React.FC<{
           <div className="space-y-2">
             <PropertyRenderer
               property={{
-                key: 'onEnterKeyPress',
-                label: 'Code to Execute',
-                type: 'expression',
-                placeholder: 'e.g., {{ (() => { console.log("Enter pressed"); })() }}',
+                key: 'onEnterActionType',
+                label: 'On Enter Action',
+                type: 'select',
+                options: actionOptions,
+                defaultValue: 'none',
               }}
               rendererProps={rendererProps}
             />
+            {inputProps.onEnterActionType === 'alert' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onEnterAlertMessage',
+                  label: 'Alert Message',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ "Enter key pressed" }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
+            {inputProps.onEnterActionType === 'executeCode' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onEnterCodeToExecute',
+                  label: 'Code to Execute',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ (() => { console.log("Enter pressed"); })() }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -717,6 +949,9 @@ export const InputPlugin: ComponentPlugin = {
       borderColor: '#e5e7eb',
       borderRadius: '4px',
       onChangeActionType: 'none' as InputActionType,
+      onFocusActionType: 'none' as InputActionType,
+      onBlurActionType: 'none' as InputActionType,
+      onEnterActionType: 'none' as InputActionType,
     },
   },
   renderer: InputRenderer,

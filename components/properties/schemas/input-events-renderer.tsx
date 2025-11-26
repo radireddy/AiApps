@@ -3,6 +3,12 @@ import { InputProps } from '../../../types';
 import { PropertyGroup, PropertyMetadata, PropertyContext } from '../metadata';
 import { PropFxInput, PropInput, PropSelect } from '../../component-registry/common';
 
+const actionOptions = [
+  { value: 'none', label: 'None' },
+  { value: 'alert', label: 'Alert' },
+  { value: 'executeCode', label: 'Execute Code' },
+];
+
 export const EventsGroupRenderer: React.FC<{
   group: PropertyGroup;
   properties: PropertyMetadata[];
@@ -16,17 +22,27 @@ export const EventsGroupRenderer: React.FC<{
   const component = context.component;
   const inputProps = component?.props as InputProps | undefined;
   const onChangeActionType = inputProps?.onChangeActionType || 'none';
+  const onFocusActionType = inputProps?.onFocusActionType || 'none';
+  const onBlurActionType = inputProps?.onBlurActionType || 'none';
+  const onEnterActionType = inputProps?.onEnterActionType || 'none';
 
-  // Filter and organize properties by event type (excluding legacy onChange)
+  // Filter and organize properties by event type
   const onChangeProps = properties.filter(p => 
     ['onChangeActionType', 'onChangeAlertMessage', 'onChangeCodeToExecute'].includes(p.id)
   );
-  const onFocusProps = properties.filter(p => p.id === 'onFocus');
-  const onBlurProps = properties.filter(p => p.id === 'onBlur');
-  const onEnterKeyPressProps = properties.filter(p => p.id === 'onEnterKeyPress');
+  const onFocusProps = properties.filter(p => 
+    ['onFocusActionType', 'onFocusAlertMessage', 'onFocusCodeToExecute'].includes(p.id)
+  );
+  const onBlurProps = properties.filter(p => 
+    ['onBlurActionType', 'onBlurAlertMessage', 'onBlurCodeToExecute'].includes(p.id)
+  );
+  const onEnterProps = properties.filter(p => 
+    ['onEnterActionType', 'onEnterAlertMessage', 'onEnterCodeToExecute'].includes(p.id)
+  );
 
-  // Sort onChange properties by propertyOrder
-  const sortedOnChangeProps = [...onChangeProps].sort((a, b) => (a.propertyOrder ?? 999) - (b.propertyOrder ?? 999));
+  // Sort properties by propertyOrder
+  const sortProps = (props: PropertyMetadata[]) => 
+    [...props].sort((a, b) => (a.propertyOrder ?? 999) - (b.propertyOrder ?? 999));
 
   // Render property using the same components as General/Styles tabs
   const renderProperty = (prop: PropertyMetadata) => {
@@ -60,17 +76,21 @@ export const EventsGroupRenderer: React.FC<{
         );
 
       case 'dropdown':
+      case 'select':
         const options = prop.options
           ? (typeof prop.options === 'function' ? prop.options(context) : prop.options)
-          : [];
+          : actionOptions; // Default to action options for action type selects
         
         return (
           <PropSelect
             key={prop.id}
             label={prop.label}
-            value={mixed ? '' : (value ?? prop.defaultValue ?? (options[0]?.value || ''))}
+            value={mixed ? '' : (value ?? prop.defaultValue ?? (options[0]?.value || 'none'))}
             onChange={(val) => onUpdate(prop.id, val)}
-            options={options.map(opt => ({ value: opt.value, label: opt.label }))}
+            options={options.map((opt: any) => ({ 
+              value: opt.value || opt, 
+              label: opt.label || opt 
+            }))}
             className="mb-2.5"
           />
         );
@@ -84,7 +104,7 @@ export const EventsGroupRenderer: React.FC<{
   const elements: React.ReactNode[] = [];
 
   // On Change properties
-  sortedOnChangeProps.forEach((prop) => {
+  sortProps(onChangeProps).forEach((prop) => {
     // Only show onChangeCodeToExecute if executeCode is selected
     if (prop.id === 'onChangeCodeToExecute' && onChangeActionType !== 'executeCode') {
       return;
@@ -104,8 +124,23 @@ export const EventsGroupRenderer: React.FC<{
     elements.push(<div key="divider-1" className="border-t border-gray-200 my-2"></div>);
   }
 
+  // On Focus section header
+  if (onFocusProps.length > 0) {
+    elements.push(
+      <h5 key="onFocus-header" className="text-xs font-semibold text-gray-700 mb-2">On Focus</h5>
+    );
+  }
+
   // On Focus properties
-  onFocusProps.forEach(prop => {
+  sortProps(onFocusProps).forEach((prop) => {
+    // Only show onFocusCodeToExecute if executeCode is selected
+    if (prop.id === 'onFocusCodeToExecute' && onFocusActionType !== 'executeCode') {
+      return;
+    }
+    // Only show onFocusAlertMessage if alert is selected
+    if (prop.id === 'onFocusAlertMessage' && onFocusActionType !== 'alert') {
+      return;
+    }
     const rendered = renderProperty(prop);
     if (rendered) {
       elements.push(rendered);
@@ -117,8 +152,23 @@ export const EventsGroupRenderer: React.FC<{
     elements.push(<div key="divider-2" className="border-t border-gray-200 my-2"></div>);
   }
 
+  // On Blur section header
+  if (onBlurProps.length > 0) {
+    elements.push(
+      <h5 key="onBlur-header" className="text-xs font-semibold text-gray-700 mb-2">On Blur</h5>
+    );
+  }
+
   // On Blur properties
-  onBlurProps.forEach(prop => {
+  sortProps(onBlurProps).forEach((prop) => {
+    // Only show onBlurCodeToExecute if executeCode is selected
+    if (prop.id === 'onBlurCodeToExecute' && onBlurActionType !== 'executeCode') {
+      return;
+    }
+    // Only show onBlurAlertMessage if alert is selected
+    if (prop.id === 'onBlurAlertMessage' && onBlurActionType !== 'alert') {
+      return;
+    }
     const rendered = renderProperty(prop);
     if (rendered) {
       elements.push(rendered);
@@ -126,18 +176,32 @@ export const EventsGroupRenderer: React.FC<{
   });
 
   // Divider before On Enter Key Press
-  if (onEnterKeyPressProps.length > 0 && elements.length > 0) {
+  if (onEnterProps.length > 0 && elements.length > 0) {
     elements.push(<div key="divider-3" className="border-t border-gray-200 my-2"></div>);
   }
 
-  // On Enter Key Press properties
-  onEnterKeyPressProps.forEach(prop => {
+  // On Enter section header
+  if (onEnterProps.length > 0) {
+    elements.push(
+      <h5 key="onEnter-header" className="text-xs font-semibold text-gray-700 mb-2">On Enter Key Press</h5>
+    );
+  }
+
+  // On Enter properties
+  sortProps(onEnterProps).forEach((prop) => {
+    // Only show onEnterCodeToExecute if executeCode is selected
+    if (prop.id === 'onEnterCodeToExecute' && onEnterActionType !== 'executeCode') {
+      return;
+    }
+    // Only show onEnterAlertMessage if alert is selected
+    if (prop.id === 'onEnterAlertMessage' && onEnterActionType !== 'alert') {
+      return;
+    }
     const rendered = renderProperty(prop);
     if (rendered) {
       elements.push(rendered);
     }
   });
 
-  return <>{elements}</>;
+  return <div className="space-y-4">{elements}</div>;
 };
-
