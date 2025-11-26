@@ -12,13 +12,75 @@ import { toPascalCase } from '../../../utils/stringUtils';
 export class InputGenerator extends BaseComponentGenerator {
     generate(component: AppComponent, allComponents: AppComponent[], appDef: AppDefinition): string {
         const inputProps = component.props as any;
+        
+        // Build onChange handler that updates dataStore and executes onChange expression
+        let onChangeHandler = `(e) => {
+            const newValue = e.target.value;
+            updateDataStore('${inputProps.dataStoreKey}', newValue);
+        }`;
+        
+        // Check if there's an onChange expression or action to execute
+        if (inputProps.onChangeActionType === 'executeCode' && inputProps.onChangeCodeToExecute) {
+            // Build scope object for expression evaluation
+            const scopeObject = `{
+                theme,
+                dataStore,
+                get,
+                updateDataStore,
+                ${appDef.variables.map(v => `${v.name}`).join(',\n                ')}
+            }`;
+            
+            const onChangeCode = translateExpression(inputProps.onChangeCodeToExecute, appDef, 'code-block');
+            onChangeHandler = `(e) => {
+            const newValue = e.target.value;
+            updateDataStore('${inputProps.dataStoreKey}', newValue);
+            try {
+                const eventScope = {
+                    ...${scopeObject},
+                    event: {
+                        target: { value: newValue }
+                    }
+                };
+                ${onChangeCode}
+            } catch (error) {
+                console.error('Error executing onChange code:', error);
+            }
+        }`;
+        } else if (inputProps.onChange) {
+            // Fallback to old onChange expression for backward compatibility
+            const scopeObject = `{
+                theme,
+                dataStore,
+                get,
+                updateDataStore,
+                ${appDef.variables.map(v => `${v.name}`).join(',\n                ')}
+            }`;
+            
+            const onChangeExpr = translateExpression(inputProps.onChange, appDef, 'code-block');
+            onChangeHandler = `(e) => {
+            const newValue = e.target.value;
+            updateDataStore('${inputProps.dataStoreKey}', newValue);
+            try {
+                const eventScope = {
+                    ...${scopeObject},
+                    event: {
+                        target: { value: newValue }
+                    }
+                };
+                ${onChangeExpr}
+            } catch (error) {
+                console.error('Error executing onChange expression:', error);
+            }
+        }`;
+        }
+        
         const attributes = [
             ...this.getCommonAttributes(component, appDef),
             this.generateStyleAttribute(component.props, appDef, { padding: `'0.5rem'`, boxSizing: `'border-box'` }),
             `className="p-2 box-border"`,
             `placeholder={${translateExpression(inputProps.placeholder, appDef, 'raw-js')}}`,
             `value={get(dataStore, '${inputProps.dataStoreKey}') || ''}`,
-            `onChange={(e) => updateDataStore('${inputProps.dataStoreKey}', e.target.value)}`
+            `onChange={${onChangeHandler}}`
         ];
         return this.buildTag('input', attributes);
     }

@@ -19,16 +19,29 @@ const evaluateEventExpression = (expression: string | undefined, scope: Record<s
       ? expression.substring(2, expression.length - 2).trim()
       : expression;
     if (expr) {
-      // Log scope for debugging (only in development)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Expression Debug] Evaluating expression:', expr);
-        console.log('[Expression Debug] Available variables in scope:', Object.keys(scope).sort());
+      // Always log scope for debugging variable access issues
+      console.log('[Expression Debug] Evaluating expression:', expr);
+      console.log('[Expression Debug] Available variables in scope:', Object.keys(scope).sort());
+      
+      // Check if common variable names are in scope
+      const commonVarNames = ['allHotels', 'hotels', 'hotel'];
+      const foundVars = commonVarNames.filter(name => name in scope);
+      if (foundVars.length > 0) {
+        console.log('[Expression Debug] Found matching variables:', foundVars.map(name => ({
+          name,
+          type: typeof scope[name],
+          isArray: Array.isArray(scope[name]),
+          value: Array.isArray(scope[name]) 
+            ? `Array(${scope[name].length})` 
+            : typeof scope[name] === 'object' && scope[name] !== null
+            ? `Object(${Object.keys(scope[name]).length} keys)`
+            : scope[name]
+        })));
       }
+      
       try {
         const result = safeEval(expr, scope);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Expression Debug] Expression result:', result);
-        }
+        console.log('[Expression Debug] Expression result:', result);
         return result;
       } catch (evalError) {
         // safeEval might throw errors - log them with full context
@@ -39,7 +52,31 @@ const evaluateEventExpression = (expression: string | undefined, scope: Record<s
           stack: evalError instanceof Error ? evalError.stack : undefined
         });
         console.error('[Expression Runtime Error] Available scope keys:', Object.keys(scope).sort());
-        console.error('[Expression Runtime Error] Scope values preview:', Object.keys(scope).reduce((acc, key) => {
+        
+        // Show detailed info about variables that might be related
+        const errorMessage = evalError instanceof Error ? evalError.message : String(evalError);
+        const varNameMatch = errorMessage.match(/['"]?(\w+)['"]?/);
+        if (varNameMatch) {
+          const suspectedVarName = varNameMatch[1];
+          if (suspectedVarName in scope) {
+            console.log(`[Expression Runtime Error] Variable "${suspectedVarName}" IS in scope:`, {
+              type: typeof scope[suspectedVarName],
+              value: scope[suspectedVarName]
+            });
+          } else {
+            console.error(`[Expression Runtime Error] Variable "${suspectedVarName}" is NOT in scope`);
+            // Show similar variable names
+            const similar = Object.keys(scope).filter(key => 
+              key.toLowerCase().includes(suspectedVarName.toLowerCase()) || 
+              suspectedVarName.toLowerCase().includes(key.toLowerCase())
+            );
+            if (similar.length > 0) {
+              console.error(`[Expression Runtime Error] Did you mean one of these?`, similar);
+            }
+          }
+        }
+        
+        console.error('[Expression Runtime Error] Full scope values:', Object.keys(scope).reduce((acc, key) => {
           const value = scope[key];
           // Show type and preview of value (avoid logging huge objects)
           if (value === null || value === undefined) {

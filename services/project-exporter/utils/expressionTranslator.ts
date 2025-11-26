@@ -57,10 +57,64 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
     ]);
 
     const transformExpression = (expr: string): string => {
-        // Tokenizer regex: 1. Strings, 2. Component.value, 3. Identifiers
+        // List iteration variables that should use safe get() for property access
+        const listIterationVars = new Set(['currentItem', 'item', 'row', 'record', 'index']);
+        
+        // First, handle property access patterns like "currentItem.hotelImage" or "item.name"
+        // These should be converted to safe access: get(currentItem, 'hotelImage')
+        // Pattern: identifier.property (where property is a valid identifier)
+        // Handle nested property access like "currentItem.hotelImage" or "item.amenities[0]"
+        // Use a more comprehensive regex that matches property access patterns
+        // This must run BEFORE the tokenizer to prevent currentItem from being converted to get(dataStore, 'currentItem')
+        let transformed = expr.replace(/(?<![\.\w])([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)(\[[^\]]*\])?/g, (match, objName, propName, arrayAccess) => {
+            // Skip if it's component.value (handled separately)
+            if (propName === 'value') {
+                const component = componentMap.get(objName);
+                if (component) {
+                    const dataStoreKey = (component?.props as any)?.dataStoreKey;
+                    if (dataStoreKey) {
+                        return `get(dataStore, '${dataStoreKey}')`;
+                    }
+                }
+            }
+            
+            // Special handling for list iteration variables - always use safe get
+            if (listIterationVars.has(objName)) {
+                const arrayPart = arrayAccess || '';
+                // For array access like currentItem.amenities[0], we need to handle it differently
+                if (arrayAccess) {
+                    // Extract the array index
+                    const indexMatch = arrayAccess.match(/\[(.+)\]/);
+                    if (indexMatch) {
+                        const index = indexMatch[1];
+                        // Use get with the full path
+                        return `get(${objName}, '${propName}.${index}')`;
+                    }
+                }
+                return `get(${objName}, '${propName}')`;
+            }
+            
+            // Skip if objName is a keyword or known entity (like 'dataStore', 'theme', etc.)
+            if (keywords.has(objName) || varNames.has(objName) || componentMap.has(objName)) {
+                // For other known entities, preserve direct access (they're safe)
+                return match;
+            }
+            
+            // For unknown objects, use safe get access
+            if (arrayAccess) {
+                const indexMatch = arrayAccess.match(/\[(.+)\]/);
+                if (indexMatch) {
+                    const index = indexMatch[1];
+                    return `get(${objName}, '${propName}.${index}')`;
+                }
+            }
+            return `get(${objName}, '${propName}')`;
+        });
+        
+        // Tokenizer regex: 1. Strings, 2. Component.value (already handled above), 3. Identifiers
         const tokenizer = /("(?:\\[\s\S]|[^"])*"|'(?:\\[\s\S]|[^'])*')|(\b[a-zA-Z_]\w*\.value\b)|(?<![\.\w])([a-zA-Z_]\w*)\b/g;
 
-        let transformed = expr.replace(tokenizer, (match, stringLiteral, componentAccess, identifier) => {
+        transformed = transformed.replace(tokenizer, (match, stringLiteral, componentAccess, identifier) => {
             if (stringLiteral) return stringLiteral;
 
             if (componentAccess) {
@@ -74,6 +128,14 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
             }
 
             if (identifier) {
+                // List iteration variables should be preserved as-is (they're local variables in map functions)
+                const listIterationVars = new Set(['currentItem', 'item', 'row', 'record', 'index']);
+                if (listIterationVars.has(identifier)) {
+                    return identifier;
+                }
+                
+                // Check if this identifier is part of a property access that was already transformed
+                // If the transformed string already contains get(identifier, ...), don't transform it again
                 if (keywords.has(identifier) || varNames.has(identifier) || componentMap.has(identifier)) {
                     return identifier;
                 }
@@ -82,6 +144,7 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
                     return identifier; // Assume local variable
                 }
 
+                // Only convert to dataStore lookup if it's not a list iteration variable
                 return `get(dataStore, '${identifier}')`;
             }
 
@@ -119,12 +182,85 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
             return JSON.stringify(value);
         }
         
-        const seemsLikeCode = /[()\[\].=<>+\-*/%&|?:]/.test(value) || value.includes('.') || value.includes('actions') || value.includes('updateVariable');
-        if (!seemsLikeCode) {
+        // KEY FIX: If the string contains spaces (multiple words), it's almost certainly plain text
+        // unless it contains mustache expressions (which are handled above) or explicit code patterns
+        const hasSpaces = /\s/.test(value);
+        
+        // Additional check: if it's multiple space-separated simple words, it's definitely plain text
+        // This catches cases like "Enter hotel name" where each word would be treated as an identifier
+        if (hasSpaces) {
+            const words = value.trim().split(/\s+/);
+            // If all words are simple identifiers (letters, numbers, underscores) and no code patterns,
+            // it's definitely plain text
+            const allWordsAreSimple = words.every(word => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(word));
+            const hasNoCodeChars = !/[()\[\]=<>+\-*/%&|?:]/.test(value) && 
+                                   !value.includes('actions') && 
+                                   !value.includes('updateVariable') &&
+                                   !/\b[a-zA-Z_]\w*\.value\b/.test(value);
+            
+            if (allWordsAreSimple && hasNoCodeChars) {
+                return JSON.stringify(value);
+            }
+        }
+        
+        // Check for explicit code patterns that indicate this is actual code, not plain text
+        // Note: We check for component.value patterns, operators, and action keywords
+        const hasComponentValuePattern = /\b[a-zA-Z_]\w*\.value\b/.test(value);
+        const hasOperators = /[()\[\]=<>+\-*/%&|?:]/.test(value);
+        const hasActionKeywords = value.includes('actions') || value.includes('updateVariable');
+        const hasExplicitCodePatterns = hasOperators || hasActionKeywords || hasComponentValuePattern;
+        
+        // If it has spaces and no explicit code patterns, it's definitely plain text
+        // This prevents strings like "Enter hotel name" from being treated as code
+        if (hasSpaces && !hasExplicitCodePatterns) {
             return JSON.stringify(value);
         }
-
-        // Otherwise treat it as code and attempt to transform it.
+        
+        // For strings without spaces, we need to be more careful
+        // They could be:
+        // 1. Plain text: "Hello"
+        // 2. Component.value: "Input1.value" 
+        // 3. Property path: "user.name"
+        // 4. Single identifier that might be a dataStore key
+        
+        if (!hasSpaces) {
+            // If it matches component.value pattern, it's code
+            if (hasComponentValuePattern) {
+                return transformExpression(value);
+            }
+            
+            // If it has a dot and looks like property access, it might be code
+            if (value.includes('.')) {
+                // Check if it looks like a valid property path (e.g., "user.name", "data.value")
+                const looksLikePropertyPath = /^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)+$/.test(value);
+                if (looksLikePropertyPath) {
+                    return transformExpression(value);
+                }
+            }
+            
+            // If it's a single identifier, check if it's a known keyword/variable/component
+            const isSingleIdentifier = /^[a-zA-Z_]\w*$/.test(value);
+            if (isSingleIdentifier) {
+                // If it's a known entity, it's code
+                if (keywords.has(value) || varNames.has(value) || componentMap.has(value)) {
+                    return value; // Return as-is, it's a valid identifier
+                }
+                // Otherwise, it could be a dataStore key, but to be safe for placeholders,
+                // treat single words without context as strings
+                return JSON.stringify(value);
+            }
+            
+            // If it has operators or action keywords, it's code
+            if (hasExplicitCodePatterns) {
+                return transformExpression(value);
+            }
+            
+            // Default: treat as string if we're not sure
+            return JSON.stringify(value);
+        }
+        
+        // If we get here with spaces and explicit code patterns, transform it
+        // (though this case should be rare - template literals are handled above)
         return transformExpression(value);
     }
 

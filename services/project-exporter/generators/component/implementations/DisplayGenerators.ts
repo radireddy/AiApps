@@ -57,7 +57,28 @@ export class LabelGenerator extends BaseComponentGenerator {
         }
 
         // For javascript or literal renderers, use regular text content
-        const textContent = translateExpression(labelProps.text, appDef, 'jsx-children');
+        let textContent = translateExpression(labelProps.text, appDef, 'jsx-children');
+        
+        // Fix cases where currentItem was converted to get(dataStore, 'currentItem') incorrectly
+        // Convert get(dataStore, 'currentItem').property to get(currentItem, 'property')
+        // Also handle array access like get(dataStore, 'currentItem').amenities[0]
+        const listIterationVars = ['currentItem', 'item', 'row', 'record'];
+        for (const varName of listIterationVars) {
+            // Handle property access with optional array index
+            const pattern = new RegExp(`get\\(dataStore, ['"]${varName}['"]\\)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\[[^\\]]+\\])?`, 'g');
+            textContent = textContent.replace(pattern, (match, propName, arrayAccess) => {
+                if (arrayAccess) {
+                    // Extract index from array access like [0]
+                    const indexMatch = arrayAccess.match(/\[(.+)\]/);
+                    if (indexMatch) {
+                        const index = indexMatch[1];
+                        return `get(${varName}, '${propName}.${index}')`;
+                    }
+                }
+                return `get(${varName}, '${propName}')`;
+            });
+        }
+        
         return this.buildTag('div', attributes, `\n<span style={{ textAlign: ${translateExpression(labelProps.textAlign, appDef, 'raw-js')}, width: '100%', color: ${translateExpression(labelProps.color, appDef, 'raw-js')}, fontSize: ${translateExpression(labelProps.fontSize, appDef, 'raw-js')} }}>${textContent}</span>\n`);
     }
 }
@@ -76,6 +97,27 @@ export class ImageGenerator extends BaseComponentGenerator {
 
         // Handle src - ensure URLs are properly handled
         let srcValue = translateExpression(imgProps.src, appDef, 'raw-js');
+        
+        // Fix cases where currentItem was converted to get(dataStore, 'currentItem') incorrectly
+        // Convert get(dataStore, 'currentItem').property to get(currentItem, 'property')
+        // Also handle array access like get(dataStore, 'currentItem').amenities[0]
+        const listIterationVars = ['currentItem', 'item', 'row', 'record'];
+        for (const varName of listIterationVars) {
+            // Handle property access with optional array index
+            const pattern = new RegExp(`get\\(dataStore, ['"]${varName}['"]\\)\\.([a-zA-Z_][a-zA-Z0-9_]*)(\\[[^\\]]+\\])?`, 'g');
+            srcValue = srcValue.replace(pattern, (match, propName, arrayAccess) => {
+                if (arrayAccess) {
+                    // Extract index from array access like [0]
+                    const indexMatch = arrayAccess.match(/\[(.+)\]/);
+                    if (indexMatch) {
+                        const index = indexMatch[1];
+                        return `get(${varName}, '${propName}.${index}')`;
+                    }
+                }
+                return `get(${varName}, '${propName}')`;
+            });
+        }
+        
         // If the result contains // but isn't a valid expression (no +, no function calls), it might be a malformed expression
         // In that case, treat it as a plain string
         if (srcValue.includes('://') && !srcValue.includes('+') && !srcValue.includes('get(') && !srcValue.includes('(') && !srcValue.startsWith('"') && !srcValue.startsWith("'") && !srcValue.startsWith('`')) {
@@ -407,7 +449,7 @@ export class ListGenerator extends BaseComponentGenerator {
                     return [];
                 }
             })();
-            const listData = Array.isArray(data) ? data : [];
+            const listData = Array.isArray(data) ? data.filter(item => item != null) : [];
             const templateHeight = typeof ${templateHeight} === 'number' ? ${templateHeight} : (typeof ${templateHeight} === 'string' ? parseFloat(${templateHeight}) || 120 : 120);
             const itemSpacing = typeof ${itemSpacing} === 'number' ? ${itemSpacing} : (typeof ${itemSpacing} === 'string' ? parseFloat(${itemSpacing}) || 8 : 8);
             const totalHeight = listData.length > 0 
@@ -434,6 +476,10 @@ export class ListGenerator extends BaseComponentGenerator {
             return (
                 <div style={{ position: 'relative', width: '100%', minHeight: \`\${totalHeight}px\` }}>
                     {listData.map((currentItem, index) => {
+                        // Safety check: skip if currentItem is null or undefined
+                        if (currentItem == null) {
+                            return null;
+                        }
                         const itemKey = ${itemKeyExpr === 'index' ? 'String(index)' : `(() => {
                             try {
                                 const keyScope = { ...${scopeObject}, currentItem, index };
