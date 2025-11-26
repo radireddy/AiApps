@@ -134,27 +134,48 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
     isOpen: boolean;
     value: string;
     onSave: (newValue: string) => void;
+    propertyContext?: {
+      propertyId?: string;
+      propertyLabel?: string;
+      propertyType?: string;
+      componentType?: string;
+      tab?: string;
+      group?: string;
+    };
   }>({
     isOpen: false,
     value: '',
     onSave: () => {},
+    propertyContext: undefined,
   });
 
-  const openExpressionEditor = useCallback((initialValue: string, onSaveCallback: (newValue: string) => void) => {
+  const openExpressionEditor = useCallback((
+    initialValue: string, 
+    onSaveCallback: (newValue: string) => void,
+    propertyContext?: {
+      propertyId?: string;
+      propertyLabel?: string;
+      propertyType?: string;
+      componentType?: string;
+      tab?: string;
+      group?: string;
+    }
+  ) => {
     setExpressionEditorState({
       isOpen: true,
       value: initialValue,
       onSave: onSaveCallback,
+      propertyContext,
     });
   }, []);
 
   const handleSaveExpression = (newValue: string) => {
     expressionEditorState.onSave(newValue);
-    setExpressionEditorState({ isOpen: false, value: '', onSave: () => {} });
+    setExpressionEditorState({ isOpen: false, value: '', onSave: () => {}, propertyContext: undefined });
   };
 
   const handleCloseExpressionEditor = () => {
-    setExpressionEditorState({ isOpen: false, value: '', onSave: () => {} });
+    setExpressionEditorState({ isOpen: false, value: '', onSave: () => {}, propertyContext: undefined });
   };
 
   const [leftPanelWidth, setLeftPanelWidth] = useState(240);
@@ -169,6 +190,11 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
   // Keyboard shortcut for deleting components
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't process delete/backspace if expression editor is open
+      if (document.body.getAttribute('data-expression-editor-open') === 'true') {
+        return;
+      }
+
       if (mode === 'edit' && selectedComponentIds.length > 0) {
         const activeElement = document.activeElement;
         
@@ -537,6 +563,7 @@ const EditorUI: React.FC<EditorUIProps> = ({ initialAppDefinition, onSave, onBac
         initialValue={expressionEditorState.value}
         onClose={handleCloseExpressionEditor}
         onSave={handleSaveExpression}
+        propertyContext={expressionEditorState.propertyContext}
       />
     </div>
   );

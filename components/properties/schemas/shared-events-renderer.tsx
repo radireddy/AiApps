@@ -14,7 +14,18 @@ export const SharedEventsGroupRenderer: React.FC<{
   properties: PropertyMetadata[];
   context: PropertyContext;
   onUpdate: (propertyId: string, value: any) => void;
-  onOpenExpressionEditor?: (initialValue: string, onSave: (newValue: string) => void) => void;
+  onOpenExpressionEditor?: (
+    initialValue: string, 
+    onSave: (newValue: string) => void,
+    propertyContext?: {
+      propertyId?: string;
+      propertyLabel?: string;
+      propertyType?: string;
+      componentType?: string;
+      tab?: string;
+      group?: string;
+    }
+  ) => void;
   getValue: (propertyId: string) => any;
   getError: (propertyId: string) => string | undefined;
   isMixed: (propertyId: string) => boolean;
@@ -68,7 +79,19 @@ export const SharedEventsGroupRenderer: React.FC<{
             placeholder={prop.placeholder}
             onOpenEditor={supportsExpression && onOpenExpressionEditor ? (val) => {
               const currentValue = isExpression ? String(value || '') : String(value || '');
-              onOpenExpressionEditor(currentValue, (newVal) => onUpdate(prop.id, newVal));
+              const component = context.component;
+              onOpenExpressionEditor(
+                currentValue, 
+                (newVal) => onUpdate(prop.id, newVal),
+                {
+                  propertyId: prop.id,
+                  propertyLabel: prop.label,
+                  propertyType: prop.type,
+                  componentType: component?.type,
+                  tab: 'Events',
+                  group: 'Events'
+                }
+              );
             } : undefined}
             propertyKey={prop.id}
             className="mb-2.5"

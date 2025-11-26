@@ -38,6 +38,8 @@
     "vite": "^5.2.13"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "monaco-editor": "^0.55.1",
     "openai": "^6.9.1"
   }
 }
