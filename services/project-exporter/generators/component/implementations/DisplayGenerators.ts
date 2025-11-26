@@ -15,7 +15,10 @@ export class LabelGenerator extends BaseComponentGenerator {
         const labelProps = component.props as any;
         const textRenderer = labelProps.textRenderer || 'javascript';
         
-        const style = {
+        // Map textAlign to justifyContent for flex layout
+        const justifyContent = labelProps.textAlign === 'center' ? `'center'` : (labelProps.textAlign === 'right' ? `'flex-end'` : `'flex-start'`);
+        
+        const style: Record<string, any> = {
             fontSize: translateExpression(labelProps.fontSize, appDef, 'raw-js'),
             fontWeight: translateExpression(labelProps.fontWeight, appDef, 'raw-js'),
             color: translateExpression(labelProps.color, appDef, 'raw-js'),
@@ -23,11 +26,8 @@ export class LabelGenerator extends BaseComponentGenerator {
             backgroundColor: translateExpression(labelProps.backgroundColor, appDef, 'raw-js'),
             display: `'flex'`,
             alignItems: `'center'`,
+            justifyContent: justifyContent,
         };
-
-        // Map textAlign to justifyContent for flex layout
-        const justifyContent = labelProps.textAlign === 'center' ? `'center'` : (labelProps.textAlign === 'right' ? `'flex-end'` : `'flex-start'`);
-        style.justifyContent = justifyContent;
 
         const attributes = [
             ...this.getCommonAttributes(component, appDef),
@@ -39,11 +39,14 @@ export class LabelGenerator extends BaseComponentGenerator {
         if (textRenderer === 'markdown') {
             // For markdown, we need to render HTML using dangerouslySetInnerHTML
             // Build the scope object with all available variables and dataStore
+            // Include currentItem and index for List context (they'll be undefined if not in a List, which is fine)
             const scopeObject = `{
                 theme,
                 dataStore,
                 get,
-                ${appDef.variables.map(v => `${v.name}`).join(',\n                ')}
+                ${appDef.variables.map(v => `${v.name}`).join(',\n                ')},
+                currentItem,
+                index
             }`;
             const markdownText = JSON.stringify(labelProps.text || '');
             const markdownHtml = `renderMarkdown(${markdownText}, ${scopeObject})`;
