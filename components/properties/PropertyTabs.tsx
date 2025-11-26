@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { PropertyTab, PropertyGroup, PropertyMetadata } from './metadata';
+import { PropertyTab, PropertyGroup, PropertyMetadata, PropertyContext } from './metadata';
 import { PropertyGroup as PropertyGroupComponent } from './PropertyGroup';
-import { PropertyInput, PropertyInputProps } from './PropertyInput';
+import { PropFxInput, PropInput, PropSelect } from '../component-registry/common';
 import { DEFAULT_GROUP_ORDER } from './registry';
 
 interface PropertyTabsProps {
   tabs: PropertyTab[];
   groups: PropertyGroup[];
   properties: PropertyMetadata[];
-  context: PropertyInputProps['context'];
+  context: PropertyContext;
   onUpdate: (propertyId: string, value: any) => void;
   onOpenExpressionEditor?: (initialValue: string, onSave: (newValue: string) => void) => void;
   getValue: (propertyId: string) => any;
@@ -27,6 +27,154 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
   getError,
   isMixed,
 }) => {
+  // Helper function to render a property using PropFxInput, PropInput, PropSelect
+  const renderProperty = (prop: PropertyMetadata) => {
+    const value = getValue(prop.id);
+    const error = getError(prop.id);
+    const mixed = isMixed(prop.id);
+    const displayValue = mixed ? '— Mixed —' : (value ?? prop.defaultValue ?? '');
+
+    // Handle custom renderer
+    if (prop.customRenderer) {
+      const CustomRenderer = prop.customRenderer;
+      return (
+        <CustomRenderer
+          key={prop.id}
+          metadata={prop}
+          value={value}
+          onChange={(newValue) => onUpdate(prop.id, newValue)}
+          context={context}
+          onOpenExpressionEditor={onOpenExpressionEditor}
+          error={error}
+          isMixed={mixed}
+        />
+      );
+    }
+
+    // Render based on type
+    switch (prop.type) {
+      case 'string':
+      case 'expression':
+      case 'code':
+        const supportsExpression = prop.supportsExpression ?? (prop.type === 'expression' || prop.type === 'code');
+        const isExpression = typeof value === 'string' && value.startsWith('{{');
+        
+        return (
+          <PropFxInput
+            key={prop.id}
+            label={prop.label}
+            value={displayValue}
+            onChange={(val) => onUpdate(prop.id, val)}
+            type={prop.type === 'expression' || prop.type === 'code' ? 'text' : undefined}
+            placeholder={prop.placeholder}
+            onOpenEditor={supportsExpression && onOpenExpressionEditor ? (val) => {
+              const currentValue = isExpression ? String(value || '') : String(value || '');
+              onOpenExpressionEditor(currentValue, (newVal) => onUpdate(prop.id, newVal));
+            } : undefined}
+            propertyKey={prop.id}
+            className="mb-2.5"
+          />
+        );
+
+      case 'number':
+        return (
+          <PropInput
+            key={prop.id}
+            label={prop.label}
+            value={displayValue}
+            onChange={(val) => onUpdate(prop.id, val)}
+            type="number"
+            placeholder={prop.placeholder}
+            className="mb-2.5"
+          />
+        );
+
+      case 'boolean':
+        return (
+          <div key={prop.id} className="mb-2.5">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={mixed ? false : (value ?? prop.defaultValue ?? false)}
+                onChange={(e) => onUpdate(prop.id, e.target.checked)}
+                disabled={mixed}
+                className="mr-2"
+              />
+              <span className={`block ${prop.tooltip ? 'cursor-help' : ''}`} title={prop.tooltip}>
+                {prop.label}
+              </span>
+            </label>
+            {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+          </div>
+        );
+
+      case 'color':
+        return (
+          <PropFxInput
+            key={prop.id}
+            label={prop.label}
+            value={displayValue}
+            onChange={(val) => onUpdate(prop.id, val)}
+            type="color"
+            onOpenEditor={prop.supportsExpression && onOpenExpressionEditor ? (val) => {
+              const currentValue = String(value || prop.defaultValue || '#000000');
+              onOpenExpressionEditor(currentValue, (newVal) => onUpdate(prop.id, newVal));
+            } : undefined}
+            className="mb-2.5"
+          />
+        );
+
+      case 'dropdown':
+        const options = prop.options
+          ? (typeof prop.options === 'function' ? prop.options(context) : prop.options)
+          : [];
+        
+        return (
+          <PropSelect
+            key={prop.id}
+            label={prop.label}
+            value={mixed ? '' : (value ?? prop.defaultValue ?? (options[0]?.value || ''))}
+            onChange={(val) => onUpdate(prop.id, val)}
+            options={options.map(opt => ({ value: opt.value, label: opt.label }))}
+            className="mb-2.5"
+          />
+        );
+
+      case 'composite':
+        if (!prop.compositeFields) {
+          return <div key={prop.id} className="text-red-500 text-xs mb-2.5">Composite property missing field definitions</div>;
+        }
+        
+        const compositeValue = value || {};
+        return (
+          <div key={prop.id} className="mb-2.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1">{prop.label}</label>
+            <div className="grid grid-cols-2 gap-2.5">
+              {prop.compositeFields.map((field) => (
+                <PropInput
+                  key={field.id}
+                  label={field.label}
+                  value={mixed ? '—' : (compositeValue[field.id] ?? field.defaultValue ?? '')}
+                  onChange={(val) => {
+                    onUpdate(prop.id, { ...compositeValue, [field.id]: val });
+                  }}
+                  type={field.type}
+                />
+              ))}
+            </div>
+            {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+          </div>
+        );
+
+      default:
+        return (
+          <div key={prop.id} className="text-red-500 text-xs mb-2.5">
+            Unsupported property type: {prop.type}
+          </div>
+        );
+    }
+  };
+
   // Sort tabs by order
   const sortedTabs = [...tabs].sort((a, b) => {
     const orderA = a.order ?? 999;
@@ -111,18 +259,7 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
           })}
         {ungroupedProperties.length > 0 && (
           <div className="py-2">
-            {ungroupedProperties.map((prop) => (
-              <PropertyInput
-                key={prop.id}
-                metadata={prop}
-                value={getValue(prop.id)}
-                onChange={(value) => onUpdate(prop.id, value)}
-                context={context}
-                onOpenExpressionEditor={onOpenExpressionEditor}
-                error={getError(prop.id)}
-                isMixed={isMixed(prop.id)}
-              />
-            ))}
+            {ungroupedProperties.map((prop) => renderProperty(prop))}
           </div>
         )}
       </div>
@@ -184,18 +321,7 @@ export const PropertyTabs: React.FC<PropertyTabsProps> = ({
             {/* Render ungrouped properties */}
             {activeTabData.propertiesByGroup['__ungrouped__'] && (
               <div className="py-2">
-                {activeTabData.propertiesByGroup['__ungrouped__'].map((prop) => (
-                  <PropertyInput
-                    key={prop.id}
-                    metadata={prop}
-                    value={getValue(prop.id)}
-                    onChange={(value) => onUpdate(prop.id, value)}
-                    context={context}
-                    onOpenExpressionEditor={onOpenExpressionEditor}
-                    error={getError(prop.id)}
-                    isMixed={isMixed(prop.id)}
-                  />
-                ))}
+                {activeTabData.propertiesByGroup['__ungrouped__'].map((prop) => renderProperty(prop))}
               </div>
             )}
           </>

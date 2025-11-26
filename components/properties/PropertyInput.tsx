@@ -100,6 +100,7 @@ export const PropertyInput: React.FC<PropertyInputProps> = ({
         />
       );
     case 'expression':
+    case 'code':
       return (
         <ExpressionPropertyInput
           metadata={metadata}

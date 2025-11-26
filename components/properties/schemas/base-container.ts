@@ -29,7 +29,7 @@
 import { ComponentType } from '../../../types';
 import { ComponentPropertySchema, PropertyMetadata, PropertyTab, PropertyGroup } from '../metadata';
 import { commonProperties, commonTabs, commonGroups, createPropertySchema, DEFAULT_GROUP_ORDER } from '../registry';
-import { WidthHeightPropertyInput } from '../PropertyInput';
+import { WidthHeightPropertyInput } from '../../component-registry/common';
 
 /**
  * Options for customizing base container properties

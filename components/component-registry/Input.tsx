@@ -1,11 +1,11 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { ComponentType, InputProps, ComponentPlugin } from '../../types';
+import { ComponentType, InputProps, ComponentPlugin, InputActionType } from '../../types';
 import { InlineTextEditor, buildSpacingStyles } from './common';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
-import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
+import { BasePropertiesRenderer, PropertyGroup, PropertyConfig, PropertyGroupRendererProps, PropertyRenderer } from '../property-groups';
 import { safeEval } from '../../expressions/engine';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
@@ -19,10 +19,56 @@ const evaluateEventExpression = (expression: string | undefined, scope: Record<s
       ? expression.substring(2, expression.length - 2).trim()
       : expression;
     if (expr) {
-      safeEval(expr, scope);
+      // Log scope for debugging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Expression Debug] Evaluating expression:', expr);
+        console.log('[Expression Debug] Available variables in scope:', Object.keys(scope).sort());
+      }
+      try {
+        const result = safeEval(expr, scope);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[Expression Debug] Expression result:', result);
+        }
+        return result;
+      } catch (evalError) {
+        // safeEval might throw errors - log them with full context
+        console.error('[Expression Runtime Error] Error in expression evaluation:', expr);
+        console.error('[Expression Runtime Error] Error details:', {
+          name: evalError instanceof Error ? evalError.name : typeof evalError,
+          message: evalError instanceof Error ? evalError.message : String(evalError),
+          stack: evalError instanceof Error ? evalError.stack : undefined
+        });
+        console.error('[Expression Runtime Error] Available scope keys:', Object.keys(scope).sort());
+        console.error('[Expression Runtime Error] Scope values preview:', Object.keys(scope).reduce((acc, key) => {
+          const value = scope[key];
+          // Show type and preview of value (avoid logging huge objects)
+          if (value === null || value === undefined) {
+            acc[key] = value;
+          } else if (typeof value === 'object') {
+            if (Array.isArray(value)) {
+              acc[key] = `Array(${value.length})`;
+            } else {
+              acc[key] = `Object(${Object.keys(value).length} keys)`;
+            }
+          } else {
+            acc[key] = typeof value === 'string' && value.length > 100 
+              ? value.substring(0, 100) + '...' 
+              : value;
+          }
+          return acc;
+        }, {} as Record<string, any>));
+        // Don't re-throw - we've logged it, but allow execution to continue
+      }
     }
   } catch (error) {
-    console.error('Error executing event expression:', error);
+    // Catch any unexpected errors in expression parsing
+    console.error('[Expression Error] Unexpected error executing event expression:', expression);
+    console.error('[Expression Error] Error details:', {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    // Don't re-throw - we've logged it
   }
 };
 
@@ -244,16 +290,55 @@ const InputRenderer: React.FC<{
       setValidationError(error);
     }
     
-    // Execute onChange event
-    if (mode === 'preview' && p.onChange) {
+    // Execute onChange action
+    if (mode === 'preview') {
       const eventScope = {
         ...evaluationScope,
+        console, // Explicitly ensure console is available
         event: {
           target: { value: newValue },
         },
         actions,
       };
-      evaluateEventExpression(p.onChange, eventScope);
+      
+      // Handle new actionType-based onChange
+      if (p.onChangeActionType) {
+        switch (p.onChangeActionType) {
+          case 'alert':
+            if (p.onChangeAlertMessage) {
+              try {
+                let message = p.onChangeAlertMessage;
+                // If it's an expression, evaluate it
+                if (message.startsWith('{{') && message.endsWith('}}')) {
+                  const expr = message.substring(2, message.length - 2).trim();
+                  message = safeEval(expr, eventScope);
+                } else if (message.includes('{{')) {
+                  // Template literal
+                  message = message.replace(/{{\s*(.*?)\s*}}/g, (match, expression) => {
+                    const result = safeEval(expression, eventScope);
+                    return result !== undefined && result !== null ? String(result) : '';
+                  });
+                }
+                alert(String(message));
+              } catch (error) {
+                console.error('Error executing onChange alert:', error);
+              }
+            }
+            break;
+          case 'executeCode':
+            if (p.onChangeCodeToExecute) {
+              evaluateEventExpression(p.onChangeCodeToExecute, eventScope);
+            }
+            break;
+          case 'none':
+          default:
+            // Do nothing
+            break;
+        }
+      } else if (p.onChange) {
+        // Fallback to old onChange expression for backward compatibility
+        evaluateEventExpression(p.onChange, eventScope);
+      }
     }
   };
 
@@ -262,6 +347,7 @@ const InputRenderer: React.FC<{
     if (mode === 'preview' && p.onFocus) {
       const eventScope = {
         ...evaluationScope,
+        console, // Explicitly ensure console is available
         event: e,
         actions,
       };
@@ -282,6 +368,7 @@ const InputRenderer: React.FC<{
     if (mode === 'preview' && p.onBlur) {
       const eventScope = {
         ...evaluationScope,
+        console, // Explicitly ensure console is available
         event: e,
         actions,
       };
@@ -294,6 +381,7 @@ const InputRenderer: React.FC<{
     if (e.key === 'Enter' && mode === 'preview' && p.onEnterKeyPress) {
       const eventScope = {
         ...evaluationScope,
+        console, // Explicitly ensure console is available
         event: e,
         actions,
       };
@@ -415,10 +503,131 @@ const InputProperties: React.FC<{
   updateProp: (key: keyof InputProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
+  const actionOptions: { value: 'none' | 'alert' | 'executeCode', label: string }[] = [
+    { value: 'none', label: 'None' },
+    { value: 'alert', label: 'Alert' },
+    { value: 'executeCode', label: 'Execute Code' },
+  ];
+
+  // Custom renderer for Events group with dividers
+  const EventsGroupRenderer: React.FC<PropertyGroupRendererProps> = ({ rendererProps }) => {
+    const { props, updateProp, onOpenExpressionEditor } = rendererProps;
+    const inputProps = props as InputProps;
+
+    return (
+      <div className="space-y-4">
+        {/* On Change Section */}
+        <div>
+          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Change</h5>
+          <div className="space-y-2">
+            <PropertyRenderer
+              property={{
+                key: 'onChangeActionType',
+                label: 'Action Type',
+                type: 'select',
+                options: actionOptions,
+              }}
+              rendererProps={rendererProps}
+            />
+            {inputProps.onChangeActionType === 'alert' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onChangeAlertMessage',
+                  label: 'Alert Message',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ "Value changed: " + event.target.value }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
+            {inputProps.onChangeActionType === 'executeCode' && (
+              <PropertyRenderer
+                property={{
+                  key: 'onChangeCodeToExecute',
+                  label: 'Code to Execute',
+                  type: 'expression',
+                  placeholder: 'e.g., {{ (() => { console.log(event.target.value); })() }}',
+                }}
+                rendererProps={rendererProps}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-300 my-4"></div>
+
+        {/* On Focus Section */}
+        <div>
+          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Focus</h5>
+          <div className="space-y-2">
+            <PropertyRenderer
+              property={{
+                key: 'onFocus',
+                label: 'Code to Execute',
+                type: 'expression',
+                placeholder: 'e.g., {{ (() => { console.log("Focused"); })() }}',
+              }}
+              rendererProps={rendererProps}
+            />
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-300 my-4"></div>
+
+        {/* On Blur Section */}
+        <div>
+          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Blur</h5>
+          <div className="space-y-2">
+            <PropertyRenderer
+              property={{
+                key: 'onBlur',
+                label: 'Code to Execute',
+                type: 'expression',
+                placeholder: 'e.g., {{ (() => { console.log("Blurred"); })() }}',
+              }}
+              rendererProps={rendererProps}
+            />
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-300 my-4"></div>
+
+        {/* On Enter Key Press Section */}
+        <div>
+          <h5 className="text-xs font-semibold text-gray-700 mb-2">On Enter Key Press</h5>
+          <div className="space-y-2">
+            <PropertyRenderer
+              property={{
+                key: 'onEnterKeyPress',
+                label: 'Code to Execute',
+                type: 'expression',
+                placeholder: 'e.g., {{ (() => { console.log("Enter pressed"); })() }}',
+              }}
+              rendererProps={rendererProps}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const eventsGroup: PropertyGroup = {
+    id: 'input-events',
+    title: 'Events',
+    order: 4,
+    collapsible: true,
+    defaultCollapsed: false,
+    customGroupRenderer: EventsGroupRenderer,
+    properties: [],
+  };
+
   const accessibilityGroup: PropertyGroup = {
     id: 'input-accessibility',
     title: 'Accessibility',
-    order: 4,
+    order: 5,
     collapsible: true,
     defaultCollapsed: false,
     properties: [
@@ -433,7 +642,7 @@ const InputProperties: React.FC<{
 
   const config: PropertyConfig = {
     baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'input-value', 'styling'],
-    customGroups: [accessibilityGroup],
+    customGroups: [eventsGroup, accessibilityGroup],
   };
 
   return (
@@ -470,6 +679,7 @@ export const InputPlugin: ComponentPlugin = {
       borderWidth: '1px',
       borderColor: '#e5e7eb',
       borderRadius: '4px',
+      onChangeActionType: 'none' as InputActionType,
     },
   },
   renderer: InputRenderer,

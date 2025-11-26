@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { PropertyGroup as PropertyGroupType, PropertyMetadata } from './metadata';
-import { PropertyInput, PropertyInputProps } from './PropertyInput';
+import { PropertyGroup as PropertyGroupType, PropertyMetadata, PropertyContext } from './metadata';
 import { CollapsibleSection, PropInput, PropFxInput, PropSelect } from '../component-registry/common';
 
 interface PropertyGroupProps {
   group: PropertyGroupType;
   properties: PropertyMetadata[];
-  context: PropertyInputProps['context'];
+  context: PropertyContext;
   onUpdate: (propertyId: string, value: any) => void;
   onOpenExpressionEditor?: (initialValue: string, onSave: (newValue: string) => void) => void;
   getValue: (propertyId: string) => any;
@@ -63,7 +62,8 @@ export const PropertyGroup: React.FC<PropertyGroupProps> = ({
     switch (prop.type) {
       case 'string':
       case 'expression':
-        const supportsExpression = prop.supportsExpression ?? (prop.type === 'expression');
+      case 'code':
+        const supportsExpression = prop.supportsExpression ?? (prop.type === 'expression' || prop.type === 'code');
         const isExpression = typeof value === 'string' && value.startsWith('{{');
         
         return (
@@ -71,7 +71,7 @@ export const PropertyGroup: React.FC<PropertyGroupProps> = ({
             label={prop.label}
             value={displayValue}
             onChange={(val) => onUpdate(prop.id, val)}
-            type={prop.type === 'expression' ? 'text' : undefined}
+            type={prop.type === 'expression' || prop.type === 'code' ? 'text' : undefined}
             placeholder={prop.placeholder}
             onOpenEditor={supportsExpression && onOpenExpressionEditor ? (val) => {
               const currentValue = isExpression ? String(value || '') : String(value || '');

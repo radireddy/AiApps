@@ -1,6 +1,5 @@
 import React from 'react';
-import { PropertyGroup, PropertyMetadata } from '../metadata';
-import { PropertyInputProps } from '../PropertyInput';
+import { PropertyGroup, PropertyMetadata, PropertyContext } from '../metadata';
 import { Tooltip } from '../../component-registry/common';
 import { typography } from '../../../constants';
 
@@ -11,7 +10,7 @@ import { typography } from '../../../constants';
 export const ContainerLayoutRenderer: React.FC<{
   group: PropertyGroup;
   properties: PropertyMetadata[];
-  context: PropertyInputProps['context'];
+  context: PropertyContext;
   onUpdate: (propertyId: string, value: any) => void;
   onOpenExpressionEditor?: (initialValue: string, onSave: (newValue: string) => void) => void;
   getValue: (propertyId: string) => any;

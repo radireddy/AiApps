@@ -195,13 +195,18 @@ export interface InputProps extends BaseProps, BorderProps {
   /** Custom HTML attributes (JSON string of key-value pairs) */
   customAttributes?: string;
   /** Event handlers */
-  onChange?: string; // JS expression
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
   onFocus?: string; // JS expression
   onBlur?: string; // JS expression
   onEnterKeyPress?: string; // JS expression
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
 }
 
 export type ButtonActionType = 'alert' | 'updateData' | 'none' | 'createRecord' | 'updateRecord' | 'deleteRecord' | 'selectRecord' | 'updateVariable' | 'executeCode' | 'navigate';
+export type InputActionType = 'none' | 'alert' | 'executeCode';
 
 export interface ButtonProps extends BaseProps, BorderProps {
   text: string;
@@ -273,12 +278,20 @@ export interface SelectProps extends BaseProps, BorderProps {
 export interface CheckboxProps extends BaseProps {
   dataStoreKey: string;
   label: string;
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface RadioGroupProps extends BaseProps {
   dataStoreKey: string;
   options: string; // comma-separated
   groupLabel?: string;
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface SwitchProps extends BaseProps {
