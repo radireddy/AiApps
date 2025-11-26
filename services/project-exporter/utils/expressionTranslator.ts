@@ -64,9 +64,11 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         // These should be converted to safe access: get(currentItem, 'hotelImage')
         // Pattern: identifier.property (where property is a valid identifier)
         // Handle nested property access like "currentItem.hotelImage" or "item.amenities[0]"
-        // Use a more comprehensive regex that matches property access patterns
+        // IMPORTANT: Don't match method calls (e.g., value.toLowerCase()) - those should be preserved
+        // Use a more comprehensive regex that matches property access patterns but NOT method calls
         // This must run BEFORE the tokenizer to prevent currentItem from being converted to get(dataStore, 'currentItem')
-        let transformed = expr.replace(/(?<![\.\w])([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)(\[[^\]]*\])?/g, (match, objName, propName, arrayAccess) => {
+        // Match: obj.prop or obj.prop[index] but NOT obj.method( or obj.prop.method(
+        let transformed = expr.replace(/(?<![\.\w])([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)(\[[^\]]*\])?(?!\s*\()/g, (match, objName, propName, arrayAccess) => {
             // Skip if it's component.value (handled separately)
             if (propName === 'value') {
                 const component = componentMap.get(objName);
@@ -100,7 +102,13 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
                 return match;
             }
             
-            // For unknown objects, use safe get access
+            // In code-block context, be conservative - don't convert property access for unknown variables
+            // Assume they're local variables and preserve direct access
+            if (context === 'code-block') {
+                return match;
+            }
+            
+            // For unknown objects in non-code-block context, use safe get access
             if (arrayAccess) {
                 const indexMatch = arrayAccess.match(/\[(.+)\]/);
                 if (indexMatch) {
@@ -154,6 +162,12 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
         if (context === 'code-block') {
             transformed = transformed.replace(/actions\.updateVariable\s*\(\s*(['"])(.*?)\1\s*,\s*/g, (match, quote, varName) => {
                 return `set${toPascalCase(varName)}(`;
+            });
+            
+            // Add optional chaining for get() results followed by method calls to handle null/undefined safely
+            // Pattern: get(...).method( -> get(...)?.method(
+            transformed = transformed.replace(/get\(([^)]+)\)\.([a-zA-Z_]\w*)\s*\(/g, (match, getArgs, methodName) => {
+                return `get(${getArgs})?.${methodName}(`;
             });
         }
 

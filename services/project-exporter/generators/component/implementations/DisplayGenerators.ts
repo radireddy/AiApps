@@ -426,17 +426,25 @@ export class ListGenerator extends BaseComponentGenerator {
             : '';
         
         // Container style with overflow for scrolling
+        // Note: Don't override width/height/position here - let generateStyleAttribute use the actual component dimensions
+        // The List component should be absolutely positioned with fixed width/height from props
         const containerStyle = {
-            position: `'relative'`,
-            width: `'100%'`,
             overflowY: `'auto'`,
         };
         
+        // Ensure the List component uses absolute positioning (override any position prop that might be set)
+        // The List container itself should be absolutely positioned, not relatively positioned
+        const listPropsWithAbsolutePosition = {
+            ...component.props,
+            position: undefined, // Remove any position prop to use the default 'absolute' from generateStyleAttribute
+        };
+        
         // Build the list container
+        // Note: List component should use absolute positioning with fixed width/height from props
+        // The className "w-full h-full" would override the width, so we remove it
         const attributes = [
             ...this.getCommonAttributes(component, appDef),
-            this.generateStyleAttribute(component.props, appDef, containerStyle),
-            `className="w-full h-full"`
+            this.generateStyleAttribute(listPropsWithAbsolutePosition, appDef, containerStyle)
         ];
         
         // Generate list content

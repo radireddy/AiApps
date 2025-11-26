@@ -50,12 +50,30 @@ export abstract class BaseComponentGenerator implements IComponentGeneratorStrat
      * @param additionalStyles Optional map of extra style properties to merge.
      */
     protected generateStyleAttribute(props: ComponentProps, appDef: AppDefinition, additionalStyles: Record<string, any> = {}): string {
+        // Helper to ensure numeric values don't have double "px"
+        // Handles both numeric values and strings (with or without "px" suffix)
+        const formatDimension = (value: any): string => {
+            if (value === undefined || value === null) return undefined as any;
+            
+            let numValue: number;
+            if (typeof value === 'string') {
+                // Strip "px", "rem", "em", etc. if present and extract numeric value
+                const cleaned = value.replace(/px|rem|em|%|vh|vw/gi, '').trim();
+                numValue = parseFloat(cleaned);
+            } else {
+                numValue = value;
+            }
+            
+            if (isNaN(numValue)) return undefined as any;
+            return `\`${numValue}px\``;
+        };
+        
         const baseStyleProps: Record<string, any> = {
             position: `'absolute'`,
-            left: `\`${props.x}px\``,
-            top: `\`${props.y}px\``,
-            width: `\`${props.width}px\``,
-            height: `\`${props.height}px\``,
+            left: formatDimension(props.x),
+            top: formatDimension(props.y),
+            width: formatDimension(props.width),
+            height: formatDimension(props.height),
             opacity: translateExpression(props.opacity, appDef, 'raw-js'),
             boxShadow: translateExpression(props.boxShadow, appDef, 'raw-js'),
             padding: translateExpression(props.padding, appDef, 'raw-js'),
