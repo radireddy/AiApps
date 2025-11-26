@@ -151,16 +151,12 @@ describe('useAppData - Drag and Move', () => {
       const initialApp = createMockAppDefinition();
       const { result } = renderHook(() => useAppData(initialApp, mockOnSave));
 
-      // Check if function exists
-      if (result.current.moveComponentToParent) {
-        act(() => {
-          result.current.moveComponentToParent('label1', null, 0, 'page1');
-        });
-      } else {
-        // Skip test if function not available
-        expect(result.current.moveComponentToParent).toBeDefined();
-        return;
-      }
+      // Verify function exists
+      expect(result.current.moveComponentToParent).toBeDefined();
+      
+      act(() => {
+        result.current.moveComponentToParent!('label1', null, 0, 'page1');
+      });
 
       const components = result.current.appDefinition.components;
       const movedComponent = components.find(c => c.id === 'label1');

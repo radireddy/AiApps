@@ -13,20 +13,24 @@ export class InputGenerator extends BaseComponentGenerator {
     generate(component: AppComponent, allComponents: AppComponent[], appDef: AppDefinition): string {
         const inputProps = component.props as any;
         
-        // Build onChange handler that updates dataStore and executes onChange expression
-        let onChangeHandler = `(e) => {
-            const newValue = e.target.value;
-            updateDataStore('${inputProps.dataStoreKey}', newValue);
-        }`;
+        // Build onChange handler that executes onChange expression
+        let onChangeCode = '';
         
         // Check if there's an onChange expression or action to execute
         if (inputProps.onChangeActionType === 'executeCode' && inputProps.onChangeCodeToExecute) {
             // Translate the expression to code that can be executed directly
             // The code will have access to all page-level variables through closure
-            const onChangeCode = translateExpression(inputProps.onChangeCodeToExecute, appDef, 'code-block');
-            onChangeHandler = `(e) => {
+            onChangeCode = translateExpression(inputProps.onChangeCodeToExecute, appDef, 'code-block');
+        } else if (inputProps.onChange) {
+            // Fallback to old onChange expression for backward compatibility
+            // Translate the expression to code that can be executed directly
+            onChangeCode = translateExpression(inputProps.onChange, appDef, 'code-block');
+        }
+        
+        // Build the onChange handler with the custom code
+        const onChangeHandler = onChangeCode 
+            ? `(e) => {
             const newValue = e.target.value;
-            updateDataStore('${inputProps.dataStoreKey}', newValue);
             try {
                 // Variables available through closure: theme, dataStore, get, updateDataStore, and all page props/variables
                 const event = {
@@ -36,33 +40,24 @@ export class InputGenerator extends BaseComponentGenerator {
             } catch (error) {
                 console.error('Error executing onChange code:', error);
             }
-        }`;
-        } else if (inputProps.onChange) {
-            // Fallback to old onChange expression for backward compatibility
-            // Translate the expression to code that can be executed directly
-            const onChangeExpr = translateExpression(inputProps.onChange, appDef, 'code-block');
-            onChangeHandler = `(e) => {
+        }`
+            : `(e) => {
             const newValue = e.target.value;
-            updateDataStore('${inputProps.dataStoreKey}', newValue);
-            try {
-                // Variables available through closure: theme, dataStore, get, updateDataStore, and all page props/variables
-                const event = {
-                    target: { value: newValue }
-                };
-                ${onChangeExpr}
-            } catch (error) {
-                console.error('Error executing onChange expression:', error);
-            }
         }`;
-        }
+        
+        // Determine value binding - use component ID as dataStore key if no value/defaultValue is provided
+        const valueExpression = inputProps.value || inputProps.defaultValue || '';
+        const valueBinding = valueExpression 
+            ? translateExpression(valueExpression, appDef, 'raw-js')
+            : `get(dataStore, '${component.id}')`;
         
         const attributes = [
             ...this.getCommonAttributes(component, appDef),
             this.generateStyleAttribute(component.props, appDef, { padding: `'0.5rem'`, boxSizing: `'border-box'` }),
             `className="p-2 box-border"`,
             `placeholder={${translateExpression(inputProps.placeholder, appDef, 'raw-js')}}`,
-            `value={get(dataStore, '${inputProps.dataStoreKey}') || ''}`,
-            `onChange={${onChangeHandler}}`
+            `value={${valueBinding} || ''}`,
+            `onChange={(e) => { updateDataStore('${component.id}', e.target.value); ${onChangeCode ? `try { const event = { target: { value: e.target.value } }; ${onChangeCode} } catch (error) { console.error('Error executing onChange code:', error); }` : ''} }}`
         ];
         return this.buildTag('input', attributes);
     }
@@ -110,8 +105,8 @@ export class TextareaGenerator extends BaseComponentGenerator {
             this.generateStyleAttribute(component.props, appDef, { padding: `'0.5rem'`, boxSizing: `'border-box'` }),
             `className="w-full h-full p-2 bg-white text-gray-900 focus:outline-none resize-none"`,
             `placeholder={${translateExpression(textareaProps.placeholder, appDef, 'raw-js')}}`,
-            `value={get(dataStore, '${textareaProps.dataStoreKey}') || ''}`,
-            `onChange={(e) => updateDataStore('${textareaProps.dataStoreKey}', e.target.value)}`,
+            `value={${translateExpression(textareaProps.value || textareaProps.defaultValue || '', appDef, 'raw-js')} || ''}`,
+            `onChange={(e) => {}}`,
             `aria-label={${translateExpression(textareaProps.accessibilityLabel || textareaProps.placeholder, appDef, 'raw-js')}}`
         ];
         return this.buildTag('textarea', attributes);
@@ -133,8 +128,8 @@ export class SelectGenerator extends BaseComponentGenerator {
             ...this.getCommonAttributes(component, appDef),
             this.generateStyleAttribute(component.props, appDef, { padding: `'0.5rem'`, boxSizing: `'border-box'` }),
             `className="w-full h-full p-2 bg-white text-gray-900 focus:outline-none"`,
-            `value={get(dataStore, '${selectProps.dataStoreKey}') || ''}`,
-            `onChange={(e) => updateDataStore('${selectProps.dataStoreKey}', e.target.value)}`,
+            `value={${translateExpression(selectProps.value || selectProps.defaultValue || '', appDef, 'raw-js')} || ''}`,
+            `onChange={(e) => {}}`,
             `aria-label={${translateExpression(selectProps.accessibilityLabel || selectProps.placeholder, appDef, 'raw-js')}}`
         ];
         
@@ -164,8 +159,8 @@ export class CheckboxGenerator extends BaseComponentGenerator {
         const checkboxInput = `<input
         type="checkbox"
         id="${component.id}"
-        checked={!!get(dataStore, '${checkboxProps.dataStoreKey}')}
-        onChange={(e) => updateDataStore('${checkboxProps.dataStoreKey}', e.target.checked)}
+        checked={${translateExpression(checkboxProps.value || checkboxProps.defaultValue || 'false', appDef, 'raw-js')}}
+        onChange={(e) => {}}
         className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
       />`;
         
@@ -183,7 +178,7 @@ export class CheckboxGenerator extends BaseComponentGenerator {
 export class SwitchGenerator extends BaseComponentGenerator {
     generate(component: AppComponent, allComponents: AppComponent[], appDef: AppDefinition): string {
         const switchProps = component.props as any;
-        const isChecked = `!!get(dataStore, '${switchProps.dataStoreKey}')`;
+        const isChecked = translateExpression(switchProps.value || switchProps.defaultValue || 'false', appDef, 'raw-js');
         const style = {
             display: `'flex'`,
             alignItems: `'center'`,
@@ -200,7 +195,7 @@ export class SwitchGenerator extends BaseComponentGenerator {
         role="switch"
         aria-checked={${isChecked}}
         aria-labelledby="${component.id}-label"
-        onClick={() => updateDataStore('${switchProps.dataStoreKey}', !${isChecked})}
+        onClick={() => {}}
         className={\`\${${isChecked} ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500\`}
       >
         <span className={\`\${${isChecked} ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform\`} aria-hidden="true" />
@@ -221,7 +216,7 @@ export class RadioGroupGenerator extends BaseComponentGenerator {
     generate(component: AppComponent, allComponents: AppComponent[], appDef: AppDefinition): string {
         const radioProps = component.props as any;
         const options = radioProps.options ? radioProps.options.split(',').map((opt: string) => opt.trim()) : [];
-        const selectedValue = `get(dataStore, '${radioProps.dataStoreKey}')`;
+        const selectedValue = translateExpression(radioProps.value || radioProps.defaultValue || '', appDef, 'raw-js');
         const groupLabelId = `${component.id}-group-label`;
         
         const style = {
@@ -250,7 +245,7 @@ export class RadioGroupGenerator extends BaseComponentGenerator {
               name="${component.id}"
               value="${option}"
               checked={${selectedValue} === '${option}'}
-              onChange={(e) => updateDataStore('${radioProps.dataStoreKey}', e.target.value)}
+              onChange={(e) => {}}
               className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
             />
             <label htmlFor="${optionId}" className="text-gray-800">${option}</label>

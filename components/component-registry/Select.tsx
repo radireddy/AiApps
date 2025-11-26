@@ -1,6 +1,6 @@
 
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ComponentType, SelectProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
@@ -12,7 +12,7 @@ import { EventsGroupRenderer } from './EventsGroupRenderer';
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
 const SelectRenderer: React.FC<{
-  component: { props: SelectProps };
+  component: { id: string; props: SelectProps };
   mode: 'edit' | 'preview';
   dataStore: Record<string, any>;
   onUpdateDataStore?: (key: string, value: any) => void;
@@ -62,32 +62,58 @@ const SelectRenderer: React.FC<{
   // Supports both static values and expressions
   const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue || '', evaluationScope, '');
   
-  // Get value from dataStore - try both direct key access and dot notation
-  let dataStoreValue = dataStore[p.dataStoreKey];
-  if (dataStoreValue === undefined) {
-    // Try dot notation for nested paths like 'user.name'
-    dataStoreValue = get(dataStore, p.dataStoreKey, undefined);
-  }
+  // If value prop is provided, use it (supports expressions)
+  const valueProp = useJavaScriptRenderer(p.value, evaluationScope, undefined);
+  const hasValueProp = p.value !== undefined && p.value !== null && p.value !== '';
   
-  // Check if dataStore has a value (undefined means key doesn't exist, empty string means user cleared it)
-  const hasDataStoreValue = dataStoreValue !== undefined;
-  
-  // Initialize dataStore with defaultValue if key doesn't exist and defaultValue is provided
-  useEffect(() => {
-    if (!hasDataStoreValue && p.defaultValue && onUpdateDataStore) {
-      // Only initialize if defaultValue evaluates to a non-empty value
-      const initValue = evaluatedDefaultValue;
-      if (initValue !== undefined && initValue !== null && initValue !== '') {
-        onUpdateDataStore(p.dataStoreKey, initValue);
-      }
+  // Use local state to track component value for interactivity
+  // Check dataStore first (for persistence), then value prop, then defaultValue
+  const [localValue, setLocalValue] = useState<any>(() => {
+    // First check if value exists in dataStore (from previous interactions)
+    const storedValue = get(dataStore, component.id);
+    if (storedValue !== undefined && storedValue !== null) {
+      return storedValue;
     }
-  }, [hasDataStoreValue, p.defaultValue, p.dataStoreKey, evaluatedDefaultValue, onUpdateDataStore]);
+    // Then check value prop
+    if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+      return valueProp;
+    } else if (p.defaultValue) {
+      return evaluatedDefaultValue;
+    }
+    return '';
+  });
   
-  // Use dataStore value if key exists (even if empty), otherwise use evaluated defaultValue for display
-  // Once dataStore is initialized, it will have the value and we'll use that
-  const currentValue = hasDataStoreValue ? (dataStoreValue ?? '') : (p.defaultValue ? evaluatedDefaultValue : '');
+  // Update local value when prop value changes (for controlled components)
+  // But only if there's no stored value in dataStore
+  useEffect(() => {
+    const storedValue = get(dataStore, component.id);
+    if (storedValue === undefined || storedValue === null) {
+      if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+        setLocalValue(valueProp);
+      } else if (p.defaultValue) {
+        setLocalValue(evaluatedDefaultValue);
+      }
+    } else {
+      // Use stored value from dataStore
+      setLocalValue(storedValue);
+    }
+  }, [hasValueProp, valueProp, p.defaultValue, evaluatedDefaultValue, dataStore, component.id]);
+  
+  // Use local state for display
+  const currentValue = localValue;
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value;
+    
+    // Update local state for interactivity
+    if (mode === 'preview') {
+      setLocalValue(newValue);
+      // Also update dataStore using component ID as key
+      if (onUpdateDataStore) {
+        onUpdateDataStore(component.id, newValue);
+      }
+    }
+    
     // Record click time to prevent focus/blur from firing during click
     lastClickTimeRef.current = Date.now();
     
@@ -98,7 +124,6 @@ const SelectRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -141,7 +166,6 @@ const SelectRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -189,7 +213,6 @@ const SelectRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -208,7 +231,6 @@ const SelectRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -218,7 +240,8 @@ const SelectRenderer: React.FC<{
     <select
       ref={selectRef}
       value={currentValue}
-      onChange={mode === 'preview' ? handleChange : (e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
+      onChange={mode === 'edit' ? () => {} : handleChange}
+      readOnly={mode === 'edit'}
       onFocus={mode === 'preview' ? handleFocus : undefined}
       onBlur={mode === 'preview' ? handleBlur : undefined}
       onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
@@ -288,7 +311,6 @@ export const SelectPlugin: ComponentPlugin = {
     defaultProps: {
       ...commonStylingProps,
       placeholder: 'Select an option',
-      dataStoreKey: 'newSelect',
       options: 'Option 1,Option 2,Option 3',
       accessibilityLabel: 'Dropdown select',
       width: 200,

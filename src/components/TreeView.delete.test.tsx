@@ -161,12 +161,12 @@ describe('TreeView Selection + Delete Button Functionality', () => {
 
   // Test delete via TreeView for all component types
   testDeleteViaTreeView(ComponentType.BUTTON, 'Button', { text: 'Click Me', actionType: 'none' });
-  testDeleteViaTreeView(ComponentType.INPUT, 'Input', { placeholder: 'Enter text', dataStoreKey: 'testKey' });
-  testDeleteViaTreeView(ComponentType.CHECKBOX, 'Checkbox', { label: 'Check me', dataStoreKey: 'checkboxKey' });
-  testDeleteViaTreeView(ComponentType.SELECT, 'Select', { placeholder: 'Select option', dataStoreKey: 'testKey', options: 'Option1,Option2' });
-  testDeleteViaTreeView(ComponentType.TEXTAREA, 'Textarea', { placeholder: 'Enter text', dataStoreKey: 'testKey' });
-  testDeleteViaTreeView(ComponentType.SWITCH, 'Switch', { label: 'Toggle me', dataStoreKey: 'switchKey' });
-  testDeleteViaTreeView(ComponentType.RADIO_GROUP, 'Radio Group', { dataStoreKey: 'testKey', options: 'Option1,Option2' });
+  testDeleteViaTreeView(ComponentType.INPUT, 'Input', { placeholder: 'Enter text' });
+  testDeleteViaTreeView(ComponentType.CHECKBOX, 'Checkbox', { label: 'Check me' });
+  testDeleteViaTreeView(ComponentType.SELECT, 'Select', { placeholder: 'Select option', options: 'Option1,Option2' });
+  testDeleteViaTreeView(ComponentType.TEXTAREA, 'Textarea', { placeholder: 'Enter text' });
+  testDeleteViaTreeView(ComponentType.SWITCH, 'Switch', { label: 'Toggle me' });
+  testDeleteViaTreeView(ComponentType.RADIO_GROUP, 'Radio Group', { options: 'Option1,Option2' });
   testDeleteViaTreeView(ComponentType.LABEL, 'Label', { text: 'Label Text', fontSize: 14, fontWeight: 'normal', color: '#000000' });
   testDeleteViaTreeView(ComponentType.PANEL, 'Panel', { backgroundColor: '#ffffff' });
   testDeleteViaTreeView(ComponentType.H_STACK, 'Horizontal Panel', { backgroundColor: '#ffffff' });

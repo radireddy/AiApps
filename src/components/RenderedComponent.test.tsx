@@ -110,7 +110,6 @@ describe('RenderedComponent Selection', () => {
         width: 200,
         height: 40,
         placeholder: 'Enter text',
-        dataStoreKey: 'testKey',
         disabled: false,
       },
     };
@@ -156,7 +155,6 @@ describe('RenderedComponent Selection', () => {
         width: 150,
         height: 30,
         label: 'Check me',
-        dataStoreKey: 'checkboxKey',
         disabled: false,
       },
     };
@@ -202,7 +200,6 @@ describe('RenderedComponent Selection', () => {
         width: 200,
         height: 40,
         placeholder: 'Select option',
-        dataStoreKey: 'testKey',
         options: 'Option1,Option2',
         disabled: false,
       },
@@ -249,7 +246,6 @@ describe('RenderedComponent Selection', () => {
         width: 250,
         height: 100,
         placeholder: 'Enter text',
-        dataStoreKey: 'testKey',
         disabled: false,
       },
     };
@@ -295,7 +291,6 @@ describe('RenderedComponent Selection', () => {
         width: 180,
         height: 30,
         label: 'Toggle me',
-        dataStoreKey: 'switchKey',
         disabled: false,
       },
     };
@@ -340,7 +335,6 @@ describe('RenderedComponent Selection', () => {
         y: 0,
         width: 150,
         height: 80,
-        dataStoreKey: 'testKey',
         options: 'Option1,Option2',
         disabled: false,
       },

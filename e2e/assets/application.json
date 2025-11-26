@@ -68,7 +68,6 @@
         "borderColor": "{{theme.colors.border}}",
         "borderStyle": "{{theme.border.style}}",
         "placeholder": "Enter text...",
-        "dataStoreKey": "newInput",
         "accessibilityLabel": "Text input field",
         "width": 200,
         "height": 40,
@@ -84,7 +83,6 @@
       "type": "CHECKBOX",
       "props": {
         "label": "Accept terms",
-        "dataStoreKey": "newCheckbox",
         "width": 150,
         "height": 30,
         "opacity": 1,
@@ -116,7 +114,6 @@
       "type": "SWITCH",
       "props": {
         "label": "Enable Feature",
-        "dataStoreKey": "newSwitch",
         "width": 180,
         "height": 30,
         "disabled": false,

@@ -133,7 +133,6 @@ export interface EventHandlerOptions {
   evaluationScope: Record<string, any>;
   actions?: any;
   onUpdateDataStore?: (key: string, value: any) => void;
-  dataStoreKey?: string;
 }
 
 /**
@@ -204,10 +203,6 @@ export const handleChangeEvent = (
   
   const value = newValue !== undefined ? newValue : event.target.value;
   
-  // Update dataStore if dataStoreKey is provided
-  if (options.dataStoreKey && options.onUpdateDataStore) {
-    options.onUpdateDataStore(options.dataStoreKey, value);
-  }
   
   const eventScope = createEventScope(
     options.evaluationScope,

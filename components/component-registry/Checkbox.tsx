@@ -1,6 +1,6 @@
 
 
-import React, { useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ComponentType, CheckboxProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
@@ -48,9 +48,56 @@ const CheckboxRenderer: React.FC<{
   const finalOpacity = isDisabled ? 0.6 : (typeof opacityValue === 'number' ? opacityValue : (typeof opacityValue === 'string' && opacityValue.trim() ? parseFloat(opacityValue) || 1 : 1));
   // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
   const pointerEventsStyle = mode === 'edit' && isDisabled ? { pointerEvents: 'none' as const } : {};
+  
+  // Evaluate defaultValue for checkbox
+  const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue, evaluationScope, false);
+  const valueProp = useJavaScriptRenderer(p.value, evaluationScope, undefined);
+  const hasValueProp = p.value !== undefined && p.value !== null && p.value !== '';
+  
+  // Use local state to track checkbox checked state
+  // Check dataStore first (for persistence), then value prop, then defaultValue
+  const [isChecked, setIsChecked] = useState<boolean>(() => {
+    // First check if value exists in dataStore (from previous interactions)
+    const storedValue = get(dataStore, component.id);
+    if (storedValue !== undefined && storedValue !== null) {
+      return !!storedValue;
+    }
+    // Then check value prop
+    if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+      return !!valueProp;
+    } else if (p.defaultValue !== undefined && p.defaultValue !== null && p.defaultValue !== '') {
+      return !!evaluatedDefaultValue;
+    }
+    return false;
+  });
+  
+  // Update local state when prop value changes
+  // But only if there's no stored value in dataStore
+  useEffect(() => {
+    const storedValue = get(dataStore, component.id);
+    if (storedValue === undefined || storedValue === null) {
+      if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+        setIsChecked(!!valueProp);
+      } else if (p.defaultValue !== undefined && p.defaultValue !== null && p.defaultValue !== '') {
+        setIsChecked(!!evaluatedDefaultValue);
+      }
+    } else {
+      // Use stored value from dataStore
+      setIsChecked(!!storedValue);
+    }
+  }, [hasValueProp, valueProp, p.defaultValue, evaluatedDefaultValue, dataStore, component.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.checked;
+    
+    // Update local state for interactivity
+    if (mode === 'preview') {
+      setIsChecked(newValue);
+      // Also update dataStore using component ID as key
+      if (onUpdateDataStore) {
+        onUpdateDataStore(component.id, newValue);
+      }
+    }
     
     // Record click time to prevent focus/blur from firing during click
     lastClickTimeRef.current = Date.now();
@@ -68,7 +115,6 @@ const CheckboxRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       customEvent,
       newValue
@@ -123,7 +169,6 @@ const CheckboxRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -178,7 +223,6 @@ const CheckboxRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -197,7 +241,6 @@ const CheckboxRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -209,8 +252,8 @@ const CheckboxRenderer: React.FC<{
         type="checkbox"
         id={component.id}
         ref={checkboxRef}
-        checked={!!get(dataStore, p.dataStoreKey)}
-        onChange={mode === 'preview' ? handleChange : (e) => onUpdateDataStore?.(p.dataStoreKey, e.target.checked)}
+        checked={isChecked}
+        onChange={handleChange}
         onFocus={mode === 'preview' ? handleFocus : undefined}
         onBlur={mode === 'preview' ? handleBlur : undefined}
         onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
@@ -260,7 +303,6 @@ export const CheckboxPlugin: ComponentPlugin = {
     icon: React.createElement('svg', { style: iconStyle, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg" }, React.createElement('path', { d: "M9 12L11 14L15 10", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }), React.createElement('rect', { x: "4", y: "4", width: "16", height: "16", rx: "2", stroke: "currentColor", strokeWidth: "2" })),
     defaultProps: {
       label: 'Accept terms',
-      dataStoreKey: 'newCheckbox',
       width: 150,
       height: 30,
       opacity: 1,

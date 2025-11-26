@@ -89,10 +89,9 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
             if (propName === 'value') {
                 const component = componentMap.get(objName);
                 if (component) {
-                    const dataStoreKey = (component?.props as any)?.dataStoreKey;
-                    if (dataStoreKey) {
-                        return `get(dataStore, '${dataStoreKey}')`;
-                    }
+                    // Component access - translate to get(dataStore, 'componentId')
+                    // Since we removed dataStoreKey, components now use their ID as the dataStore key
+                    return `get(dataStore, '${objName}')`;
                 }
             }
             
@@ -142,12 +141,7 @@ export const translateExpression = (value: any, appDef: AppDefinition, context: 
             if (stringLiteral) return stringLiteral;
 
             if (componentAccess) {
-                const [compId] = componentAccess.split('.');
-                const component = componentMap.get(compId);
-                const dataStoreKey = (component?.props as any)?.dataStoreKey;
-                if (dataStoreKey) {
-                    return `get(dataStore, '${dataStoreKey}')`;
-                }
+                // Component access - return as is
                 return componentAccess;
             }
 

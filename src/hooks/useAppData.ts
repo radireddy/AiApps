@@ -3,6 +3,7 @@ import { AppDefinition, AppComponent, ComponentType, DataStore, ComponentProps, 
 import { componentRegistry } from '@/components/component-registry/registry';
 import { dataSourceRegistry } from '@/data-sources/registry';
 import { get, set } from '@/utils/data-helpers';
+import { safeEval } from '@/expressions/engine';
 
 const parseInitialValue = (value: any, type: AppVariable['type']) => {
   try {
@@ -168,13 +169,6 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
 
         let newDataStore = { ...prev.dataStore };
         const props = newComp.props as any;
-        if (props.dataStoreKey && !get(newDataStore, props.dataStoreKey)) {
-          let defaultValue: any = '';
-          if (type === ComponentType.CHECKBOX || type === ComponentType.SWITCH) {
-            defaultValue = false;
-          }
-          newDataStore = set(newDataStore, props.dataStoreKey, defaultValue);
-        }
 
         // Auto-position within parent using the freshest prev state
         if (parentId) {
@@ -438,6 +432,210 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
     return { ...prev, components: updatedComponents };
   });
   }, [setAppDefinitionState]);
+
+  /**
+   * Reorders a component within the same parent.
+   * Moves the component to a new position in the sibling list.
+   * @param componentId - The component to reorder
+   * @param newIndex - The new index position (0-based)
+   * @param parentId - The parent ID (null for root/page level)
+   * @param pageId - The page ID
+   */
+  const reorderComponent = useCallback((componentId: string, newIndex: number, parentId: string | null, pageId: string) => {
+    setAppDefinitionState(prev => {
+      const component = prev.components.find(c => c.id === componentId);
+      if (!component) return prev;
+      
+      // Verify the component is on the correct page
+      if (component.pageId !== pageId) return prev;
+      
+      // Get all siblings (components with the same parent)
+      const siblings = prev.components
+        .filter(c => {
+          const cParentId = c.parentId || null;
+          return cParentId === parentId && c.pageId === pageId && c.id !== componentId;
+        })
+        .sort((a, b) => {
+          // Sort by current order in the array (preserve existing order)
+          const aIndex = prev.components.indexOf(a);
+          const bIndex = prev.components.indexOf(b);
+          return aIndex - bIndex;
+        });
+      
+      // Clamp newIndex to valid range
+      const clampedIndex = Math.max(0, Math.min(newIndex, siblings.length));
+      
+      // Create new array with component inserted at new position
+      const newSiblings = [...siblings];
+      newSiblings.splice(clampedIndex, 0, component);
+      
+      // Rebuild components array maintaining order
+      const otherComponents = prev.components.filter(c => {
+        const cParentId = c.parentId || null;
+        return !(cParentId === parentId && c.pageId === pageId);
+      });
+      
+      // Insert siblings in order after other components
+      const reorderedComponents = [...otherComponents, ...newSiblings];
+      
+      return {
+        ...prev,
+        components: reorderedComponents,
+      };
+    });
+  }, []);
+
+  /**
+   * Moves a component from one parent to another (or to root).
+   * Also handles reordering within the new parent.
+   * This function properly updates parentId and calculates relative positions.
+   * If the move fails validation, it automatically rolls back to the original position.
+   * @param componentId - The component to move
+   * @param newParentId - The new parent ID (null for root/page level)
+   * @param newIndex - Optional new index position within new parent (0-based)
+   * @param pageId - The page ID
+   */
+  const moveComponentToParent = useCallback((componentId: string, newParentId: string | null, newIndex: number | null, pageId: string) => {
+    setAppDefinitionState(prev => {
+      const component = prev.components.find(c => c.id === componentId);
+      if (!component) return prev;
+      
+      // Verify the component is on the correct page
+      if (component.pageId !== pageId) return prev;
+      
+      // Store original state for rollback if move fails
+      const originalParentId = component.parentId || null;
+      const originalX = component.props.x as number;
+      const originalY = component.props.y as number;
+      
+      // Helper to get absolute position of a component
+      const getAbsolutePosition = (cId: string, allComps: AppComponent[]): { x: number, y: number } => {
+        const comp = allComps.find(c => c.id === cId);
+        if (!comp) return { x: 0, y: 0 };
+        
+        let absX = comp.props.x as number;
+        let absY = comp.props.y as number;
+        let currentParentId = comp.parentId;
+        
+        while (currentParentId) {
+          const parent = allComps.find(p => p.id === currentParentId);
+          if (parent) {
+            absX += parent.props.x as number;
+            absY += parent.props.y as number;
+            currentParentId = parent.parentId;
+          } else {
+            break;
+          }
+        }
+        return { x: absX, y: absY };
+      };
+      
+      // Helper to check if a component is a descendant (prevent circular references)
+      const isDescendant = (childId: string, parentId: string, allComps: AppComponent[]): boolean => {
+        const child = allComps.find(c => c.id === childId);
+        if (!child || !child.parentId) return false;
+        if (child.parentId === parentId) return true;
+        return isDescendant(child.parentId, parentId, allComps);
+      };
+      
+      // Prevent moving component into itself or its own descendant
+      if (newParentId && (component.id === newParentId || isDescendant(newParentId, component.id, prev.components))) {
+        return prev; // Rollback - return original state
+      }
+      
+      // Verify new parent exists and is a container (if not null) - validate BEFORE attempting move
+      if (newParentId) {
+        const newParent = prev.components.find(c => c.id === newParentId);
+        if (!newParent) {
+          return prev; // Rollback - return original state
+        }
+        
+        const plugin = componentRegistry[newParent.type];
+        if (!plugin || !plugin.isContainer) {
+          return prev; // Rollback - return original state
+        }
+        
+        // Verify new parent is on the same page
+        if (newParent.pageId !== pageId) {
+          return prev; // Rollback - return original state
+        }
+      }
+      
+      const oldParentId = component.parentId || null;
+      
+      // If parent hasn't changed and no reordering needed, return early
+      if (oldParentId === newParentId && newIndex === null) {
+        return prev;
+      }
+      
+      // Get absolute position of the component
+      const absolutePos = getAbsolutePosition(componentId, prev.components);
+      
+      // Calculate new relative position based on new parent
+      let newRelativeX: number;
+      let newRelativeY: number;
+      
+      if (newParentId) {
+        const newParent = prev.components.find(c => c.id === newParentId)!;
+        const newParentAbsPos = getAbsolutePosition(newParentId, prev.components);
+        newRelativeX = absolutePos.x - newParentAbsPos.x;
+        newRelativeY = absolutePos.y - newParentAbsPos.y;
+      } else {
+        // Moving to root level - use absolute position
+        newRelativeX = absolutePos.x;
+        newRelativeY = absolutePos.y;
+      }
+      
+      // Get siblings in new parent (excluding the component being moved)
+      const newSiblings = prev.components
+        .filter(c => {
+          const cParentId = c.parentId || null;
+          return cParentId === newParentId && c.pageId === pageId && c.id !== componentId;
+        })
+        .sort((a, b) => {
+          const aIndex = prev.components.indexOf(a);
+          const bIndex = prev.components.indexOf(b);
+          return aIndex - bIndex;
+        });
+      
+      // Determine final index
+      let finalIndex = newIndex !== null ? newIndex : newSiblings.length;
+      finalIndex = Math.max(0, Math.min(finalIndex, newSiblings.length));
+      
+      // Create new siblings array with component inserted at final index
+      const finalSiblings = [...newSiblings];
+      finalSiblings.splice(finalIndex, 0, component);
+      
+      // Rebuild components array: other components + final siblings
+      const otherComponents = prev.components.filter(c => {
+        const cParentId = c.parentId || null;
+        return !(cParentId === newParentId && c.pageId === pageId);
+      });
+      
+      const updatedComponents = [...otherComponents, ...finalSiblings];
+      
+      // Update the moved component's parentId and position
+      const updatedComponent = {
+        ...component,
+        parentId: newParentId,
+        props: {
+          ...component.props,
+          x: newRelativeX,
+          y: newRelativeY,
+        },
+      };
+      
+      // Replace component in the array
+      const finalComponents = updatedComponents.map(c => 
+        c.id === componentId ? updatedComponent : c
+      );
+      
+      return {
+        ...prev,
+        components: finalComponents,
+      };
+    });
+  }, []);
 
     // FIX: Alignment & distribution helper for selected components
     const alignAndDistribute = useCallback((action: AlignAction) => {
@@ -746,19 +944,71 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   // --- EXPRESSION EVALUATION SCOPE ---
   const evaluationScope = useMemo(() => {
   const scope = { console, theme: themeWithLowercaseAliases, ...dataStore, ...dataSourceContents, ...variableState };
+  // Add component states to scope - first pass: add all props
   components.forEach(c => {
     const props = c.props as any;
-    if (props.dataStoreKey) {
-      scope[c.id] = {
-        value: get(dataStore, props.dataStoreKey),
-        ...props // Also expose all props (like placeholder, disabled, etc.)
-      }
-    } else {
-       scope[c.id] = {
-        ...props
-      }
+    scope[c.id] = {
+      ...props
     }
   });
+  
+  // Second pass: evaluate and add component values
+  // This allows components to reference each other's values
+  components.forEach(c => {
+    const props = c.props as any;
+    let componentValue: any = undefined;
+    
+    // First check if value exists in dataStore (from user interactions)
+    const storedValue = get(dataStore, c.id);
+    if (storedValue !== undefined && storedValue !== null) {
+      componentValue = storedValue;
+    } else {
+      // Try to evaluate value prop if it exists
+      if (props.value !== undefined && props.value !== null && props.value !== '') {
+        try {
+          if (typeof props.value === 'string' && (props.value.startsWith('{{') || props.value.includes('{{'))) {
+            // It's an expression, evaluate it
+            const expression = props.value.startsWith('{{') && props.value.endsWith('}}')
+              ? props.value.substring(2, props.value.length - 2).trim()
+              : props.value;
+            componentValue = safeEval(expression, scope);
+          } else {
+            // It's a literal value
+            componentValue = props.value;
+          }
+        } catch (e) {
+          // If evaluation fails, use the raw value
+          componentValue = props.value;
+        }
+      } else if (props.defaultValue !== undefined && props.defaultValue !== null && props.defaultValue !== '') {
+        // Fall back to defaultValue if value is not set
+        try {
+          if (typeof props.defaultValue === 'string' && (props.defaultValue.startsWith('{{') || props.defaultValue.includes('{{'))) {
+            // It's an expression, evaluate it
+            const expression = props.defaultValue.startsWith('{{') && props.defaultValue.endsWith('}}')
+              ? props.defaultValue.substring(2, props.defaultValue.length - 2).trim()
+              : props.defaultValue;
+            componentValue = safeEval(expression, scope);
+          } else {
+            // It's a literal value
+            componentValue = props.defaultValue;
+          }
+        } catch (e) {
+          // If evaluation fails, use the raw value
+          componentValue = props.defaultValue;
+        }
+      }
+    }
+    
+    // Add value to component scope
+    if (scope[c.id] && typeof scope[c.id] === 'object') {
+      scope[c.id] = {
+        ...scope[c.id],
+        value: componentValue
+      };
+    }
+  });
+  
   components.filter(c => c.type === ComponentType.TABLE).forEach(c => {
     const props = c.props as TableProps;
     if (props.selectedRecordKey) {
@@ -805,10 +1055,12 @@ export const useAppData = (initialAppDefinition: AppDefinition, onSave: (appDef:
   applyTheme,
   reparentComponent,
   selectPage,
-    alignAndDistribute,
-    arrangeContainerChildren,
-    // Expose lower-level handlers expected by tests
-    handleUpdateVariable,
+  alignAndDistribute,
+  arrangeContainerChildren,
+  reorderComponent,
+  moveComponentToParent,
+  // Expose lower-level handlers expected by tests
+  handleUpdateVariable,
   };
 };
 

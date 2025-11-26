@@ -18,7 +18,6 @@ describe('InputPlugin', () => {
       props: {
         x: 0, y: 0, width: 200, height: 40,
         placeholder: 'Enter text...',
-        dataStoreKey: 'form.name',
         accessibilityLabel: 'Name input',
       },
     };
@@ -30,19 +29,6 @@ describe('InputPlugin', () => {
       expect(input).toHaveValue('');
     });
 
-    it('should display value from dataStore', () => {
-        const dataStore = { form: { name: 'John Doe' } };
-        render(<InputRenderer component={baseComponent} mode="preview" dataStore={dataStore} evaluationScope={{}} />);
-        expect(screen.getByDisplayValue('John Doe')).toBeInTheDocument();
-    });
-
-    it('should call onUpdateDataStore on change', async () => {
-        const onUpdateDataStore = jest.fn();
-        render(<InputRenderer component={baseComponent} mode="preview" dataStore={{}} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
-        const input = screen.getByPlaceholderText('Enter text...');
-        await userEvent.type(input, 'test');
-        expect(onUpdateDataStore).toHaveBeenLastCalledWith('form.name', 'test');
-    });
 
     it('should be disabled based on an expression', () => {
         const component = { ...baseComponent, props: { ...baseComponent.props, disabled: '{{true}}' } };
@@ -65,7 +51,6 @@ describe('InputPlugin', () => {
         id: 'input1',
         props: {
           placeholder: 'User Name',
-          dataStoreKey: 'user.name',
           accessibilityLabel: 'User name input',
         } as any
       },
@@ -76,7 +61,6 @@ describe('InputPlugin', () => {
     it('should render properties correctly', () => {
       render(<InputProperties {...baseProps} />);
       expect(screen.getByLabelText('Placeholder')).toHaveValue('User Name');
-      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('user.name');
       expect(screen.getByLabelText('Accessibility Label')).toHaveValue('User name input');
     });
 

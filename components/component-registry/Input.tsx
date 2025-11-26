@@ -12,7 +12,7 @@ import { EventsGroupRenderer } from './EventsGroupRenderer';
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
 const InputRenderer: React.FC<{
-  component: { props: InputProps };
+  component: { id: string; props: InputProps };
   mode: 'edit' | 'preview';
   dataStore: Record<string, any>;
   onUpdateDataStore?: (key: string, value: any) => void;
@@ -103,40 +103,45 @@ const InputRenderer: React.FC<{
   // Evaluate defaultValue
   const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue || '', evaluationScope, '');
   
-  // Get value from dataStore or use value prop
-  let dataStoreValue: any = undefined;
-  if (p.dataStoreKey) {
-    dataStoreValue = dataStore[p.dataStoreKey];
-    if (dataStoreValue === undefined) {
-      dataStoreValue = get(dataStore, p.dataStoreKey, undefined);
-    }
-  }
-  
   // If value prop is provided, use it (supports expressions)
   const valueProp = useJavaScriptRenderer(p.value, evaluationScope, undefined);
   const hasValueProp = p.value !== undefined && p.value !== null && p.value !== '';
   
-  const hasDataStoreValue = dataStoreValue !== undefined;
-  
-  // Initialize dataStore with defaultValue if key doesn't exist and defaultValue is provided
-  useEffect(() => {
-    if (!hasDataStoreValue && p.defaultValue && onUpdateDataStore && p.dataStoreKey) {
-      const initValue = evaluatedDefaultValue;
-      if (initValue !== undefined && initValue !== null && initValue !== '') {
-        onUpdateDataStore(p.dataStoreKey, initValue);
-      }
+  // Use local state to track component value for interactivity
+  // Check dataStore first (for persistence), then value prop, then defaultValue
+  const [localValue, setLocalValue] = useState<any>(() => {
+    // First check if value exists in dataStore (from previous interactions)
+    const storedValue = get(dataStore, component.id);
+    if (storedValue !== undefined && storedValue !== null) {
+      return storedValue;
     }
-  }, [hasDataStoreValue, p.defaultValue, p.dataStoreKey, evaluatedDefaultValue, onUpdateDataStore]);
+    // Then check value prop
+    if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+      return valueProp;
+    } else if (p.defaultValue) {
+      return evaluatedDefaultValue;
+    }
+    return '';
+  });
   
-  // Determine current value
-  let currentValue: any = '';
-  if (hasValueProp && valueProp !== undefined && valueProp !== null) {
-    currentValue = valueProp;
-  } else if (hasDataStoreValue) {
-    currentValue = dataStoreValue ?? '';
-  } else if (p.defaultValue) {
-    currentValue = evaluatedDefaultValue;
-  }
+  // Update local value when prop value changes (for controlled components)
+  // But only if there's no stored value in dataStore
+  useEffect(() => {
+    const storedValue = get(dataStore, component.id);
+    if (storedValue === undefined || storedValue === null) {
+      if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+        setLocalValue(valueProp);
+      } else if (p.defaultValue) {
+        setLocalValue(evaluatedDefaultValue);
+      }
+    } else {
+      // Use stored value from dataStore
+      setLocalValue(storedValue);
+    }
+  }, [hasValueProp, valueProp, p.defaultValue, evaluatedDefaultValue, dataStore, component.id]);
+  
+  // Determine current value - use local state for interactivity
+  const currentValue = localValue;
 
   // Evaluate validation-related expressions (hooks must be called unconditionally)
   const requiredValue = useJavaScriptRenderer(p.required, evaluationScope, false);
@@ -221,6 +226,15 @@ const InputRenderer: React.FC<{
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     
+    // Update local state for interactivity
+    if (mode === 'preview') {
+      setLocalValue(newValue);
+      // Also update dataStore using component ID as key
+      if (onUpdateDataStore) {
+        onUpdateDataStore(component.id, newValue);
+      }
+    }
+    
     // Validate in preview mode
     if (mode === 'preview' && hasBlurred) {
       const error = validateInput(newValue);
@@ -235,7 +249,6 @@ const InputRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -250,7 +263,6 @@ const InputRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -279,7 +291,6 @@ const InputRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -294,7 +305,6 @@ const InputRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -320,7 +330,7 @@ const InputRenderer: React.FC<{
     'aria-disabled': isDisabledInPreview,
     'aria-label': p.accessibilityLabel || placeholder,
     'aria-invalid': validationError ? 'true' : undefined,
-    'aria-describedby': validationError ? `${component.props.dataStoreKey || 'input'}-error` : undefined,
+    'aria-describedby': validationError ? `${component.id}-error` : undefined,
     style,
     className: p.className ? `${p.className} w-full h-full focus:outline-none focus:ring-2 focus:ring-blue-500` : 'w-full h-full focus:outline-none focus:ring-2 focus:ring-blue-500',
     ref: inputRef,
@@ -367,7 +377,7 @@ const InputRenderer: React.FC<{
   // In edit mode, prevent actual input interaction
   if (mode === 'edit') {
     inputProps.readOnly = true;
-    inputProps.onChange = undefined;
+    inputProps.onChange = () => {}; // No-op handler to avoid React warning
     inputProps.onFocus = undefined;
     inputProps.onBlur = undefined;
     inputProps.onKeyDown = undefined;
@@ -379,7 +389,7 @@ const InputRenderer: React.FC<{
   }
 
   // Use controlled or uncontrolled value
-  if (hasValueProp || hasDataStoreValue) {
+  if (hasValueProp) {
     inputProps.value = currentValue;
   } else if (p.defaultValue) {
     inputProps.defaultValue = currentValue;
@@ -390,7 +400,7 @@ const InputRenderer: React.FC<{
       <input {...inputProps} />
       {mode === 'preview' && validationError && (
         <div
-          id={`${p.dataStoreKey || 'input'}-error`}
+          id={`${component.id}-error`}
           role="alert"
           aria-live="polite"
           style={{
@@ -463,7 +473,6 @@ export const InputPlugin: ComponentPlugin = {
     defaultProps: {
       ...commonStylingProps,
       placeholder: 'Enter text...',
-      dataStoreKey: 'newInput',
       accessibilityLabel: 'Text input field',
       inputType: 'text',
       width: 200,

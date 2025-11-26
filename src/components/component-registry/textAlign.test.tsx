@@ -148,7 +148,6 @@ describe('textAlign Property Tests', () => {
         type: ComponentType.INPUT,
         props: {
           placeholder: 'Enter text',
-          dataStoreKey: 'test',
           x: 0,
           y: 0,
           width: 200,
@@ -178,7 +177,6 @@ describe('textAlign Property Tests', () => {
         type: ComponentType.INPUT,
         props: {
           placeholder: 'Enter text',
-          dataStoreKey: 'test',
           textAlign: 'center' as const,
           x: 0,
           y: 0,
@@ -209,7 +207,6 @@ describe('textAlign Property Tests', () => {
         type: ComponentType.INPUT,
         props: {
           placeholder: 'Enter text',
-          dataStoreKey: 'test',
           textAlign: 'right' as const,
           x: 0,
           y: 0,
@@ -242,7 +239,6 @@ describe('textAlign Property Tests', () => {
         type: ComponentType.TEXTAREA,
         props: {
           placeholder: 'Enter text',
-          dataStoreKey: 'test',
           x: 0,
           y: 0,
           width: 200,
@@ -272,7 +268,6 @@ describe('textAlign Property Tests', () => {
         type: ComponentType.TEXTAREA,
         props: {
           placeholder: 'Enter text',
-          dataStoreKey: 'test',
           textAlign: 'center' as const,
           x: 0,
           y: 0,
@@ -303,7 +298,6 @@ describe('textAlign Property Tests', () => {
         type: ComponentType.TEXTAREA,
         props: {
           placeholder: 'Enter text',
-          dataStoreKey: 'test',
           textAlign: 'right' as const,
           x: 0,
           y: 0,

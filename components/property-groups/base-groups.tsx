@@ -330,7 +330,6 @@ const InputValueGroupRenderer: React.FC<PropertyGroupRendererProps> = ({ group, 
   });
 
   // Separate properties
-  const dataStoreKeyProp = visibleProperties.find(p => p.key === 'dataStoreKey');
   const defaultValueProp = visibleProperties.find(p => p.key === 'defaultValue');
   const patternProp = visibleProperties.find(p => p.key === 'pattern');
   const inputTypeProp = visibleProperties.find(p => p.key === 'inputType');
@@ -340,14 +339,6 @@ const InputValueGroupRenderer: React.FC<PropertyGroupRendererProps> = ({ group, 
 
   return (
     <div>
-      {dataStoreKeyProp && (
-        <PropInput
-          label={dataStoreKeyProp.label}
-          value={p[dataStoreKeyProp.key] ?? ''}
-          onChange={val => updateProp(dataStoreKeyProp.key, val)}
-          placeholder={dataStoreKeyProp.placeholder}
-        />
-      )}
       {defaultValueProp && (
         <PropFxInput
           label={defaultValueProp.label}
@@ -419,15 +410,6 @@ export const InputValueGroup: PropertyGroup = {
     return shouldShowProperty(ComponentTypeGroups.INPUT_COMPONENTS, context);
   },
   properties: [
-    {
-      key: 'dataStoreKey',
-      label: 'Value (Data Store Key)',
-      type: 'text',
-      placeholder: 'e.g. user.name',
-      condition: (props: ComponentProps, context?: Record<string, any>) => {
-        return shouldShowProperty(ComponentTypeGroups.DATA_BINDING_COMPONENTS, context) || 'dataStoreKey' in props;
-      },
-    },
     // defaultValue - needs to be added if not present
     {
       key: 'defaultValue',

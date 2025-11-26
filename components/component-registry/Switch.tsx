@@ -1,6 +1,6 @@
 
 
-import React, { useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ComponentType, SwitchProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
@@ -19,8 +19,45 @@ const SwitchRenderer: React.FC<{
   actions?: any;
 }> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope, actions }) => {
   const p = component.props;
-  const isChecked = !!get(dataStore, p.dataStoreKey);
   const switchRef = useRef<HTMLButtonElement>(null);
+  
+  // Evaluate defaultValue for switch
+  const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue, evaluationScope, false);
+  const valueProp = useJavaScriptRenderer(p.value, evaluationScope, undefined);
+  const hasValueProp = p.value !== undefined && p.value !== null && p.value !== '';
+  
+  // Use local state to track switch checked state
+  // Check dataStore first (for persistence), then value prop, then defaultValue
+  const [isChecked, setIsChecked] = useState<boolean>(() => {
+    // First check if value exists in dataStore (from previous interactions)
+    const storedValue = get(dataStore, component.id);
+    if (storedValue !== undefined && storedValue !== null) {
+      return !!storedValue;
+    }
+    // Then check value prop
+    if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+      return !!valueProp;
+    } else if (p.defaultValue !== undefined && p.defaultValue !== null && p.defaultValue !== '') {
+      return !!evaluatedDefaultValue;
+    }
+    return false;
+  });
+  
+  // Update local state when prop value changes
+  // But only if there's no stored value in dataStore
+  useEffect(() => {
+    const storedValue = get(dataStore, component.id);
+    if (storedValue === undefined || storedValue === null) {
+      if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+        setIsChecked(!!valueProp);
+      } else if (p.defaultValue !== undefined && p.defaultValue !== null && p.defaultValue !== '') {
+        setIsChecked(!!evaluatedDefaultValue);
+      }
+    } else {
+      // Use stored value from dataStore
+      setIsChecked(!!storedValue);
+    }
+  }, [hasValueProp, valueProp, p.defaultValue, evaluatedDefaultValue, dataStore, component.id]);
   const lastFocusTimeRef = useRef<number>(0);
   const isHandlingFocusRef = useRef<boolean>(false);
   const lastFocusActionTimeRef = useRef<number>(0);
@@ -52,13 +89,17 @@ const SwitchRenderer: React.FC<{
   const handleClick = () => {
     const newValue = !isChecked;
     
+    // Update local state for interactivity
+    if (mode === 'preview') {
+      setIsChecked(newValue);
+      // Also update dataStore using component ID as key
+      if (onUpdateDataStore) {
+        onUpdateDataStore(component.id, newValue);
+      }
+    }
+    
     // Record click time to prevent focus/blur from firing during click
     lastClickTimeRef.current = Date.now();
-    
-    // Update dataStore
-    if (p.dataStoreKey && onUpdateDataStore) {
-      onUpdateDataStore(p.dataStoreKey, newValue);
-    }
     
     // Use shared event handler with custom event object for switch
     const customEvent = {
@@ -72,7 +113,6 @@ const SwitchRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       customEvent,
       newValue
@@ -116,7 +156,6 @@ const SwitchRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e as any,
       {
@@ -164,7 +203,6 @@ const SwitchRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e as any,
       {
@@ -183,7 +221,6 @@ const SwitchRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e as any
     );
@@ -199,7 +236,7 @@ const SwitchRenderer: React.FC<{
         aria-checked={isChecked}
         aria-labelledby={`${component.id}-label`}
         aria-disabled={isDisabledInPreview}
-        onClick={mode === 'preview' ? handleClick : () => onUpdateDataStore?.(p.dataStoreKey, !isChecked)}
+        onClick={mode === 'preview' ? handleClick : undefined}
         onFocus={mode === 'preview' ? handleFocus : undefined}
         onBlur={mode === 'preview' ? handleBlur : undefined}
         onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
@@ -249,7 +286,6 @@ export const SwitchPlugin: ComponentPlugin = {
     icon: React.createElement('svg', { style: iconStyle, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg"}, React.createElement('rect', {x:"4", y:"9", width:"16", height:"6", rx:"3", stroke:"currentColor", strokeWidth:"2"}), React.createElement('circle', {cx:"10", cy:"12", r:"2", stroke:"currentColor", strokeWidth:"2"})),
     defaultProps: {
       label: 'Enable Feature',
-      dataStoreKey: 'newSwitch',
       width: 180,
       height: 30,
       disabled: false,

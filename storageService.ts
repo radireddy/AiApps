@@ -207,9 +207,8 @@ const LocalStorageProvider: AppStorageService = {
     const dataToImport = JSON.parse(jsonString);
     
     // Helper function to create a new app with remapped IDs
-    const createNewAppFromImport = (importedApp: AppDefinition): AppDefinition => {
+    const createNewAppFromImport = (importedApp: AppDefinition, baseTimestamp: number = Date.now()): AppDefinition => {
       const newAppDef = JSON.parse(JSON.stringify(importedApp)); // Deep copy
-      const baseTimestamp = Date.now();
       
       // Generate new app ID
       const newAppId = `app_${baseTimestamp}`;
@@ -266,7 +265,7 @@ const LocalStorageProvider: AppStorageService = {
       // Single app import - always create new
       const app = dataToImport as AppDefinition;
       if (app.id && app.name && Array.isArray(app.components)) {
-        const newApp = createNewAppFromImport(app);
+        const newApp = createNewAppFromImport(app, Date.now());
         await this.saveApp(newApp);
       } else {
         throw new Error("Invalid single app import file: Missing required properties.");
@@ -276,13 +275,21 @@ const LocalStorageProvider: AppStorageService = {
     
     // Full backup import - create new apps for each imported app
     const appsToImport: AppDefinition[] = dataToImport;
+    const baseTime = Date.now();
     
-    for (const app of appsToImport) {
+    for (let i = 0; i < appsToImport.length; i++) {
+      const app = appsToImport[i];
       if (app.id && app.name && Array.isArray(app.components)) {
-        const newApp = createNewAppFromImport(app);
+        // Use index to ensure unique timestamps even if called in same millisecond
+        const baseTimestamp = baseTime + i;
+        const newApp = createNewAppFromImport(app, baseTimestamp);
         await this.saveApp(newApp);
       } else {
-        console.warn("Skipping invalid app object during import:", app);
+        console.warn("Skipping invalid app object during import:", app, {
+          hasId: !!app.id,
+          hasName: !!app.name,
+          hasComponents: Array.isArray(app.components),
+        });
       }
     }
   },

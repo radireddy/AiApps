@@ -18,26 +18,6 @@ export const inputProperties: PropertyMetadata[] = [
     tooltip: 'Placeholder text shown when input is empty',
   },
   {
-    id: 'dataStoreKey',
-    label: 'Data Store Key',
-    type: 'string',
-    defaultValue: 'newInput',
-    group: 'Settings',
-    tab: 'General',
-    tabOrder: 0,
-    groupOrder: 2,
-    propertyOrder: 1,
-    applicableTo: [ComponentType.INPUT],
-    tooltip: 'Key in dataStore where input value is saved (e.g., selectedRecord.name)',
-    placeholder: 'e.g. selectedRecord.name',
-    validationRules: [
-      {
-        type: 'required',
-        message: 'Data Store Key is required',
-      },
-    ],
-  },
-  {
     id: 'accessibilityLabel',
     label: 'Accessibility Label',
     type: 'string',

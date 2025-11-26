@@ -5,6 +5,7 @@ import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { AppDefinition, DataStore, ActionHandlers, ComponentType, TableProps } from '../types';
 import { RenderedComponent } from './RenderedComponent';
 import { get } from '../utils/data-helpers';
+import { safeEval } from '../expressions/engine';
 
 interface PreviewProps {
   appDefinition: AppDefinition;
@@ -228,18 +229,68 @@ export const Preview: React.FC<PreviewProps> = ({ appDefinition, onUpdateDataSto
     // Combine all sources of state for the expression engine
     const scope = { console, theme: themeWithLowercaseAliases, ...dataStore, ...dataSourceContents, ...variableState };
     
-    // Add component states to scope
+    // Add component states to scope - first pass: add all props
     components.forEach(c => {
         const props = c.props as any;
-        if (props.dataStoreKey) {
-            scope[c.id] = {
-                value: get(dataStore, props.dataStoreKey),
-                ...props // Also expose all props (like placeholder, disabled, etc.)
-            }
+        scope[c.id] = {
+            ...props
+        }
+    });
+    
+    // Second pass: evaluate and add component values
+    // This allows components to reference each other's values
+    components.forEach(c => {
+        const props = c.props as any;
+        let componentValue: any = undefined;
+        
+        // First check if value exists in dataStore (from user interactions)
+        const storedValue = get(dataStore, c.id);
+        if (storedValue !== undefined && storedValue !== null) {
+            componentValue = storedValue;
         } else {
-             scope[c.id] = {
-                ...props
+            // Try to evaluate value prop if it exists
+            if (props.value !== undefined && props.value !== null && props.value !== '') {
+                try {
+                    if (typeof props.value === 'string' && (props.value.startsWith('{{') || props.value.includes('{{'))) {
+                        // It's an expression, evaluate it
+                        const expression = props.value.startsWith('{{') && props.value.endsWith('}}')
+                            ? props.value.substring(2, props.value.length - 2).trim()
+                            : props.value;
+                        componentValue = safeEval(expression, scope);
+                    } else {
+                        // It's a literal value
+                        componentValue = props.value;
+                    }
+                } catch (e) {
+                    // If evaluation fails, use the raw value
+                    componentValue = props.value;
+                }
+            } else if (props.defaultValue !== undefined && props.defaultValue !== null && props.defaultValue !== '') {
+                // Fall back to defaultValue if value is not set
+                try {
+                    if (typeof props.defaultValue === 'string' && (props.defaultValue.startsWith('{{') || props.defaultValue.includes('{{'))) {
+                        // It's an expression, evaluate it
+                        const expression = props.defaultValue.startsWith('{{') && props.defaultValue.endsWith('}}')
+                            ? props.defaultValue.substring(2, props.defaultValue.length - 2).trim()
+                            : props.defaultValue;
+                        componentValue = safeEval(expression, scope);
+                    } else {
+                        // It's a literal value
+                        componentValue = props.defaultValue;
+                    }
+                } catch (e) {
+                    // If evaluation fails, use the raw value
+                    componentValue = props.defaultValue;
+                }
             }
+        }
+        
+        // Add value to component scope
+        if (scope[c.id] && typeof scope[c.id] === 'object') {
+            scope[c.id] = {
+                ...scope[c.id],
+                value: componentValue
+            };
         }
     });
 

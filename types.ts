@@ -150,13 +150,11 @@ export interface LabelProps extends BaseProps, BorderProps {
 
 export interface InputProps extends BaseProps, BorderProps {
   placeholder: string;
-  /** The key in the `dataStore` where this input's value is saved (e.g., 'user.name') */
-  dataStoreKey: string;
   /** Default value for the input field (supports expressions) */
   defaultValue?: string;
   /** Input type: text, number, password, email, url, tel */
   inputType?: 'text' | 'number' | 'password' | 'email' | 'url' | 'tel';
-  /** Value binding (supports expressions) - alternative to dataStoreKey */
+  /** Value binding (supports expressions) */
   value?: string;
   /** Accessibility label for screen readers */
   accessibilityLabel?: string;
@@ -272,7 +270,6 @@ export interface VStackProps extends PanelProps {}
 export interface TextareaProps extends BaseProps, BorderProps {
   textAlign?: 'left' | 'center' | 'right';
   placeholder: string;
-  dataStoreKey: string;
   /** Default value for the textarea field (supports expressions) */
   defaultValue?: string;
   accessibilityLabel?: string;
@@ -300,7 +297,6 @@ export interface TextareaProps extends BaseProps, BorderProps {
 }
 
 export interface SelectProps extends BaseProps, BorderProps {
-  dataStoreKey: string;
   options: string; // comma-separated
   placeholder: string;
   /** Default value for the select field (supports expressions) */
@@ -309,7 +305,6 @@ export interface SelectProps extends BaseProps, BorderProps {
 }
 
 export interface CheckboxProps extends BaseProps {
-  dataStoreKey: string;
   label: string;
   /** Event handlers */
   onChange?: string; // JS expression (deprecated, use onChangeActionType)
@@ -335,7 +330,6 @@ export interface CheckboxProps extends BaseProps {
 }
 
 export interface RadioGroupProps extends BaseProps {
-  dataStoreKey: string;
   options: string; // comma-separated
   groupLabel?: string;
   /** Event handlers */
@@ -362,7 +356,6 @@ export interface RadioGroupProps extends BaseProps {
 }
 
 export interface SwitchProps extends BaseProps {
-  dataStoreKey: string;
   label: string;
   /** Event handlers */
   onChange?: string; // JS expression (deprecated, use onChangeActionType)

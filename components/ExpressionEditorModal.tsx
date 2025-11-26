@@ -38,38 +38,36 @@ const generateExamples = (context?: PropertyContext): Example[] => {
   // Event-related properties
   if (tab === 'events' || propertyId.includes('onchange') || propertyId.includes('onclick') || 
       propertyId.includes('onfocus') || propertyId.includes('onblur') || propertyId.includes('action')) {
-    // For value change events, add example to access the updated value
-    if (propertyId.includes('onchange') || propertyId.includes('change')) {
-      examples.push({
-        title: 'Get Value Change',
-        description: 'Access the new value from the change event',
-        code: `event.target.value`,
-        category: 'event'
-      });
-      examples.push({
-        title: 'Log Value Change',
-        description: 'Log the updated value to console',
-        code: `console.log('New value:', event.target.value)`,
-        category: 'event'
-      });
-      examples.push({
-        title: 'Update Variable with Value',
-        description: 'Update an app variable with the new value',
-        code: `actions.updateVariable('userInput', event.target.value)`,
-        category: 'event'
-      });
-      examples.push({
-        title: 'Conditional Update',
-        description: 'Update variable only if value meets condition',
-        code: `(() => {
+    // Event value examples - available for all events
+    examples.push({
+      title: 'Get Event Value',
+      description: 'Access the value from the event',
+      code: `event.target.value`,
+      category: 'event'
+    });
+    examples.push({
+      title: 'Log Event Value',
+      description: 'Log the event value to console',
+      code: `console.log('New value:', event.target.value)`,
+      category: 'event'
+    });
+    examples.push({
+      title: 'Update Variable with Event Value',
+      description: 'Update an app variable with the event value',
+      code: `actions.updateVariable('userInput', event.target.value)`,
+      category: 'event'
+    });
+    examples.push({
+      title: 'Conditional Update from Event',
+      description: 'Update variable only if event value meets condition',
+      code: `(() => {
   const newValue = event.target.value;
   if (newValue.length > 0) {
     actions.updateVariable('userInput', newValue);
   }
 })()`,
-        category: 'event'
-      });
-    }
+      category: 'event'
+    });
     examples.push({
       title: 'Show Alert',
       description: 'Display an alert message when triggered',

@@ -18,7 +18,6 @@ describe('RadioGroupPlugin', () => {
       props: {
         x: 0, y: 0, width: 150, height: 80,
         options: 'Admin,Editor,Viewer',
-        dataStoreKey: 'user.role',
         groupLabel: 'User Role',
       },
     };
@@ -31,19 +30,21 @@ describe('RadioGroupPlugin', () => {
     });
 
     it('should have the correct option checked based on dataStore', () => {
-      render(<RadioGroupRenderer component={baseComponent} mode="preview" dataStore={{ user: { role: 'Editor' } }} evaluationScope={{}} />);
+      // Components now use their ID as the dataStore key
+      render(<RadioGroupRenderer component={baseComponent} mode="preview" dataStore={{ radio1: 'Editor' }} evaluationScope={{}} />);
       expect(screen.getByLabelText('Editor')).toBeChecked();
       expect(screen.getByLabelText('Admin')).not.toBeChecked();
     });
 
     it('should call onUpdateDataStore when a different option is clicked', async () => {
       const onUpdateDataStore = jest.fn();
-      render(<RadioGroupRenderer component={baseComponent} mode="preview" dataStore={{ user: { role: 'Editor' } }} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
+      render(<RadioGroupRenderer component={baseComponent} mode="preview" dataStore={{ radio1: 'Editor' }} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
       
       const adminRadio = screen.getByLabelText('Admin');
       await userEvent.click(adminRadio);
 
-      expect(onUpdateDataStore).toHaveBeenCalledWith('user.role', 'Admin');
+      // Components now use their ID as the dataStore key
+      expect(onUpdateDataStore).toHaveBeenCalledWith('radio1', 'Admin');
     });
 
     it('should be selectable in edit mode (not disabled)', () => {
@@ -59,14 +60,13 @@ describe('RadioGroupPlugin', () => {
       const props = {
         component: {
           id: 'rg1',
-          props: { dataStoreKey: 'role', options: 'A,B' } as any,
+          props: { options: 'A,B' } as any,
         },
         updateProp,
         onOpenExpressionEditor: jest.fn(),
       };
       render(<RadioGroupProperties {...props} />);
 
-      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('role');
       const optionsInput = screen.getByLabelText('Options');
       expect(optionsInput).toHaveValue('A,B');
 

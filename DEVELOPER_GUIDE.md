@@ -167,7 +167,7 @@ Let's say you want to add a `Rating` component (e.g., a 5-star rating input).
 
 1.  **Update Types (`types.ts`)**:
     *   Add `RATING = 'RATING'` to the `ComponentType` enum.
-    *   Create a `RatingProps` interface extending `BaseProps`. It might include `starCount: number` and `dataStoreKey: string`.
+    *   Create a `RatingProps` interface extending `BaseProps`. It might include `starCount: number` and `value: string` (for data binding).
     *   Add `RatingProps` to the `ComponentProps` union type.
 
 2.  **Create the Renderer (`/component-registry/Rating.tsx`)**:
@@ -175,7 +175,7 @@ Let's say you want to add a `Rating` component (e.g., a 5-star rating input).
 
 3.  **Create the Properties Panel (`/component-registry/Rating.tsx`)**:
     *   Create `RatingProperties.tsx` in the same file.
-    *   This component will render inputs for `starCount` and `dataStoreKey`. Use the shared `PropInput` component from `common.tsx`.
+    *   This component will render inputs for `starCount` and `value`. Use the shared `PropInput` component from `common.tsx`.
 
 4.  **Create the Plugin Object (`/component-registry/Rating.tsx`)**:
     *   Define the `RatingPlugin: ComponentPlugin` object. Fill in the `type`, `paletteConfig` (with an SVG icon and default props), `renderer`, and `properties`.

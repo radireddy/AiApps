@@ -172,12 +172,12 @@ describe('RenderedComponent Delete Functionality', () => {
 
   // Test delete for all component types
   testDeleteForComponent(ComponentType.BUTTON, 'Button', { text: 'Click Me', actionType: 'none' });
-  testDeleteForComponent(ComponentType.INPUT, 'Input', { placeholder: 'Enter text', dataStoreKey: 'testKey' });
-  testDeleteForComponent(ComponentType.CHECKBOX, 'Checkbox', { label: 'Check me', dataStoreKey: 'checkboxKey' });
-  testDeleteForComponent(ComponentType.SELECT, 'Select', { placeholder: 'Select option', dataStoreKey: 'testKey', options: 'Option1,Option2' });
-  testDeleteForComponent(ComponentType.TEXTAREA, 'Textarea', { placeholder: 'Enter text', dataStoreKey: 'testKey' });
-  testDeleteForComponent(ComponentType.SWITCH, 'Switch', { label: 'Toggle me', dataStoreKey: 'switchKey' });
-  testDeleteForComponent(ComponentType.RADIO_GROUP, 'RadioGroup', { dataStoreKey: 'testKey', options: 'Option1,Option2' });
+  testDeleteForComponent(ComponentType.INPUT, 'Input', { placeholder: 'Enter text' });
+  testDeleteForComponent(ComponentType.CHECKBOX, 'Checkbox', { label: 'Check me' });
+  testDeleteForComponent(ComponentType.SELECT, 'Select', { placeholder: 'Select option', options: 'Option1,Option2' });
+  testDeleteForComponent(ComponentType.TEXTAREA, 'Textarea', { placeholder: 'Enter text' });
+  testDeleteForComponent(ComponentType.SWITCH, 'Switch', { label: 'Toggle me' });
+  testDeleteForComponent(ComponentType.RADIO_GROUP, 'RadioGroup', { options: 'Option1,Option2' });
   testDeleteForComponent(ComponentType.LABEL, 'Label', { text: 'Label Text', fontSize: 14, fontWeight: 'normal', color: '#000000' });
   testDeleteForComponent(ComponentType.PANEL, 'Panel', { backgroundColor: '#ffffff' });
   testDeleteForComponent(ComponentType.H_STACK, 'HStack', { backgroundColor: '#ffffff' });

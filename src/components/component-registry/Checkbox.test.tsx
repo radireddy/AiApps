@@ -18,7 +18,6 @@ describe('CheckboxPlugin', () => {
       props: {
         x: 0, y: 0, width: 150, height: 30,
         label: 'Accept Terms',
-        dataStoreKey: 'termsAccepted',
       },
     };
 
@@ -29,21 +28,6 @@ describe('CheckboxPlugin', () => {
       expect(checkbox).not.toBeChecked();
     });
 
-    it('should be checked if the dataStore value is true', () => {
-      render(<CheckboxRenderer component={baseComponent} mode="preview" dataStore={{ termsAccepted: true }} evaluationScope={{}} />);
-      const checkbox = screen.getByLabelText('Accept Terms');
-      expect(checkbox).toBeChecked();
-    });
-
-    it('should call onUpdateDataStore when clicked', async () => {
-      const onUpdateDataStore = jest.fn();
-      render(<CheckboxRenderer component={baseComponent} mode="preview" dataStore={{ termsAccepted: false }} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
-      
-      const checkbox = screen.getByLabelText('Accept Terms');
-      await userEvent.click(checkbox);
-
-      expect(onUpdateDataStore).toHaveBeenCalledWith('termsAccepted', true);
-    });
 
     it('should be selectable in edit mode (not disabled)', () => {
         render(<CheckboxRenderer component={baseComponent} mode="edit" dataStore={{}} evaluationScope={{}} />);
@@ -68,7 +52,6 @@ describe('CheckboxPlugin', () => {
         id: 'chk1',
         props: {
           label: 'My Checkbox',
-          dataStoreKey: 'isChecked',
         } as any
       },
       updateProp,
@@ -78,7 +61,6 @@ describe('CheckboxPlugin', () => {
     it('should render properties correctly', () => {
       render(<CheckboxProperties {...baseProps} />);
       expect(screen.getByLabelText('Label')).toHaveValue('My Checkbox');
-      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('isChecked');
     });
 
     it('should call updateProp when label is changed', async () => {

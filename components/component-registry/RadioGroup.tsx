@@ -1,6 +1,6 @@
 
 
-import React, { useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ComponentType, RadioGroupProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
@@ -50,9 +50,57 @@ const RadioGroupRenderer: React.FC<{
   // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
   const pointerEventsStyle = mode === 'edit' && isDisabled ? { pointerEvents: 'none' as const } : {};
   const groupLabelId = `${component.id}-group-label`;
-  const selectedValue = get(dataStore, p.dataStoreKey);
+  
+  // Evaluate defaultValue for radio group
+  const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue || '', evaluationScope, '');
+  const valueProp = useJavaScriptRenderer(p.value, evaluationScope, undefined);
+  const hasValueProp = p.value !== undefined && p.value !== null && p.value !== '';
+  
+  // Use local state to track selected value
+  // Check dataStore first (for persistence), then value prop, then defaultValue
+  const [selectedValue, setSelectedValue] = useState<string>(() => {
+    // First check if value exists in dataStore (from previous interactions)
+    const storedValue = get(dataStore, component.id);
+    if (storedValue !== undefined && storedValue !== null) {
+      return String(storedValue);
+    }
+    // Then check value prop
+    if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+      return String(valueProp);
+    } else if (p.defaultValue !== undefined && p.defaultValue !== null && p.defaultValue !== '') {
+      return String(evaluatedDefaultValue);
+    }
+    return '';
+  });
+  
+  // Update local state when prop value changes
+  // But only if there's no stored value in dataStore
+  useEffect(() => {
+    const storedValue = get(dataStore, component.id);
+    if (storedValue === undefined || storedValue === null) {
+      if (hasValueProp && valueProp !== undefined && valueProp !== null) {
+        setSelectedValue(String(valueProp));
+      } else if (p.defaultValue !== undefined && p.defaultValue !== null && p.defaultValue !== '') {
+        setSelectedValue(String(evaluatedDefaultValue));
+      }
+    } else {
+      // Use stored value from dataStore
+      setSelectedValue(String(storedValue));
+    }
+  }, [hasValueProp, valueProp, p.defaultValue, evaluatedDefaultValue, dataStore, component.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    
+    // Update local state for interactivity
+    if (mode === 'preview') {
+      setSelectedValue(newValue);
+      // Also update dataStore using component ID as key
+      if (onUpdateDataStore) {
+        onUpdateDataStore(component.id, newValue);
+      }
+    }
+    
     // Record click time to prevent focus/blur from firing during click
     lastClickTimeRef.current = Date.now();
     
@@ -63,7 +111,6 @@ const RadioGroupRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -117,7 +164,6 @@ const RadioGroupRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -172,7 +218,6 @@ const RadioGroupRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e,
       {
@@ -191,7 +236,6 @@ const RadioGroupRenderer: React.FC<{
         evaluationScope,
         actions,
         onUpdateDataStore,
-        dataStoreKey: p.dataStoreKey,
       },
       e
     );
@@ -214,7 +258,7 @@ const RadioGroupRenderer: React.FC<{
             name={component.id}
             value={option}
             checked={selectedValue === option}
-            onChange={mode === 'preview' ? handleChange : (e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
+            onChange={mode === 'preview' ? handleChange : () => {}}
             onFocus={mode === 'preview' ? handleFocus : undefined}
             onBlur={mode === 'preview' ? handleBlur : undefined}
             onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
@@ -281,7 +325,6 @@ export const RadioGroupPlugin: ComponentPlugin = {
     label: 'Radio Group',
     icon: React.createElement('svg', { style: iconStyle, viewBox: "0 0 24 24", fill: "none", xmlns: "http://www.w3.org/2000/svg"}, React.createElement('path', {d:"M12 16a4 4 0 100-8 4 4 0 000 8z", stroke:"currentColor", strokeWidth:"2"}), React.createElement('path', {d:"M12 4v2m0 12v2m8-10h-2M6 12H4", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round"})),
     defaultProps: {
-      dataStoreKey: 'newRadio',
       options: 'Option 1,Option 2',
       groupLabel: 'Choose an option',
       width: 150,
