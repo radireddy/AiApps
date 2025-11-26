@@ -206,25 +206,81 @@ const LocalStorageProvider: AppStorageService = {
   async importApps(jsonString) {
     const dataToImport = JSON.parse(jsonString);
     
+    // Helper function to create a new app with remapped IDs
+    const createNewAppFromImport = (importedApp: AppDefinition): AppDefinition => {
+      const newAppDef = JSON.parse(JSON.stringify(importedApp)); // Deep copy
+      const baseTimestamp = Date.now();
+      
+      // Generate new app ID
+      const newAppId = `app_${baseTimestamp}`;
+      
+      // Remap page IDs
+      const pageIdMap = new Map<string, string>();
+      newAppDef.pages.forEach((page: AppPage, index: number) => {
+        const oldId = page.id;
+        const newId = `page_${baseTimestamp}_${index}`;
+        page.id = newId;
+        pageIdMap.set(oldId, newId);
+      });
+      
+      // Remap component IDs
+      const componentIdMap = new Map<string, string>();
+      newAppDef.components.forEach((component: AppComponent, index: number) => {
+        const oldId = component.id;
+        const newId = `${component.type}_${baseTimestamp}_${index}`;
+        component.id = newId;
+        componentIdMap.set(oldId, newId);
+      });
+      
+      // Update component references
+      newAppDef.components.forEach((component: AppComponent) => {
+        if (component.parentId) {
+          component.parentId = componentIdMap.get(component.parentId) || null;
+        }
+        if (component.pageId) {
+          component.pageId = pageIdMap.get(component.pageId) || component.pageId;
+        }
+      });
+      
+      // Update main page ID
+      if (newAppDef.mainPageId) {
+        newAppDef.mainPageId = pageIdMap.get(newAppDef.mainPageId) || newAppDef.mainPageId;
+      }
+      
+      // Update app metadata with new ID, unique name, and timestamps
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // Format: 2024-01-15T10-30-45
+      const uniqueName = `${newAppDef.name} (Imported ${timestamp})`;
+      
+      const finalApp: AppDefinition = {
+        ...newAppDef,
+        id: newAppId,
+        name: uniqueName,
+        createdAt: new Date().toISOString(),
+        lastModifiedAt: new Date().toISOString(),
+      };
+      
+      return finalApp;
+    };
+    
     if (!Array.isArray(dataToImport)) {
+      // Single app import - always create new
       const app = dataToImport as AppDefinition;
       if (app.id && app.name && Array.isArray(app.components)) {
-        await this.saveApp(app);
+        const newApp = createNewAppFromImport(app);
+        await this.saveApp(newApp);
       } else {
         throw new Error("Invalid single app import file: Missing required properties.");
       }
       return;
     }
     
+    // Full backup import - create new apps for each imported app
     const appsToImport: AppDefinition[] = dataToImport;
     
-    const currentApps = await this.getAllAppsMetadata();
-    currentApps.forEach(app => localStorage.removeItem(`${APP_DATA_PREFIX}${app.id}`));
-    localStorage.removeItem(APPS_INDEX_KEY);
-
     for (const app of appsToImport) {
       if (app.id && app.name && Array.isArray(app.components)) {
-        await this.saveApp(app);
+        const newApp = createNewAppFromImport(app);
+        await this.saveApp(newApp);
       } else {
         console.warn("Skipping invalid app object during import:", app);
       }

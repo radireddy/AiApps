@@ -1,8 +1,8 @@
 import { ComponentType, ComponentPlugin } from '../../types';
 import { ButtonPlugin } from './Button';
 import { CheckboxPlugin } from './Checkbox';
+import { ContainerPlugin } from './Container';
 import { DividerPlugin } from './Divider';
-import { FormPlugin } from './Form';
 import { HStackPlugin } from './HStack';
 import { ImagePlugin } from './Image';
 import { InputPlugin } from './Input';
@@ -14,12 +14,11 @@ import { SwitchPlugin } from './Switch';
 import { TablePlugin } from './Table';
 import { TextareaPlugin } from './Textarea';
 import { VStackPlugin } from './VStack';
-import { ModalPlugin } from './Modal';
+import { ListPlugin } from './List';
 import React from 'react';
 
 export const componentRegistry: Record<ComponentType, ComponentPlugin> = {
     [ComponentType.PANEL]: PanelPlugin,
-    [ComponentType.FORM]: FormPlugin,
     [ComponentType.H_STACK]: HStackPlugin,
     [ComponentType.V_STACK]: VStackPlugin,
     [ComponentType.TABLE]: TablePlugin,
@@ -33,5 +32,6 @@ export const componentRegistry: Record<ComponentType, ComponentPlugin> = {
     [ComponentType.DIVIDER]: DividerPlugin,
     [ComponentType.RADIO_GROUP]: RadioGroupPlugin,
     [ComponentType.SWITCH]: SwitchPlugin,
-    [ComponentType.MODAL]: ModalPlugin,
+    [ComponentType.CONTAINER]: ContainerPlugin,
+    [ComponentType.LIST]: ListPlugin,
 };

@@ -57,6 +57,11 @@ export function safeEval(expression: string, scope: Record<string, any>): any {
             // It's a single word that's not defined, likely being typed. Return as a string.
             return trimmedExpression;
         }
+        // For complex ReferenceErrors (e.g., accessing properties of undefined), log them
+        console.error(`[Expression Error] ReferenceError in expression "${trimmedExpression}":`, error);
+        console.error('[Expression Error] Error message:', error.message);
+        console.error('[Expression Error] Available scope keys:', Object.keys(scope).sort());
+        // Don't throw - let it be handled by caller, but log first
     }
     
     // B. Check for SyntaxError (e.g., "name !=") for incomplete expressions.
@@ -68,8 +73,14 @@ export function safeEval(expression: string, scope: Record<string, any>): any {
     }
 
     // C. For all other "real" errors, log them so the developer knows something is wrong, but don't crash.
-    // console.error(`Error evaluating expression "${trimmedExpression}":`, error);
-    return undefined;
+    console.error(`[Expression Error] Error evaluating expression "${trimmedExpression}":`, error);
+    console.error('[Expression Error] Error details:', {
+      name: error instanceof Error ? error.name : typeof error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    console.error('[Expression Error] Available scope keys:', Object.keys(scope).sort());
+    // Don't throw - log the error but allow execution to continue
   }
 }
 

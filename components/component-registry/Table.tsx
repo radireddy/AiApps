@@ -1,7 +1,7 @@
 
 
 import React, { useMemo } from 'react';
-import { ComponentType, TableProps, ComponentPlugin, ActionHandlers, DataSourceInstance } from '../../types';
+import { ComponentType, TableProps, ComponentPlugin, ActionHandlers, DataSourceInstance, ComponentProps } from '../../types';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { get } from '../../utils/data-helpers';
 import { commonStylingProps } from '../../constants';
@@ -85,11 +85,13 @@ const TableProperties: React.FC<{
   dataSources: DataSourceInstance[];
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, dataSources, onOpenExpressionEditor }) => {
+  // Merge data properties from base group into custom data group
   const dataGroup: PropertyGroup = {
     id: 'table-data',
     title: 'Data',
-    order: 2,
+    order: 7, // After styling
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'dataSourceName',
@@ -109,8 +111,9 @@ const TableProperties: React.FC<{
   const rowSelectGroup: PropertyGroup = {
     id: 'table-row-select',
     title: 'On Row Select',
-    order: 3,
+    order: 8, // After data
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'rowSelectAction',
@@ -126,20 +129,20 @@ const TableProperties: React.FC<{
         label: 'Selected Record Key',
         type: 'text',
         placeholder: 'e.g. selectedRecord',
-        condition: (props) => (props as TableProps).rowSelectAction === 'updateDataStore',
+        condition: (props: ComponentProps) => (props as TableProps).rowSelectAction === 'updateDataStore',
       },
     ],
   };
 
+  // Events removed, data merged into custom group
   const config: PropertyConfig = {
-    baseGroups: ['layout'],
-    extendedGroups: ['border', 'styling'],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'styling'],
     customGroups: [dataGroup, rowSelectGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.TABLE }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

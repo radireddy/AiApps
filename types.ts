@@ -82,7 +82,6 @@ export enum ComponentType {
   BUTTON = 'BUTTON',
   IMAGE = 'IMAGE',
   PANEL = 'PANEL',
-  FORM = 'FORM',
   TEXTAREA = 'TEXTAREA',
   SELECT = 'SELECT',
   CHECKBOX = 'CHECKBOX',
@@ -92,7 +91,8 @@ export enum ComponentType {
   RADIO_GROUP = 'RADIO_GROUP',
   SWITCH = 'SWITCH',
   TABLE = 'TABLE',
-  MODAL = 'MODAL',
+  CONTAINER = 'CONTAINER',
+  LIST = 'LIST',
 }
 
 /**
@@ -110,6 +110,10 @@ export interface BaseProps {
   disabled?: boolean | string;
   /** Expression to determine visibility (e.g., `{{ !user.isLoggedIn }}`) */
   hidden?: boolean | string;
+  /** Padding (e.g., '8px', '10px 5px', or '{{theme.spacing.md}}') */
+  padding?: number | string;
+  /** Margin (e.g., '8px', '10px 5px', or '{{theme.spacing.md}}') */
+  margin?: number | string;
 }
 
 export interface BorderProps {
@@ -117,6 +121,10 @@ export interface BorderProps {
     borderWidth?: number | string;
     borderColor?: string;
     borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted';
+    borderTop?: number | string;
+    borderLeft?: number | string;
+    borderRight?: number | string;
+    borderBottom?: number | string;
 }
 
 export type PropertyRendererType = 'javascript' | 'markdown' | 'literal';
@@ -144,10 +152,73 @@ export interface InputProps extends BaseProps, BorderProps {
   placeholder: string;
   /** The key in the `dataStore` where this input's value is saved (e.g., 'user.name') */
   dataStoreKey: string;
+  /** Default value for the input field (supports expressions) */
+  defaultValue?: string;
+  /** Input type: text, number, password, email, url, tel */
+  inputType?: 'text' | 'number' | 'password' | 'email' | 'url' | 'tel';
+  /** Value binding (supports expressions) - alternative to dataStoreKey */
+  value?: string;
+  /** Accessibility label for screen readers */
   accessibilityLabel?: string;
+  /** Text alignment */
+  textAlign?: 'left' | 'center' | 'right';
+  /** Maximum length for text inputs */
+  maxLength?: number;
+  /** Minimum value (for number inputs, supports expressions) */
+  min?: number | string;
+  /** Maximum value (for number inputs, supports expressions) */
+  max?: number | string;
+  /** Step value for number inputs */
+  step?: number | string;
+  /** Regex pattern for validation */
+  pattern?: string;
+  /** Whether input is required */
+  required?: boolean | string;
+  /** Custom error message (supports expressions) */
+  errorMessage?: string;
+  /** Font size */
+  fontSize?: number | string;
+  /** Font family */
+  fontFamily?: string;
+  /** Font weight */
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
+  /** Font style */
+  fontStyle?: 'normal' | 'italic';
+  /** Text color */
+  color?: string;
+  /** Background color */
+  backgroundColor?: string;
+  /** Z-index for layering */
+  zIndex?: number;
+  /** Custom CSS class names */
+  className?: string;
+  /** Custom HTML attributes (JSON string of key-value pairs) */
+  customAttributes?: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export type ButtonActionType = 'alert' | 'updateData' | 'none' | 'createRecord' | 'updateRecord' | 'deleteRecord' | 'selectRecord' | 'updateVariable' | 'executeCode' | 'navigate';
+export type InputActionType = 'none' | 'alert' | 'executeCode';
 
 export interface ButtonProps extends BaseProps, BorderProps {
   text: string;
@@ -195,45 +266,182 @@ export interface PanelProps extends BaseProps, BorderProps {
   alignItems?: 'start' | 'center' | 'end' | 'stretch';
 }
 
-export interface FormProps extends PanelProps {}
 export interface HStackProps extends PanelProps {}
 export interface VStackProps extends PanelProps {}
-export interface ModalProps extends PanelProps {}
 
 export interface TextareaProps extends BaseProps, BorderProps {
+  textAlign?: 'left' | 'center' | 'right';
   placeholder: string;
   dataStoreKey: string;
+  /** Default value for the textarea field (supports expressions) */
+  defaultValue?: string;
   accessibilityLabel?: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface SelectProps extends BaseProps, BorderProps {
   dataStoreKey: string;
   options: string; // comma-separated
   placeholder: string;
+  /** Default value for the select field (supports expressions) */
+  defaultValue?: string;
   accessibilityLabel?: string;
 }
 
 export interface CheckboxProps extends BaseProps {
   dataStoreKey: string;
   label: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface RadioGroupProps extends BaseProps {
   dataStoreKey: string;
   options: string; // comma-separated
   groupLabel?: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface SwitchProps extends BaseProps {
   dataStoreKey: string;
   label: string;
+  /** Event handlers */
+  onChange?: string; // JS expression (deprecated, use onChangeActionType)
+  onFocus?: string; // JS expression (deprecated, use onFocusActionType)
+  onBlur?: string; // JS expression (deprecated, use onBlurActionType)
+  onEnterKeyPress?: string; // JS expression (deprecated, use onEnterActionType)
+  /** On Change Action */
+  onChangeActionType?: InputActionType;
+  onChangeAlertMessage?: string; // Expression for alert message
+  onChangeCodeToExecute?: string; // Expression for code to execute
+  /** On Focus Action */
+  onFocusActionType?: InputActionType;
+  onFocusAlertMessage?: string; // Expression for alert message
+  onFocusCodeToExecute?: string; // Expression for code to execute
+  /** On Blur Action */
+  onBlurActionType?: InputActionType;
+  onBlurAlertMessage?: string; // Expression for alert message
+  onBlurCodeToExecute?: string; // Expression for code to execute
+  /** On Enter Key Press Action */
+  onEnterActionType?: InputActionType;
+  onEnterAlertMessage?: string; // Expression for alert message
+  onEnterCodeToExecute?: string; // Expression for code to execute
 }
 
 export interface DividerProps extends BaseProps {
   color: string;
 }
 
-export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | FormProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ModalProps;
+export interface ContainerProps extends Omit<BaseProps, 'width' | 'height'>, BorderProps {
+  /** Width in pixels (px) or percentage (%) */
+  width?: number | string;
+  /** Height in pixels (px) or percentage (%) */
+  height?: number | string;
+  /** Background color */
+  backgroundColor?: string;
+  /** Background image URL */
+  backgroundImage?: string;
+  /** Minimum width in pixels */
+  minWidth?: number;
+  /** Maximum width in pixels */
+  maxWidth?: number;
+  /** Minimum height in pixels */
+  minHeight?: number;
+  /** Maximum height in pixels */
+  maxHeight?: number;
+  /** Z-index for layering */
+  zIndex?: number;
+  /** Custom CSS class names */
+  className?: string;
+  /** Custom HTML attributes */
+  customAttributes?: string; // JSON string of key-value pairs
+  /** Tooltip text */
+  tooltip?: string;
+  /** onClick event handler (JS expression) */
+  onClick?: string;
+}
+
+export interface ListProps extends ContainerProps {
+  /** Data source array (expression that evaluates to an array) */
+  data?: string;
+  /** Unique key for each item (expression, defaults to index) */
+  itemKey?: string;
+  /** Height of each template item in pixels */
+  templateHeight?: number | string;
+  /** Spacing between items in pixels */
+  itemSpacing?: number | string;
+  /** Empty state text (shown when data is empty) */
+  emptyState?: string;
+  /** Event handler for item click */
+  onItemClick?: string;
+  /** Event handler for item selection */
+  onItemSelect?: string;
+  /** Event handler for data change */
+  onDataChange?: string;
+  /** Template children IDs (stored separately from regular children) */
+  templateChildren?: string[];
+}
+
+export type ComponentProps = LabelProps | InputProps | ButtonProps | ImageProps | PanelProps | TextareaProps | SelectProps | CheckboxProps | DividerProps | HStackProps | VStackProps | RadioGroupProps | SwitchProps | TableProps | ContainerProps | ListProps;
 
 /**
  * Represents a single instance of a UI component in the application.
@@ -268,6 +476,7 @@ export enum AppVariableType {
     BOOLEAN = 'boolean',
     OBJECT = 'object',
     ARRAY = 'array',
+    ARRAY_OF_OBJECTS = 'array_of_objects',
 }
 
 export interface AppVariable {

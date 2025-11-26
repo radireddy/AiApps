@@ -1,10 +1,12 @@
 
 
-import React from 'react';
-import { ComponentType, SwitchProps, ComponentPlugin } from '../../types';
+import React, { useRef } from 'react';
+import { ComponentType, SwitchProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
+import { handleChangeEvent, handleFocusEvent, handleBlurEvent, handleEnterKeyPressEvent } from './event-handlers';
+import { EventsGroupRenderer } from './EventsGroupRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -14,9 +16,20 @@ const SwitchRenderer: React.FC<{
   dataStore: Record<string, any>;
   onUpdateDataStore?: (key: string, value: any) => void;
   evaluationScope: Record<string, any>;
-}> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
+  actions?: any;
+}> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope, actions }) => {
   const p = component.props;
   const isChecked = !!get(dataStore, p.dataStoreKey);
+  const switchRef = useRef<HTMLButtonElement>(null);
+  const lastFocusTimeRef = useRef<number>(0);
+  const isHandlingFocusRef = useRef<boolean>(false);
+  const lastFocusActionTimeRef = useRef<number>(0);
+  const lastBlurTimeRef = useRef<number>(0);
+  const isHandlingBlurRef = useRef<boolean>(false);
+  const lastBlurActionTimeRef = useRef<number>(0);
+  const lastClickTimeRef = useRef<number>(0);
+  const focusBlurCycleRef = useRef<{ focusTime: number; blurTime: number | null } | null>(null);
+  
   // Evaluate disabled property - handle both boolean and string values correctly
   const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
   const isDisabled = (() => {
@@ -36,16 +49,160 @@ const SwitchRenderer: React.FC<{
   // In edit mode, if disabled, allow pointer events to pass through to wrapper for selection
   const pointerEventsStyle = mode === 'edit' && isDisabled ? { pointerEvents: 'none' as const } : {};
 
+  const handleClick = () => {
+    const newValue = !isChecked;
+    
+    // Record click time to prevent focus/blur from firing during click
+    lastClickTimeRef.current = Date.now();
+    
+    // Update dataStore
+    if (p.dataStoreKey && onUpdateDataStore) {
+      onUpdateDataStore(p.dataStoreKey, newValue);
+    }
+    
+    // Use shared event handler with custom event object for switch
+    const customEvent = {
+      target: { value: newValue, checked: newValue },
+    } as any;
+    
+    handleChangeEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      customEvent,
+      newValue
+    );
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLButtonElement>) => {
+    const now = Date.now();
+    
+    // Ignore focus events that occur within 300ms of a click (click-related focus)
+    if (now - lastClickTimeRef.current < 300) {
+      // Track this as part of a potential focus/blur cycle
+      if (!focusBlurCycleRef.current) {
+        focusBlurCycleRef.current = { focusTime: now, blurTime: null };
+      }
+      return;
+    }
+    
+    // Check if this is part of a focus/blur cycle (focus -> blur -> focus within short time)
+    if (focusBlurCycleRef.current) {
+      const cycle = focusBlurCycleRef.current;
+      const timeSinceCycleStart = now - cycle.focusTime;
+      
+      // If we had a blur in this cycle and focus is happening again quickly, it's a cycle
+      if (cycle.blurTime !== null && timeSinceCycleStart < 200) {
+        // This is part of a focus/blur cycle, ignore it
+        focusBlurCycleRef.current = null; // Reset cycle
+        return;
+      }
+      
+      // If focus happens again after a cycle started but no blur yet, reset
+      if (timeSinceCycleStart > 200) {
+        focusBlurCycleRef.current = null;
+      }
+    }
+    
+    handleFocusEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e as any,
+      {
+        lastFocusTime: lastFocusTimeRef,
+        lastFocusActionTime: lastFocusActionTimeRef,
+        isHandlingFocus: isHandlingFocusRef,
+      }
+    );
+    
+    // Reset cycle tracking after successful focus
+    focusBlurCycleRef.current = null;
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLButtonElement>) => {
+    const now = Date.now();
+    
+    // Ignore blur events that occur within 300ms of a click (click-related blur)
+    if (now - lastClickTimeRef.current < 300) {
+      // Track this as part of a potential focus/blur cycle
+      if (focusBlurCycleRef.current) {
+        focusBlurCycleRef.current.blurTime = now;
+      } else {
+        focusBlurCycleRef.current = { focusTime: lastFocusTimeRef.current || now, blurTime: now };
+      }
+      return;
+    }
+    
+    // Check if we just had a focus event - if blur happens immediately after focus, it might be a click cycle
+    const timeSinceFocus = now - lastFocusTimeRef.current;
+    if (timeSinceFocus < 50) {
+      // Blur happened very quickly after focus, likely part of a click cycle
+      // Track this as a cycle
+      if (!focusBlurCycleRef.current) {
+        focusBlurCycleRef.current = { focusTime: lastFocusTimeRef.current, blurTime: now };
+      } else {
+        focusBlurCycleRef.current.blurTime = now;
+      }
+      return;
+    }
+    
+    handleBlurEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e as any,
+      {
+        lastBlurTime: lastBlurTimeRef,
+        lastBlurActionTime: lastBlurActionTimeRef,
+        isHandlingBlur: isHandlingBlurRef,
+      }
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    handleEnterKeyPressEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e as any
+    );
+  };
+
   return (
     <div className="flex items-center w-full h-full" style={{ ...pointerEventsStyle, opacity: finalOpacity, boxShadow: boxShadowValue || undefined }}>
       <label id={`${component.id}-label`} className={`text-gray-800 mr-3 flex-shrink-0 ${isDisabledInPreview ? 'pointer-events-none' : ''}`}>{p.label}</label>
       <button
         type="button"
         role="switch"
+        ref={switchRef}
         aria-checked={isChecked}
         aria-labelledby={`${component.id}-label`}
         aria-disabled={isDisabledInPreview}
-        onClick={() => onUpdateDataStore?.(p.dataStoreKey, !isChecked)}
+        onClick={mode === 'preview' ? handleClick : () => onUpdateDataStore?.(p.dataStoreKey, !isChecked)}
+        onFocus={mode === 'preview' ? handleFocus : undefined}
+        onBlur={mode === 'preview' ? handleBlur : undefined}
+        onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
         className={`${isChecked ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${isDisabledInPreview ? 'pointer-events-none' : ''}`}
         disabled={isDisabledInPreview}
       >
@@ -60,35 +217,25 @@ const SwitchProperties: React.FC<{
   updateProp: (key: keyof SwitchProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'switch-settings',
-    title: 'Settings',
-    order: 3,
+  const eventsGroup: PropertyGroup = {
+    id: 'switch-events',
+    title: 'Events',
+    order: 4,
     collapsible: true,
-    properties: [
-      {
-        key: 'label',
-        label: 'Label',
-        type: 'text',
-      },
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.active',
-      },
-    ],
+    defaultCollapsed: false,
+    customGroupRenderer: EventsGroupRenderer,
+    properties: [],
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    customGroups: [settingsGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'input-value'],
+    customGroups: [eventsGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
-      updateProp={updateProp}
+      component={{ ...component, type: ComponentType.SWITCH }}
+      updateProp={(key: string, value: any) => updateProp(key as keyof SwitchProps, value)}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}
     />
@@ -106,6 +253,10 @@ export const SwitchPlugin: ComponentPlugin = {
       width: 180,
       height: 30,
       disabled: false,
+      onChangeActionType: 'none' as InputActionType,
+      onFocusActionType: 'none' as InputActionType,
+      onBlurActionType: 'none' as InputActionType,
+      onEnterActionType: 'none' as InputActionType,
     },
   },
   renderer: SwitchRenderer,

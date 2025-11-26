@@ -1,11 +1,13 @@
 
 
-import React from 'react';
-import { ComponentType, SelectProps, ComponentPlugin } from '../../types';
+import React, { useEffect, useRef } from 'react';
+import { ComponentType, SelectProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
+import { handleChangeEvent, handleFocusEvent, handleBlurEvent, handleEnterKeyPressEvent } from './event-handlers';
+import { EventsGroupRenderer } from './EventsGroupRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -15,7 +17,17 @@ const SelectRenderer: React.FC<{
   dataStore: Record<string, any>;
   onUpdateDataStore?: (key: string, value: any) => void;
   evaluationScope: Record<string, any>;
-}> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
+  actions?: any;
+}> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope, actions }) => {
+  const selectRef = useRef<HTMLSelectElement>(null);
+  const lastFocusTimeRef = useRef<number>(0);
+  const isHandlingFocusRef = useRef<boolean>(false);
+  const lastFocusActionTimeRef = useRef<number>(0);
+  const lastBlurTimeRef = useRef<number>(0);
+  const isHandlingBlurRef = useRef<boolean>(false);
+  const lastBlurActionTimeRef = useRef<number>(0);
+  const lastClickTimeRef = useRef<number>(0);
+  const focusBlurCycleRef = useRef<{ focusTime: number; blurTime: number | null } | null>(null);
   const p = component.props;
   const options = p.options.split(',').map(opt => opt.trim());
   // Evaluate disabled property - handle both boolean and string values correctly
@@ -46,10 +58,170 @@ const SelectRenderer: React.FC<{
     pointerEvents: (mode === 'edit' && isDisabled ? 'none' : 'auto') as React.CSSProperties['pointerEvents'],
   };
 
+  // Evaluate defaultValue - always call hook unconditionally (React hooks rule)
+  // Supports both static values and expressions
+  const evaluatedDefaultValue = useJavaScriptRenderer(p.defaultValue || '', evaluationScope, '');
+  
+  // Get value from dataStore - try both direct key access and dot notation
+  let dataStoreValue = dataStore[p.dataStoreKey];
+  if (dataStoreValue === undefined) {
+    // Try dot notation for nested paths like 'user.name'
+    dataStoreValue = get(dataStore, p.dataStoreKey, undefined);
+  }
+  
+  // Check if dataStore has a value (undefined means key doesn't exist, empty string means user cleared it)
+  const hasDataStoreValue = dataStoreValue !== undefined;
+  
+  // Initialize dataStore with defaultValue if key doesn't exist and defaultValue is provided
+  useEffect(() => {
+    if (!hasDataStoreValue && p.defaultValue && onUpdateDataStore) {
+      // Only initialize if defaultValue evaluates to a non-empty value
+      const initValue = evaluatedDefaultValue;
+      if (initValue !== undefined && initValue !== null && initValue !== '') {
+        onUpdateDataStore(p.dataStoreKey, initValue);
+      }
+    }
+  }, [hasDataStoreValue, p.defaultValue, p.dataStoreKey, evaluatedDefaultValue, onUpdateDataStore]);
+  
+  // Use dataStore value if key exists (even if empty), otherwise use evaluated defaultValue for display
+  // Once dataStore is initialized, it will have the value and we'll use that
+  const currentValue = hasDataStoreValue ? (dataStoreValue ?? '') : (p.defaultValue ? evaluatedDefaultValue : '');
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // Record click time to prevent focus/blur from firing during click
+    lastClickTimeRef.current = Date.now();
+    
+    handleChangeEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLSelectElement>) => {
+    const now = Date.now();
+    
+    // Ignore focus events that occur within 300ms of a click (click-related focus)
+    if (now - lastClickTimeRef.current < 300) {
+      // Track this as part of a potential focus/blur cycle
+      if (!focusBlurCycleRef.current) {
+        focusBlurCycleRef.current = { focusTime: now, blurTime: null };
+      }
+      return;
+    }
+    
+    // Check if this is part of a focus/blur cycle (focus -> blur -> focus within short time)
+    if (focusBlurCycleRef.current) {
+      const cycle = focusBlurCycleRef.current;
+      const timeSinceCycleStart = now - cycle.focusTime;
+      
+      // If we had a blur in this cycle and focus is happening again quickly, it's a cycle
+      if (cycle.blurTime !== null && timeSinceCycleStart < 200) {
+        // This is part of a focus/blur cycle, ignore it
+        focusBlurCycleRef.current = null; // Reset cycle
+        return;
+      }
+      
+      // If focus happens again after a cycle started but no blur yet, reset
+      if (timeSinceCycleStart > 200) {
+        focusBlurCycleRef.current = null;
+      }
+    }
+    
+    handleFocusEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e,
+      {
+        lastFocusTime: lastFocusTimeRef,
+        lastFocusActionTime: lastFocusActionTimeRef,
+        isHandlingFocus: isHandlingFocusRef,
+      }
+    );
+    
+    // Reset cycle tracking after successful focus
+    focusBlurCycleRef.current = null;
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLSelectElement>) => {
+    const now = Date.now();
+    
+    // Ignore blur events that occur within 300ms of a click (click-related blur)
+    if (now - lastClickTimeRef.current < 300) {
+      // Track this as part of a potential focus/blur cycle
+      if (focusBlurCycleRef.current) {
+        focusBlurCycleRef.current.blurTime = now;
+      } else {
+        focusBlurCycleRef.current = { focusTime: lastFocusTimeRef.current || now, blurTime: now };
+      }
+      return;
+    }
+    
+    // Check if we just had a focus event - if blur happens immediately after focus, it might be a click cycle
+    const timeSinceFocus = now - lastFocusTimeRef.current;
+    if (timeSinceFocus < 50) {
+      // Blur happened very quickly after focus, likely part of a click cycle
+      // Track this as a cycle
+      if (!focusBlurCycleRef.current) {
+        focusBlurCycleRef.current = { focusTime: lastFocusTimeRef.current, blurTime: now };
+      } else {
+        focusBlurCycleRef.current.blurTime = now;
+      }
+      return;
+    }
+    
+    handleBlurEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e,
+      {
+        lastBlurTime: lastBlurTimeRef,
+        lastBlurActionTime: lastBlurActionTimeRef,
+        isHandlingBlur: isHandlingBlurRef,
+      }
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLSelectElement>) => {
+    handleEnterKeyPressEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
+  };
+  
   return (
     <select
-      value={get(dataStore, p.dataStoreKey, '')}
-      onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
+      ref={selectRef}
+      value={currentValue}
+      onChange={mode === 'preview' ? handleChange : (e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
+      onFocus={mode === 'preview' ? handleFocus : undefined}
+      onBlur={mode === 'preview' ? handleBlur : undefined}
+      onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
       style={style}
       className={`w-full h-full p-2 bg-white text-gray-900 focus:outline-none ${mode === 'edit' ? 'pointer-events-none' : ''}`}
       disabled={isDisabledInPreview}
@@ -67,37 +239,22 @@ const SelectProperties: React.FC<{
   updateProp: (key: keyof SelectProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'select-settings',
-    title: 'Settings',
-    order: 3,
+  const eventsGroup: PropertyGroup = {
+    id: 'select-events',
+    title: 'Events',
+    order: 4,
     collapsible: true,
-    properties: [
-      {
-        key: 'placeholder',
-        label: 'Placeholder',
-        type: 'text',
-      },
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.role',
-      },
-      {
-        key: 'options',
-        label: 'Options (CSV)',
-        type: 'text',
-        placeholder: 'Option 1, Option 2',
-      },
-    ],
+    defaultCollapsed: false,
+    customGroupRenderer: EventsGroupRenderer,
+    properties: [],
   };
 
   const accessibilityGroup: PropertyGroup = {
     id: 'select-accessibility',
     title: 'Accessibility',
-    order: 4,
+    order: 5,
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'accessibilityLabel',
@@ -109,15 +266,14 @@ const SelectProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [settingsGroup, accessibilityGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'input-value', 'data', 'styling'],
+    customGroups: [eventsGroup, accessibilityGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
-      updateProp={updateProp}
+      component={{ ...component, type: ComponentType.SELECT }}
+      updateProp={(key: string, value: any) => updateProp(key as keyof SelectProps, value)}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}
     />
@@ -138,6 +294,10 @@ export const SelectPlugin: ComponentPlugin = {
       width: 200,
       height: 40,
       disabled: false,
+      onChangeActionType: 'none' as InputActionType,
+      onFocusActionType: 'none' as InputActionType,
+      onBlurActionType: 'none' as InputActionType,
+      onEnterActionType: 'none' as InputActionType,
     },
   },
   renderer: SelectRenderer,

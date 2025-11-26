@@ -13,6 +13,11 @@ const ImageRenderer: React.FC<{
   evaluationScope: Record<string, any>;
 }> = ({ component, evaluationScope }) => {
   const p = component.props;
+  
+  // Evaluate src and alt as expressions to support dynamic image URLs
+  const src = useJavaScriptRenderer(p.src, evaluationScope, 'https://picsum.photos/200/200');
+  const alt = useJavaScriptRenderer(p.alt, evaluationScope, 'Image');
+  
   const style = {
     borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
     borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
@@ -22,7 +27,8 @@ const ImageRenderer: React.FC<{
     opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
     boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
   };
-  return <img src={p.src} alt={p.alt} style={style} className="w-full h-full" />;
+  
+  return <img src={src} alt={alt} style={style} className="w-full h-full" />;
 };
 
 const ImageProperties: React.FC<{
@@ -30,46 +36,14 @@ const ImageProperties: React.FC<{
   updateProp: (key: keyof ImageProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'image-settings',
-    title: 'Settings',
-    order: 3,
-    collapsible: true,
-    properties: [
-      {
-        key: 'src',
-        label: 'Image URL',
-        type: 'text',
-      },
-      {
-        key: 'alt',
-        label: 'Alt Text',
-        type: 'text',
-      },
-      {
-        key: 'objectFit',
-        label: 'Object Fit',
-        type: 'select',
-        options: [
-          { value: 'cover', label: 'Cover' },
-          { value: 'contain', label: 'Contain' },
-          { value: 'fill', label: 'Fill' },
-          { value: 'none', label: 'None' },
-          { value: 'scale-down', label: 'Scale Down' },
-        ],
-      },
-    ],
-  };
-
+  // Settings group removed - properties are in media base group
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    extendedGroups: ['border', 'styling'],
-    customGroups: [settingsGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'color-typography', 'media', 'styling'],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.IMAGE }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

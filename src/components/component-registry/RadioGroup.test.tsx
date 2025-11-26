@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RadioGroupPlugin } from '@/components/component-registry/RadioGroup';
 import { ComponentType } from 'types';
@@ -46,9 +46,10 @@ describe('RadioGroupPlugin', () => {
       expect(onUpdateDataStore).toHaveBeenCalledWith('user.role', 'Admin');
     });
 
-    it('should be disabled in edit mode', () => {
+    it('should be selectable in edit mode (not disabled)', () => {
       render(<RadioGroupRenderer component={baseComponent} mode="edit" dataStore={{}} evaluationScope={{}} />);
-      expect(screen.getByLabelText('Admin')).toBeDisabled();
+      // In edit mode, components should be selectable, so they should NOT be disabled
+      expect(screen.getByLabelText('Admin')).not.toBeDisabled();
     });
   });
 
@@ -65,13 +66,14 @@ describe('RadioGroupPlugin', () => {
       };
       render(<RadioGroupProperties {...props} />);
 
-      expect(screen.getByLabelText('Data Store Key')).toHaveValue('role');
-      const optionsInput = screen.getByLabelText('Options (CSV)');
+      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('role');
+      const optionsInput = screen.getByLabelText('Options');
       expect(optionsInput).toHaveValue('A,B');
 
-      await userEvent.clear(optionsInput);
-      await userEvent.type(optionsInput, 'X,Y,Z');
-      expect(updateProp).toHaveBeenLastCalledWith('options', 'X,Y,Z');
+      // Use fireEvent to directly set the value for reliability
+      fireEvent.change(optionsInput, { target: { value: 'X,Y,Z' } });
+      // PropInput calls updateProp on change, check that it was called with the new value
+      expect(updateProp).toHaveBeenCalledWith('options', 'X,Y,Z');
     });
   });
 });

@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AppDefinition, ComponentType, DataStore, AppVariableType, AppComponent, ComponentProps } from '../types';
 import { componentRegistry } from '../components/component-registry/registry';
 
-const componentEnum = ['LABEL', 'INPUT', 'BUTTON', 'IMAGE', 'PANEL', 'FORM', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'DIVIDER', 'H_STACK', 'V_STACK', 'RADIO_GROUP', 'SWITCH', 'TABLE', 'MODAL'];
+const componentEnum = ['LABEL', 'INPUT', 'BUTTON', 'IMAGE', 'PANEL', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'DIVIDER', 'H_STACK', 'V_STACK', 'RADIO_GROUP', 'SWITCH', 'TABLE'];
 const buttonActionEnum = ['alert', 'updateData', 'none', 'createRecord', 'updateRecord', 'deleteRecord', 'selectRecord', 'updateVariable', 'executeCode', 'navigate'];
 const variableTypeEnum = ['string', 'number', 'boolean', 'object', 'array'];
 

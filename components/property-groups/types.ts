@@ -57,6 +57,16 @@ export interface PropertyGroup {
   collapsible?: boolean;
   /** Default collapsed state */
   defaultCollapsed?: boolean;
+  /** Custom renderer for the entire group (overrides default rendering) */
+  customGroupRenderer?: React.FC<PropertyGroupRendererProps>;
+}
+
+/**
+ * Props for custom group renderers
+ */
+export interface PropertyGroupRendererProps {
+  group: PropertyGroup;
+  rendererProps: PropertyRendererProps;
 }
 
 /**

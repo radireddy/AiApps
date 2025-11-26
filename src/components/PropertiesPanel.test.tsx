@@ -7,24 +7,44 @@ import { ComponentType } from 'types';
 // FIX: Import jest-dom to extend jest matchers.
 import '@testing-library/jest-dom';
 
-// Mock the component registry and a dummy properties renderer.
-// Use a runtime require for `types` inside the factory to avoid circular-init issues.
+// Mock the component registry
 jest.mock('components/component-registry/registry', () => {
   const types = require('types');
   return {
     componentRegistry: {
       [types.ComponentType.LABEL]: {
-        properties: ({ component }: any) => <div>Properties for {component.props.text}</div>,
         paletteConfig: { label: 'Label' },
       },
     },
   };
 });
 
+// Mock the property registry - all components are migrated
+jest.mock('components/properties/registry', () => ({
+  propertyRegistry: {
+    LABEL: {
+      componentType: 'LABEL',
+      tabs: [{ id: 'General', label: 'General', order: 0 }],
+      groups: [],
+      properties: [],
+    },
+  },
+}));
+
+// Mock PropertiesPanelCore
+jest.mock('components/properties/PropertiesPanelCore', () => ({
+  PropertiesPanelCore: ({ components, selectedComponentIds }: any) => {
+    if (selectedComponentIds.length === 0) {
+      return <div>Select a component to see its properties.</div>;
+    }
+    const component = components.find((c: any) => c.id === selectedComponentIds[0]);
+    return <div>Properties for {component?.props?.text || 'Component'}</div>;
+  },
+}));
+
 describe('PropertiesPanel', () => {
   const onUpdate = jest.fn();
   const onOpenExpressionEditor = jest.fn();
-  const onAlignAndDistribute = jest.fn();
   const baseProps = {
     onUpdate,
     width: 288,
@@ -34,12 +54,11 @@ describe('PropertiesPanel', () => {
     variables: [],
     evaluationScope: {},
     onOpenExpressionEditor,
-    onAlignAndDistribute,
   };
 
   it('should show a message when no component is selected', () => {
     render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={[]} />);
-    expect(screen.getByText('Select a component to see its properties')).toBeInTheDocument();
+    expect(screen.getByText(/Select a component to see its properties/i)).toBeInTheDocument();
   });
 
   it('should render the properties for a single selected component', () => {
@@ -48,24 +67,16 @@ describe('PropertiesPanel', () => {
     ];
     render(<PropertiesPanel {...baseProps} components={components} selectedComponentIds={['comp1']} />);
     expect(screen.getByText('Properties for My Label')).toBeInTheDocument();
-    expect(screen.getByText('comp1')).toBeInTheDocument();
+    expect(screen.getByText(/comp1/i)).toBeInTheDocument();
   });
 
-  it('should render the alignment UI for multiple selected components', () => {
-    render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={['comp1', 'comp2']} />);
-    expect(screen.getByText(/2 components selected/)).toBeInTheDocument();
-    expect(screen.getByText('Align')).toBeInTheDocument();
-    expect(screen.getByText('Distribute')).toBeInTheDocument();
-    expect(screen.getByText('Match Size')).toBeInTheDocument();
-  });
-
-  it('should call onAlignAndDistribute when an alignment button is clicked', async () => {
-    render(<PropertiesPanel {...baseProps} components={[]} selectedComponentIds={['comp1', 'comp2']} />);
-    
-    // Tooltip text is used as the accessible name for the button
-    const alignLeftButton = screen.getByLabelText('Align left edges & stack vertically');
-    await userEvent.click(alignLeftButton);
-    
-    expect(onAlignAndDistribute).toHaveBeenCalledWith('align-left');
+  it('should render properties for multiple selected components using metadata system', () => {
+    const components = [
+      { id: 'comp1', type: ComponentType.LABEL, props: { text: 'Label 1' } } as any,
+      { id: 'comp2', type: ComponentType.LABEL, props: { text: 'Label 2' } } as any,
+    ];
+    render(<PropertiesPanel {...baseProps} components={components} selectedComponentIds={['comp1', 'comp2']} />);
+    // With metadata system, multi-select shows PropertiesPanelCore which handles common properties
+    expect(screen.getByTestId('properties-panel')).toBeInTheDocument();
   });
 });

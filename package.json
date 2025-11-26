@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "jest",
+    "test:drag": "jest --testPathPattern='drag.test'",
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "test:e2e-ui": "playwright test --ui",
@@ -35,5 +36,8 @@
     "typescript": "^5.4.5",
     "v8-to-istanbul": "^9.1.1",
     "vite": "^5.2.13"
+  },
+  "dependencies": {
+    "openai": "^6.9.1"
   }
 }

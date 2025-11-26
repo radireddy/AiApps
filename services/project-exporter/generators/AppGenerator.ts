@@ -15,6 +15,7 @@ const generateInitialValue = (variable: AppVariable): string => {
                 return String(initialValue === 'true' || initialValue === true);
             case AppVariableType.OBJECT:
             case AppVariableType.ARRAY:
+            case AppVariableType.ARRAY_OF_OBJECTS:
                 if (typeof initialValue === 'object' && initialValue !== null) {
                     return JSON.stringify(initialValue);
                 }
@@ -27,7 +28,7 @@ const generateInitialValue = (variable: AppVariable): string => {
                 return JSON.stringify(initialValue);
         }
     } catch {
-        return type === AppVariableType.OBJECT ? '{}' : (type === AppVariableType.ARRAY ? '[]' : '""');
+        return type === AppVariableType.OBJECT ? '{}' : (type === AppVariableType.ARRAY || type === AppVariableType.ARRAY_OF_OBJECTS ? '[]' : '""');
     }
 };
 
@@ -84,19 +85,15 @@ function App() {
     const pageProps = {
         theme,
         dataStore,
-        updateDataStore,
-        ${appDef.variables.map(v => v.name).join(',\n        ')},
-        ${appDef.variables.map(v => `set${toPascalCase(v.name)}`).join(',\n        ')}
+        updateDataStore${appDef.variables.length > 0 ? ',\n        ' + appDef.variables.map(v => v.name).join(',\n        ') + ',\n        ' + appDef.variables.map(v => `set${toPascalCase(v.name)}`).join(',\n        ') : ''}
     };
     
     return (
-        <main className="w-screen h-screen flex items-center justify-center bg-gray-100">
+        <main className="w-screen h-screen overflow-auto" style={{ backgroundColor: theme.colors.background }}>
             <${mainPageComponent}
                 theme={theme}
                 dataStore={dataStore}
-                updateDataStore={updateDataStore}
-                ${appDef.variables.map(v => `${v.name}={${v.name}}`).join('\n                ')}
-                ${appDef.variables.map(v => `set${toPascalCase(v.name)}={set${toPascalCase(v.name)}}`).join('\n                ')}
+                updateDataStore={updateDataStore}${appDef.variables.length > 0 ? '\n                ' + appDef.variables.map(v => `${v.name}={${v.name}}`).join('\n                ') + '\n                ' + appDef.variables.map(v => `set${toPascalCase(v.name)}={set${toPascalCase(v.name)}}`).join('\n                ') : ''}
             />
         </main>
     );

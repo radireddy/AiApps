@@ -1,9 +1,11 @@
 
 import React from 'react';
-import { ComponentType, PanelProps, ComponentPlugin } from '../../types';
-import { StylingProps, PropertyGroup, PropFxInput, PropInput, Tooltip } from './common';
+import { ComponentType, PanelProps, ComponentPlugin, BorderProps } from '../../types';
+import { PropertyGroup, PropFxInput, PropInput, PropSelect, Tooltip, CollapsibleSection, buildBorderStyles, buildSpacingStyles } from './common';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps, typography } from '../../constants';
+import { StylingPropertiesGroup } from '../property-groups/base-groups';
+import { PropertyRendererProps } from '../property-groups/types';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -27,22 +29,50 @@ export const PanelRenderer: React.FC<{
   styleExtensions?: React.CSSProperties;
 }> = ({ component, children, evaluationScope, directionOverride, styleExtensions = {} }) => {
   const p = component.props;
-  const style = {
-    backgroundColor: useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
-    background: useJavaScriptRenderer(p.backgroundGradient, evaluationScope, '') || useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff'),
-    borderRadius: useJavaScriptRenderer(p.borderRadius, evaluationScope, '4px'),
-    borderWidth: useJavaScriptRenderer(p.borderWidth, evaluationScope, '1px'),
-    borderColor: useJavaScriptRenderer(p.borderColor, evaluationScope, '#e5e7eb'),
-    borderStyle: p.borderStyle,
-    opacity: useJavaScriptRenderer(p.opacity, evaluationScope, 1),
-    boxShadow: useJavaScriptRenderer(p.boxShadow, evaluationScope, ''),
-    ...styleExtensions,
-  };
   
-  // Use directionOverride if provided, otherwise use prop direction
+  // Evaluate all props at the top level (hooks must be called unconditionally)
+  const backgroundColor = useJavaScriptRenderer(p.backgroundColor, evaluationScope, '#ffffff');
+  const backgroundGradient = useJavaScriptRenderer(p.backgroundGradient, evaluationScope, '');
+  const opacity = useJavaScriptRenderer(p.opacity, evaluationScope, 1);
+  const boxShadow = useJavaScriptRenderer(p.boxShadow, evaluationScope, '');
+  const padding = useJavaScriptRenderer(p.padding, evaluationScope, undefined);
+  const margin = useJavaScriptRenderer(p.margin, evaluationScope, undefined);
+  const borderRadius = useJavaScriptRenderer(p.borderRadius, evaluationScope, undefined);
+  const borderWidth = useJavaScriptRenderer(p.borderWidth, evaluationScope, undefined);
+  const borderColor = useJavaScriptRenderer(p.borderColor, evaluationScope, undefined);
+  const borderTop = useJavaScriptRenderer(p.borderTop, evaluationScope, undefined);
+  const borderRight = useJavaScriptRenderer(p.borderRight, evaluationScope, undefined);
+  const borderBottom = useJavaScriptRenderer(p.borderBottom, evaluationScope, undefined);
+  const borderLeft = useJavaScriptRenderer(p.borderLeft, evaluationScope, undefined);
+  // Evaluate borderStyle to check if it's 'none'
+  const borderStyle = useJavaScriptRenderer(p.borderStyle, evaluationScope, undefined);
   const direction = directionOverride || useJavaScriptRenderer(p.direction, evaluationScope, 'horizontal');
   const justify = useJavaScriptRenderer(p.justifyContent, evaluationScope, 'start');
   const align = useJavaScriptRenderer(p.alignItems, evaluationScope, 'center');
+  
+  // Now call helper functions with evaluated values (no hooks inside)
+  // Pass the evaluated borderStyle to buildBorderStyles
+  const borderStyles = buildBorderStyles(
+    { ...p, borderStyle } as BorderProps,
+    borderRadius,
+    borderWidth,
+    borderColor,
+    borderTop,
+    borderRight,
+    borderBottom,
+    borderLeft
+  );
+  const spacingStyles = buildSpacingStyles(padding, margin);
+  
+  const style = {
+    backgroundColor,
+    background: backgroundGradient || backgroundColor,
+    opacity,
+    boxShadow: boxShadow || undefined,
+    ...spacingStyles,
+    ...borderStyles,
+    ...styleExtensions,
+  };
 
   const mapJustify = (j: any) => {
     switch (j) {
@@ -70,6 +100,8 @@ export const PanelRenderer: React.FC<{
     width: '100%',
     height: '100%',
     boxSizing: 'border-box',
+    // Clip children to respect padding on all sides
+    overflow: 'hidden',
   };
 
   return <div style={{ ...style, ...layoutStyle }} className="w-full h-full relative">{children}</div>;
@@ -226,8 +258,15 @@ export const PanelProperties: React.FC<{
     <div className="py-1">
       {customPropertyGroups}
       
+      {/* (1) Basic */}
+      <CollapsibleSection title="Basic" isOpenDefault={true}>
+        <PropFxInput label="Hide" value={p.hidden} onChange={val => updateProp('hidden', val)} placeholder="e.g. {{!showAlert}} (use ! to invert: false = visible, true = hidden)" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('hidden', newVal))} />
+        {/* Disabled not shown for panels */}
+      </CollapsibleSection>
+
+      {/* (2) Container Layout Specific */}
       {!hideDirectionSelector && (
-        <PropertyGroup title="Layout">
+        <CollapsibleSection title="Container Layout Specific" isOpenDefault={true}>
           <div className="mb-3">
             <label className={`block ${typography.body} ${typography.medium} text-gray-600 mb-2`}>Direction</label>
             <div className="flex gap-2">
@@ -289,26 +328,41 @@ export const PanelProperties: React.FC<{
               ))}
             </div>
           </div>
-        </PropertyGroup>
+        </CollapsibleSection>
       )}
 
-
-      <PropertyGroup title="Position & Size">
+      {/* (3) Layout And Position */}
+      <CollapsibleSection title="Layout And Position" isOpenDefault={true}>
         <div className="grid grid-cols-2 gap-2.5">
           <PropInput label="X" value={p.x} onChange={val => updateProp('x', val)} type="number" />
           <PropInput label="Y" value={p.y} onChange={val => updateProp('y', val)} type="number" />
           <PropInput label="Width" value={p.width} onChange={val => updateProp('width', val)} type="number" />
           <PropInput label="Height" value={p.height} onChange={val => updateProp('height', val)} type="number" />
-      </div>
-      </PropertyGroup>
+        </div>
+      </CollapsibleSection>
 
-      <PropertyGroup title="Background">
+      {/* (4) Color And Typography */}
+      <CollapsibleSection title="Color And Typography" isOpenDefault={true}>
         <PropFxInput label="Background Color" value={p.backgroundColor} onChange={val => updateProp('backgroundColor', val)} type="color" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundColor', newVal))} />
         <PropFxInput label="Background Gradient" value={p.backgroundGradient} onChange={val => updateProp('backgroundGradient', val)} placeholder="e.g. linear-gradient(...)" onOpenEditor={(val) => onOpenExpressionEditor(val, (newVal) => updateProp('backgroundGradient', newVal))} />
-      </PropertyGroup>
+      </CollapsibleSection>
+
+      {/* (5) Styling - Use the shared StylingPropertiesGroup */}
+      <CollapsibleSection title="Styling" isOpenDefault={true}>
+        {StylingPropertiesGroup.customGroupRenderer && (
+          <StylingPropertiesGroup.customGroupRenderer
+            group={StylingPropertiesGroup}
+            rendererProps={{
+              props: p,
+              updateProp: (key: string, value: any) => updateProp(key as keyof PanelProps, value),
+              onOpenExpressionEditor,
+              context: { componentType: ComponentType.PANEL },
+            }}
+          />
+        )}
+      </CollapsibleSection>
 
       {additionalPropertyGroups}
-      <StylingProps props={p} updateProp={updateProp} onOpenExpressionEditor={onOpenExpressionEditor} />
     </div>
   );
 };

@@ -28,6 +28,7 @@ const DividerProperties: React.FC<{
     title: 'Styling',
     order: 2,
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'color',
@@ -39,14 +40,13 @@ const DividerProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout'],
-    extendedGroups: ['styling'],
+    baseGroups: ['basic', 'layout-position', 'color-typography', 'styling'],
     customGroups: [stylingGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
+      component={{ ...component, type: ComponentType.DIVIDER }}
       updateProp={updateProp}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}

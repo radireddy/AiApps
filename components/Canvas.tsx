@@ -17,7 +17,8 @@ interface CanvasProps {
   updateComponents: (updates: Array<{ id: string; props: Partial<ComponentProps> }>) => void;
   onDeleteComponent: (id: string) => void;
   evaluationScope: Record<string, any>;
-  onReparentComponent: (componentId: string) => void;
+  dataStore: Record<string, any>;
+  onReparentComponent: (componentId: string, finalPosition?: { x: number; y: number }) => void;
   currentPageId: string;
 }
 
@@ -32,7 +33,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   updateComponent,
   updateComponents, 
   onDeleteComponent, 
-  evaluationScope, 
+  evaluationScope,
+  dataStore,
   onReparentComponent,
   currentPageId,
 }) => {
@@ -86,51 +88,59 @@ export const Canvas: React.FC<CanvasProps> = ({
     // Use the ref to get the final marquee state, avoiding the stale closure problem.
     const finalMarquee = marqueeRef.current;
     if (isMarqueeSelecting.current && finalMarquee) {
-      const getAbsolutePosition = (componentId: string, allComps: AppComponent[]): { x: number; y: number } => {
-          const component = allComps.find(c => c.id === componentId);
-          if (!component) return { x: 0, y: 0 };
+      // If the marquee is very small (less than 5px in both dimensions), treat it as a click
+      // and deselect all components instead of selecting any
+      const isClick = finalMarquee.width < 5 && finalMarquee.height < 5;
+      
+      if (!isClick) {
+        // Only perform marquee selection if the user actually dragged (not just clicked)
+        const getAbsolutePosition = (componentId: string, allComps: AppComponent[]): { x: number; y: number } => {
+            const component = allComps.find(c => c.id === componentId);
+            if (!component) return { x: 0, y: 0 };
 
-          let absX = component.props.x as number;
-          let absY = component.props.y as number;
-          let currentParentId = component.parentId;
-          
-          while (currentParentId) {
-              const parent = allComps.find(p => p.id === currentParentId);
-              if (parent) {
-                  absX += parent.props.x as number;
-                  absY += parent.props.y as number;
-                  currentParentId = parent.parentId;
-              } else {
-                  break;
-              }
-          }
-          return { x: absX, y: absY };
-      };
-
-      const componentsOnPage = allComponents.filter(c => c.pageId === currentPageId);
-
-      const selectedIds = componentsOnPage.filter(comp => {
-        const { x: compX, y: compY } = getAbsolutePosition(comp.id, allComponents);
-        const compRect = {
-          x1: compX,
-          y1: compY,
-          x2: compX + (comp.props.width as number),
-          y2: compY + (comp.props.height as number),
+            let absX = component.props.x as number;
+            let absY = component.props.y as number;
+            let currentParentId = component.parentId;
+            
+            while (currentParentId) {
+                const parent = allComps.find(p => p.id === currentParentId);
+                if (parent) {
+                    absX += parent.props.x as number;
+                    absY += parent.props.y as number;
+                    currentParentId = parent.parentId;
+                } else {
+                    break;
+                }
+            }
+            return { x: absX, y: absY };
         };
-        const marqueeRect = {
-          x1: finalMarquee.x,
-          y1: finalMarquee.y,
-          x2: finalMarquee.x + finalMarquee.width,
-          y2: finalMarquee.y + finalMarquee.height,
-        };
-        // Check for intersection
-        return !(compRect.x1 > marqueeRect.x2 || compRect.x2 < marqueeRect.x1 || compRect.y1 > marqueeRect.y2 || compRect.y2 < marqueeRect.y1);
-      }).map(c => c.id);
 
+        const componentsOnPage = allComponents.filter(c => c.pageId === currentPageId);
 
-      if (selectedIds.length > 0) {
-        onSetSelectedComponentIds(selectedIds);
+        const selectedIds = componentsOnPage.filter(comp => {
+          const { x: compX, y: compY } = getAbsolutePosition(comp.id, allComponents);
+          const compRect = {
+            x1: compX,
+            y1: compY,
+            x2: compX + (comp.props.width as number),
+            y2: compY + (comp.props.height as number),
+          };
+          const marqueeRect = {
+            x1: finalMarquee.x,
+            y1: finalMarquee.y,
+            x2: finalMarquee.x + finalMarquee.width,
+            y2: finalMarquee.y + finalMarquee.height,
+          };
+          // Check for intersection
+          return !(compRect.x1 > marqueeRect.x2 || compRect.x2 < marqueeRect.x1 || compRect.y1 > marqueeRect.y2 || compRect.y2 < marqueeRect.y1);
+        }).map(c => c.id);
+
+        if (selectedIds.length > 0) {
+          onSetSelectedComponentIds(selectedIds);
+        }
       }
+      // If it's a click (isClick === true), onDeselectCanvas() was already called in handleMouseDown
+      // so we don't need to do anything else - components are already deselected
     }
     isMarqueeSelecting.current = false;
     setMarquee(null);
@@ -184,7 +194,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           onDelete={onDeleteComponent}
           onDrop={onDrop}
           mode="edit"
-          dataStore={{}}
+          dataStore={dataStore}
           evaluationScope={evaluationScope}
           onReparentCheck={onReparentComponent}
         />

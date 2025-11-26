@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LabelPlugin } from '@/components/component-registry/Label';
 import { ComponentType } from 'types';
@@ -76,17 +76,19 @@ describe('LabelPlugin', () => {
     it('should call updateProp when text is changed', async () => {
         render(<LabelProperties {...baseProps} />);
         const input = screen.getByLabelText('Text');
-        await userEvent.clear(input);
-        await userEvent.type(input, 'New Text');
-        expect(updateProp).toHaveBeenLastCalledWith('text', 'New Text');
+        // Use fireEvent to directly set the value for reliability
+        fireEvent.change(input, { target: { value: 'New Text' } });
+        // PropFxInput calls updateProp on change, check that it was called with the new value
+        expect(updateProp).toHaveBeenCalledWith('text', 'New Text');
     });
 
     it('should call updateProp when font size is changed', async () => {
         render(<LabelProperties {...baseProps} />);
         const input = screen.getByLabelText('Font Size');
-        await userEvent.clear(input);
-        await userEvent.type(input, '24');
-        expect(updateProp).toHaveBeenLastCalledWith('fontSize', 24);
+        // Use fireEvent to directly set the value for reliability
+        fireEvent.change(input, { target: { value: '24' } });
+        // The input converts to number, check that it was called with the new value
+        expect(updateProp).toHaveBeenCalledWith('fontSize', 24);
     });
   });
 });

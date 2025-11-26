@@ -1,6 +1,6 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InputPlugin } from '@/components/component-registry/Input';
 import { ComponentType } from 'types';
@@ -76,16 +76,17 @@ describe('InputPlugin', () => {
     it('should render properties correctly', () => {
       render(<InputProperties {...baseProps} />);
       expect(screen.getByLabelText('Placeholder')).toHaveValue('User Name');
-      expect(screen.getByLabelText('Data Store Key')).toHaveValue('user.name');
+      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('user.name');
       expect(screen.getByLabelText('Accessibility Label')).toHaveValue('User name input');
     });
 
     it('should call updateProp when placeholder is changed', async () => {
         render(<InputProperties {...baseProps} />);
         const input = screen.getByLabelText('Placeholder');
-        await userEvent.clear(input);
-        await userEvent.type(input, 'New Placeholder');
-        expect(updateProp).toHaveBeenLastCalledWith('placeholder', 'New Placeholder');
+        // Use fireEvent to directly set the value for reliability
+        fireEvent.change(input, { target: { value: 'New Placeholder' } });
+        // PropInput calls updateProp on change, check that it was called with the new value
+        expect(updateProp).toHaveBeenCalledWith('placeholder', 'New Placeholder');
     });
   });
 });

@@ -7,7 +7,7 @@ import { PropertyRenderer } from './PropertyRenderer';
 
 export interface BasePropertiesRendererProps {
   /** Component with props */
-  component: { id?: string; props: ComponentProps };
+  component: { id?: string; type?: any; props: ComponentProps };
   /** Update function */
   updateProp: (key: string, value: any) => void;
   /** Property configuration */
@@ -44,22 +44,34 @@ export const BasePropertiesRenderer: React.FC<BasePropertiesRendererProps> = ({
 
   // Filter groups based on component props and context
   const filteredGroups = React.useMemo(() => {
-    return filterPropertyGroups(allGroups, component.props, context);
-  }, [allGroups, component.props, context]);
+    // Add component type to context for property visibility checks
+    const contextWithType = {
+      ...context,
+      componentType: component.type,
+    };
+    return filterPropertyGroups(allGroups, component.props, contextWithType);
+  }, [allGroups, component.props, context, component.type]);
 
   // Create renderer props
-  const rendererProps: PropertyRendererProps = React.useMemo(() => ({
-    props: component.props,
-    updateProp,
-    onOpenExpressionEditor,
-    context,
-  }), [component.props, updateProp, onOpenExpressionEditor, context]);
+  const rendererProps: PropertyRendererProps = React.useMemo(() => {
+    // Add component type to context for property visibility checks
+    const contextWithType = {
+      ...context,
+      componentType: component.type,
+    };
+    return {
+      props: component.props,
+      updateProp,
+      onOpenExpressionEditor,
+      context: contextWithType,
+    };
+  }, [component.props, component.type, updateProp, onOpenExpressionEditor, context]);
 
   return (
     <div className="py-1">
       {filteredGroups.map(group => (
         <PropertyGroupRenderer
-          key={group.id}
+          key={`${component.id || component.type}-${group.id}`}
           group={group}
           rendererProps={rendererProps}
         />

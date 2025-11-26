@@ -3,6 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BorderProps, ComponentProps } from '../../types';
 import { typography } from '../../constants';
 
+// Helper function to format title - if already in Title Case, return as is; otherwise convert
+const formatTitle = (title: string): string => {
+  // If title already contains spaces and proper capitalization, return as is
+  if (title.includes(' ') && title.split(' ').some(word => word[0] === word[0].toUpperCase())) {
+    return title;
+  }
+  // Split camelCase into words
+  const words = title.replace(/([A-Z])/g, ' $1').trim().split(' ');
+  // Capitalize first letter of each word, lowercase the rest
+  return words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+};
+
 export const PropFxInput: React.FC<{ 
     label: string; 
     value: any; 
@@ -12,8 +24,15 @@ export const PropFxInput: React.FC<{
     id?: string;
     onOpenEditor?: (currentValue: string) => void;
     propertyKey?: string;
-}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey }) => {
-    const isExpression = typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}');
+    className?: string; // Allow custom className to override margin
+}> = ({ label, value, onChange, type = 'text', placeholder, id, onOpenEditor, propertyKey, className = '' }) => {
+    // Check if value is an expression (starts with {{ and ends with }})
+    // Also treat as expression if it starts with {{ (even if incomplete)
+    // Handle undefined/null values safely
+    const isExpression = typeof value === 'string' && 
+                         value !== null && 
+                         value !== undefined && 
+                         value.startsWith('{{');
     const isOpacity = propertyKey === 'opacity';
 
     // Validation function for opacity
@@ -93,27 +112,88 @@ export const PropFxInput: React.FC<{
 
     const inputId = id || `prop-fx-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
     // Only uppercase hex color values (e.g., #ff0000), not expressions
-    const displayValue = type === 'color' && typeof value === 'string' && !value.startsWith('{{') && value.startsWith('#') ? value.toUpperCase() : value;
+    // Handle undefined/null values safely
+    const displayValue = (type === 'color' && 
+                         typeof value === 'string' && 
+                         value !== null && 
+                         value !== undefined && 
+                         !value.startsWith('{{') && 
+                         value.startsWith('#')) 
+                         ? value.toUpperCase() 
+                         : (value ?? '');
     
+    // Handle input change - allow typing {{ to start an expression
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const inputValue = e.target.value;
+        
+        // If user types {{, automatically wrap it as an expression
+        if (inputValue === '{{' && !isExpression) {
+            onChange('{{}}');
+            // Move cursor between the braces
+            setTimeout(() => {
+                const input = e.target;
+                if (input) {
+                    input.setSelectionRange(2, 2);
+                }
+            }, 0);
+            return;
+        }
+        
+        // If user is typing and starts with {{, treat as expression
+        if (inputValue.startsWith('{{')) {
+            onChange(inputValue);
+            return;
+        }
+        
+        // If user is removing expression braces, allow it (removes expression)
+        // This allows users to delete {{ and }} to convert back to primitive
+        if (isExpression && !inputValue.startsWith('{{')) {
+            // User is removing the expression - extract the inner value
+            const innerValue = inputValue.replace(/^{{/, '').replace(/}}$/, '');
+            onChange(innerValue);
+            return;
+        }
+        
+        // Otherwise, handle normally
+        if (isOpacity) {
+            handleOpacityChange(e);
+        } else {
+            onChange(type === 'number' || type === 'range' ? (parseFloat(inputValue) || 0) : inputValue);
+        }
+    };
+    
+    // Handle opening expression editor - if not an expression, wrap current value
+    const handleOpenEditor = () => {
+        if (onOpenEditor) {
+            const currentValue = isExpression ? String(value) : (value !== undefined && value !== null ? String(value) : '');
+            onOpenEditor(currentValue);
+        }
+    };
+    
+    const marginClass = className?.includes('mb-') ? className : (className || 'mb-2.5');
     return (
-         <div className="mb-2.5" data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
+         <div className={marginClass} data-testid={`prop-fx-input-${label.replace(/\s+/g, '-')}`} style={{ minWidth: 0 }}>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1.5 truncate`} title={label}>{label}</label>
             <div className="flex items-center">
                 <input
                     id={inputId}
                     type={isExpression ? 'text' : type}
                     value={displayValue}
-                    onChange={isOpacity ? handleOpacityChange : (e => onChange(type === 'number' || type === 'range' ? (parseFloat(e.target.value) || 0) : e.target.value))}
+                    onChange={handleChange}
                     onKeyDown={handleOpacityKeyDown}
-                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 ${isExpression ? 'rounded-l-md border-r-0' : 'rounded-md'} ${isExpression && onOpenEditor ? '' : ''}`}
+                    className={`flex-1 bg-white border border-gray-300 px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0 ${isExpression || onOpenEditor ? 'rounded-l-md border-r-0' : 'rounded-md'}`}
                     placeholder={placeholder}
                 />
-                {isExpression && onOpenEditor && (
+                {onOpenEditor && (
                     <button
-                        onClick={() => onOpenEditor(value)}
-                        className="p-1 border-t border-b border-r rounded-r-md bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100 h-7 flex items-center justify-center"
-                        title="Open Expression Editor"
-                        aria-label="Open Expression Editor"
+                        onClick={handleOpenEditor}
+                        className={`p-1 border-t border-b border-r rounded-r-md h-7 flex items-center justify-center ${
+                            isExpression 
+                                ? 'bg-blue-50 text-blue-600 border-blue-300 hover:bg-blue-100' 
+                                : 'bg-gray-50 text-gray-500 border-gray-300 hover:bg-gray-100'
+                        }`}
+                        title={isExpression ? "Edit Expression" : "Add Expression"}
+                        aria-label={isExpression ? "Edit Expression" : "Add Expression"}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v-4h-4" />
@@ -126,17 +206,18 @@ export const PropFxInput: React.FC<{
 };
 
 
-export const PropInput: React.FC<{ label: string; value: any; onChange: (val: any) => void; type?: string; placeholder?: string; step?: number; min?: number; max?: number; id?: string; }> = ({ label, value, onChange, type = 'text', placeholder, id, ...rest }) => {
+export const PropInput: React.FC<{ label: string; value: any; onChange: (val: any) => void; type?: string; placeholder?: string; step?: number; min?: number; max?: number; id?: string; className?: string; }> = ({ label, value, onChange, type = 'text', placeholder, id, className, ...rest }) => {
     const inputId = id || `prop-input-${label.replace(/\s+/g, '-').toLowerCase()}`;
+    const marginClass = className?.includes('mb-0') ? '' : (className || 'mb-2.5');
     return (
-        <div className="mb-2.5" data-testid={`prop-input-${label.replace(/\s+/g, '-')}`}>
-            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
+        <div className={marginClass} data-testid={`prop-input-${label.replace(/\s+/g, '-')}`} style={{ minWidth: 0 }}>
+            <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1 truncate`} title={label}>{label}</label>
             <input
             id={inputId}
             type={type}
             value={type === 'number' ? (value !== undefined && value !== null ? value : '') : (value ?? '')}
             onChange={e => onChange(type === 'number' || type === 'range' ? parseFloat(e.target.value) || 0 : e.target.value)}
-            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
+            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0`}
             placeholder={placeholder}
             {...rest}
             />
@@ -144,22 +225,226 @@ export const PropInput: React.FC<{ label: string; value: any; onChange: (val: an
     );
 }
 
-export const PropSelect: React.FC<{ label: string; value: any; onChange: (val: any) => void; options: {value: string; label: string}[]; id?: string; }> = ({ label, value, onChange, options, id }) => {
+export const PropSelect: React.FC<{ label: string; value: any; onChange: (val: any) => void; options: {value: string; label: string}[]; id?: string; className?: string; }> = ({ label, value, onChange, options, id, className }) => {
     const selectId = id || `prop-select-${label.replace(/\s+/g, '-').toLowerCase()}`;
+    const marginClass = className?.includes('mb-') ? className : (className || 'mb-2.5');
     return (
-        <div className="mb-2.5">
-            <label htmlFor={selectId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1`}>{label}</label>
+        <div className={marginClass} style={{ minWidth: 0 }}>
+            <label htmlFor={selectId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1 truncate`} title={label}>{label}</label>
             <select
             id={selectId}
             value={value}
             onChange={e => onChange(e.target.value)}
-            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7`}
+            className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0`}
             >
                 {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
         </div>
     );
 }
+
+/**
+ * Width/Height property input with px/% support
+ * Uses consistent PropFxInput styling
+ */
+export const WidthHeightPropertyInput: React.FC<{
+  metadata: { id: string; label: string; tooltip?: string; placeholder?: string; defaultValue?: string };
+  value: any;
+  onChange: (value: any) => void;
+  context?: any;
+  error?: string;
+  isMixed?: boolean;
+}> = ({
+  metadata,
+  value,
+  onChange,
+  error,
+  isMixed = false,
+}) => {
+  const inputId = `prop-${metadata.id}`;
+  
+  // Normalize value - handle both number and string types, ensure it's always a valid string
+  const normalizeValue = (val: any): string => {
+    if (isMixed) return '— Mixed —';
+    if (val === null || val === undefined) return metadata.defaultValue ?? '400px';
+    if (typeof val === 'number') return `${val}px`; // Convert number to px string
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed === '') return metadata.defaultValue ?? '400px';
+      return trimmed; // Return the string as-is
+    }
+    return String(val); // Fallback: convert to string
+  };
+  const displayValue = normalizeValue(value);
+
+  // Validate that the value is in the format: number + 'px' or number + '%'
+  const validateValue = (val: string): boolean => {
+    if (!val || val.trim() === '') return false;
+    const trimmed = val.trim();
+    const match = trimmed.match(/^(\d+(?:\.\d+)?)(px|%)$/);
+    return match !== null;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value.trim();
+    if (newValue === '') {
+      onChange(metadata.defaultValue || '400px');
+      return;
+    }
+    
+    // If it's a valid format (number + px or %), use it
+    if (validateValue(newValue)) {
+      onChange(newValue);
+    } else {
+      // Allow typing - don't auto-convert while user is typing
+      // This allows users to type "50%" without it being converted to "50px" first
+      // Only store the raw value while typing
+      onChange(newValue);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const val = e.target.value.trim();
+    
+    // If empty on blur, restore to current value or default
+    if (val === '') {
+      const currentValue = value;
+      if (currentValue && typeof currentValue === 'string' && currentValue.trim()) {
+        // Restore to current value if it exists
+        onChange(currentValue);
+      } else {
+        // Use default if no current value
+        onChange(metadata.defaultValue || '400px');
+      }
+      return;
+    }
+    
+    // On blur, normalize the value
+    if (validateValue(val)) {
+      // Valid format, keep it as is (normalized)
+      onChange(val);
+    } else {
+      // Try to parse and normalize
+      const numValue = parseFloat(val);
+      if (!isNaN(numValue) && isFinite(numValue) && numValue >= 0) {
+        // If it's just a number, default to px
+        onChange(`${numValue}px`);
+      } else {
+        // Check if it ends with % or px but has invalid format
+        if (val.endsWith('%')) {
+          const num = parseFloat(val.slice(0, -1));
+          if (!isNaN(num) && isFinite(num) && num >= 0) {
+            onChange(`${num}%`);
+            return;
+          }
+        } else if (val.endsWith('px')) {
+          const num = parseFloat(val.slice(0, -2));
+          if (!isNaN(num) && isFinite(num) && num >= 0) {
+            onChange(`${num}px`);
+            return;
+          }
+        }
+        // Invalid format, revert to current value or default
+        const currentValue = value;
+        if (currentValue && typeof currentValue === 'string' && currentValue.trim()) {
+          onChange(currentValue);
+        } else {
+          onChange(metadata.defaultValue || '400px');
+        }
+      }
+    }
+  };
+
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+
+    if (showTooltip) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTooltip]);
+
+  return (
+    <div className="mb-2.5" data-testid={`prop-input-${metadata.id}`} style={{ minWidth: 0 }}>
+      <label htmlFor={inputId} className={`block ${typography.body} ${typography.medium} text-gray-600 mb-1 truncate`} title={metadata.label}>
+        <span className="flex items-center gap-1">
+          {metadata.label}
+          {metadata.tooltip && (
+            <span className="relative" ref={tooltipRef}>
+              <span 
+                className="ml-1 text-blue-500 cursor-help hover:text-blue-700 transition-colors"
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowTooltip(!showTooltip);
+                }}
+                title="Click for more info"
+              >
+                ℹ️
+              </span>
+              {showTooltip && (
+                <div className="absolute z-50 left-0 mt-1 w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg pointer-events-none">
+                  {metadata.tooltip}
+                </div>
+              )}
+            </span>
+          )}
+        </span>
+      </label>
+      {isMixed && (
+        <div className="text-xs text-gray-400 italic mb-1">— Mixed —</div>
+      )}
+      <div className="relative">
+        <input
+          id={inputId}
+          type="text"
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          className={`w-full bg-white border border-gray-300 rounded-md px-2 py-1 pr-16 ${typography.body} text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 h-7 min-w-0 ${
+            error ? 'border-red-500' : ''
+          } ${isMixed ? 'italic text-gray-400' : ''}`}
+          placeholder={metadata.placeholder || 'e.g. 400px or 50%'}
+          disabled={isMixed}
+        />
+        {/* Unit indicator - shows current unit or placeholder */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-gray-400 pointer-events-none">
+          {displayValue && displayValue !== '— Mixed —' && !isMixed ? (
+            <>
+              {displayValue.endsWith('%') ? (
+                <span className="text-gray-500 font-medium">%</span>
+              ) : displayValue.endsWith('px') ? (
+                <span className="text-gray-500 font-medium">px</span>
+              ) : (
+                <span className="text-gray-300">px / %</span>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-300">px / %</span>
+          )}
+        </div>
+      </div>
+      {/* Helper text showing format */}
+      <div className="text-xs text-gray-400 mt-1">
+        Format: <span className="font-mono">400px</span> or <span className="font-mono">50%</span>
+      </div>
+      {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
+    </div>
+  );
+};
 
 export const InlineTextEditor: React.FC<{
   value: string;
@@ -181,13 +466,20 @@ export const InlineTextEditor: React.FC<{
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Stop propagation for all keyboard events to prevent parent handlers from interfering
+    // This is especially important for backspace/delete keys that might delete components
+    e.stopPropagation();
+    
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         onCommit(currentValue);
     }
     if (e.key === 'Escape') {
+      e.preventDefault();
       onCommit(value);
     }
+    // For backspace and delete, let the textarea handle it naturally (don't prevent default)
+    // We just stop propagation so it doesn't bubble up to the component deletion handler
   };
 
   const handleEventBubble = (e: React.MouseEvent | React.FocusEvent) => {
@@ -222,10 +514,11 @@ export const InlineTextEditor: React.FC<{
 };
 
 export const PropertyGroup: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+    const formattedTitle = formatTitle(title);
     return (
         <div className="border-t border-gray-200 first:border-t-0">
             <div className="px-3 py-2.5">
-                <p className={`${typography.subsection} ${typography.semibold} text-gray-400 uppercase tracking-wide mb-2.5`}>{title}</p>
+                <p className={`${typography.subsection} font-bold text-gray-700 mb-2.5`}>{formattedTitle}</p>
                 <div className="space-y-2.5">
                     {children}
                 </div>
@@ -237,6 +530,12 @@ export const PropertyGroup: React.FC<{ title: string; children: React.ReactNode 
 export const CollapsibleSection: React.FC<{ title: string; children: React.ReactNode, isOpenDefault?: boolean }> = ({ title, children, isOpenDefault = true }) => {
     const [isOpen, setIsOpen] = useState(isOpenDefault);
     const sectionId = `section-content-${title.replace(/\s+/g, '-')}`;
+    const formattedTitle = formatTitle(title);
+
+    // Reset state when isOpenDefault changes (e.g., when component selection changes)
+    useEffect(() => {
+        setIsOpen(isOpenDefault);
+    }, [isOpenDefault]);
 
     return (
         <div className="border-b border-gray-200 last:border-b-0">
@@ -246,7 +545,7 @@ export const CollapsibleSection: React.FC<{ title: string; children: React.React
                 aria-expanded={isOpen}
                 aria-controls={sectionId}
             >
-                <span className="uppercase tracking-wide">{title}</span>
+                <span className="font-bold">{formattedTitle}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 transition-transform text-gray-400 ${isOpen ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -288,6 +587,147 @@ export const StylingProps: React.FC<{
         </>}
     </PropertyGroup>
   )};
+
+/**
+ * Helper function to build spacing styles (padding and margin) from props
+ * Now takes evaluated values instead of calling hooks
+ */
+export const buildSpacingStyles = (
+  padding?: string | number,
+  margin?: string | number
+): React.CSSProperties => {
+  const styles: React.CSSProperties = {};
+  
+  if (padding !== undefined) {
+    const paddingValue = typeof padding === 'number' 
+      ? `${padding}px` 
+      : padding;
+    if (paddingValue) {
+      styles.padding = paddingValue;
+    }
+  }
+  
+  if (margin !== undefined) {
+    const marginValue = typeof margin === 'number'
+      ? `${margin}px`
+      : margin;
+    if (marginValue) {
+      styles.margin = marginValue;
+    }
+  }
+  
+  return styles;
+};
+
+/**
+ * Helper function to parse padding value and extract left/top padding
+ * Handles both number and string values (e.g., "10px", "10px 20px", "10px 20px 30px 40px")
+ */
+export const parsePadding = (padding?: string | number): { left: number; top: number } => {
+  if (padding === undefined) {
+    return { left: 0, top: 0 };
+  }
+  
+  if (typeof padding === 'number') {
+    return { left: padding, top: padding };
+  }
+  
+  // Parse string padding (e.g., "10px", "10px 20px", "10px 20px 30px 40px")
+  const parts = padding.trim().split(/\s+/);
+  if (parts.length === 1) {
+    const value = parseFloat(parts[0]) || 0;
+    return { left: value, top: value };
+  } else if (parts.length === 2) {
+    return {
+      top: parseFloat(parts[0]) || 0,
+      left: parseFloat(parts[1]) || 0,
+    };
+  } else if (parts.length === 4) {
+    return {
+      top: parseFloat(parts[0]) || 0,
+      left: parseFloat(parts[3]) || 0,
+    };
+  }
+  
+  return { left: 0, top: 0 };
+};
+
+/**
+ * Helper function to build border style object from border props
+ * Handles both unified border properties and individual side properties
+ * Individual side properties (borderTop, borderRight, etc.) override unified borderWidth for those sides
+ * Now takes evaluated values instead of calling hooks
+ */
+export const buildBorderStyles = (
+  borderProps: BorderProps,
+  borderRadius?: string | number,
+  borderWidth?: string | number,
+  borderColor?: string,
+  borderTop?: string | number,
+  borderRight?: string | number,
+  borderBottom?: string | number,
+  borderLeft?: string | number
+): React.CSSProperties => {
+  const styles: React.CSSProperties = {};
+  
+  // Check if border style is explicitly set to 'none'
+  const isBorderNone = borderProps.borderStyle === 'none';
+  
+  // Apply border radius (always allowed, independent of border style)
+  if (borderRadius !== undefined) {
+    styles.borderRadius = typeof borderRadius === 'number' ? `${borderRadius}px` : borderRadius;
+  }
+  
+  // If border style is 'none', explicitly set it and don't apply any border widths
+  if (isBorderNone) {
+    styles.borderStyle = 'none';
+    return styles; // Early return - no borders should be applied
+  }
+  
+  // Apply border style and color (needed for all borders)
+  if (borderProps.borderStyle !== undefined) {
+    styles.borderStyle = borderProps.borderStyle;
+  }
+  if (borderColor !== undefined) {
+    styles.borderColor = borderColor;
+  }
+  
+  // Check if any individual border sides are set
+  const hasIndividualSides = borderTop !== undefined || 
+                            borderRight !== undefined || 
+                            borderBottom !== undefined || 
+                            borderLeft !== undefined;
+  
+  if (hasIndividualSides) {
+    // Apply individual border side widths (these override unified borderWidth)
+    if (borderTop !== undefined) {
+      styles.borderTop = typeof borderTop === 'number' ? `${borderTop}px` : borderTop;
+    }
+    if (borderRight !== undefined) {
+      styles.borderRight = typeof borderRight === 'number' ? `${borderRight}px` : borderRight;
+    }
+    if (borderBottom !== undefined) {
+      styles.borderBottom = typeof borderBottom === 'number' ? `${borderBottom}px` : borderBottom;
+    }
+    if (borderLeft !== undefined) {
+      styles.borderLeft = typeof borderLeft === 'number' ? `${borderLeft}px` : borderLeft;
+    }
+    
+    // Ensure borderStyle and borderColor are set if individual sides are used
+    // Only set defaults if borderStyle is not explicitly 'none'
+    if (!styles.borderStyle && borderProps.borderStyle === undefined) {
+      styles.borderStyle = 'solid'; // Default to solid if not specified
+    }
+    if (!styles.borderColor && borderColor === undefined) {
+      styles.borderColor = '#e5e7eb'; // Default color if not specified
+    }
+  } else if (borderWidth !== undefined) {
+    // Apply unified border width only if no individual sides are set
+    styles.borderWidth = typeof borderWidth === 'number' ? `${borderWidth}px` : borderWidth;
+  }
+  
+  return styles;
+};
 
 export const StateProps: React.FC<{ 
     props: ComponentProps & {id?: string}; 

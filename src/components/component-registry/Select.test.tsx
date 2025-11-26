@@ -66,8 +66,8 @@ describe('SelectPlugin', () => {
     it('should render properties correctly', () => {
       render(<SelectProperties {...baseProps} />);
       expect(screen.getByLabelText('Placeholder')).toHaveValue('My Placeholder');
-      expect(screen.getByLabelText('Data Store Key')).toHaveValue('myKey');
-      expect(screen.getByLabelText('Options (CSV)')).toHaveValue('A,B,C');
+      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('myKey');
+      expect(screen.getByLabelText('Options')).toHaveValue('A,B,C');
     });
   });
 });

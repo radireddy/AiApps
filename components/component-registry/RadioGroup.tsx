@@ -1,11 +1,13 @@
 
 
-import React from 'react';
-import { ComponentType, RadioGroupProps, ComponentPlugin } from '../../types';
+import React, { useRef } from 'react';
+import { ComponentType, RadioGroupProps, ComponentPlugin, InputActionType } from '../../types';
 import { get } from '../../utils/data-helpers';
 import { useJavaScriptRenderer } from '../../property-renderers/useJavaScriptRenderer';
 import { commonStylingProps } from '../../constants';
 import { BasePropertiesRenderer, PropertyGroup, PropertyConfig } from '../property-groups';
+import { handleChangeEvent, handleFocusEvent, handleBlurEvent, handleEnterKeyPressEvent } from './event-handlers';
+import { EventsGroupRenderer } from './EventsGroupRenderer';
 
 const iconStyle = { width: '24px', height: '24px', color: '#4f46e5' };
 
@@ -15,9 +17,20 @@ const RadioGroupRenderer: React.FC<{
   dataStore: Record<string, any>;
   onUpdateDataStore?: (key: string, value: any) => void;
   evaluationScope: Record<string, any>;
-}> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope }) => {
+  actions?: any;
+}> = ({ component, mode, dataStore, onUpdateDataStore, evaluationScope, actions }) => {
   const p = component.props;
   const options = p.options.split(',').map(opt => opt.trim());
+  const radioRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const lastFocusTimeRef = useRef<number>(0);
+  const isHandlingFocusRef = useRef<boolean>(false);
+  const lastFocusActionTimeRef = useRef<number>(0);
+  const lastBlurTimeRef = useRef<number>(0);
+  const isHandlingBlurRef = useRef<boolean>(false);
+  const lastBlurActionTimeRef = useRef<number>(0);
+  const lastClickTimeRef = useRef<number>(0);
+  const focusBlurCycleRef = useRef<{ focusTime: number; blurTime: number | null } | null>(null);
+  
   // Evaluate disabled property - handle both boolean and string values correctly
   const disabledValue = useJavaScriptRenderer(p.disabled, evaluationScope, false);
   const isDisabled = (() => {
@@ -39,6 +52,151 @@ const RadioGroupRenderer: React.FC<{
   const groupLabelId = `${component.id}-group-label`;
   const selectedValue = get(dataStore, p.dataStoreKey);
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Record click time to prevent focus/blur from firing during click
+    lastClickTimeRef.current = Date.now();
+    
+    handleChangeEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
+  };
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const now = Date.now();
+    
+    // Ignore focus events that occur within 300ms of a click (click-related focus)
+    if (now - lastClickTimeRef.current < 300) {
+      // Track this as part of a potential focus/blur cycle
+      if (!focusBlurCycleRef.current) {
+        focusBlurCycleRef.current = { focusTime: now, blurTime: null };
+      }
+      return;
+    }
+    
+    // Check if this is part of a focus/blur cycle (focus -> blur -> focus within short time)
+    if (focusBlurCycleRef.current) {
+      const cycle = focusBlurCycleRef.current;
+      const timeSinceCycleStart = now - cycle.focusTime;
+      
+      // If we had a blur in this cycle and focus is happening again quickly, it's a cycle
+      if (cycle.blurTime !== null && timeSinceCycleStart < 200) {
+        // This is part of a focus/blur cycle, ignore it
+        focusBlurCycleRef.current = null; // Reset cycle
+        return;
+      }
+      
+      // If focus happens again after a cycle started but no blur yet, reset
+      if (timeSinceCycleStart > 200) {
+        focusBlurCycleRef.current = null;
+      }
+    }
+    
+    // Check if this focus is coming from the label (relatedTarget might be the label)
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    if (relatedTarget && relatedTarget.tagName === 'LABEL') {
+      // This is a focus from label click - check if we just had a blur
+      const timeSinceBlur = now - lastBlurTimeRef.current;
+      if (timeSinceBlur < 100) {
+        // This is part of a label click cycle, ignore it
+        return;
+      }
+    }
+    
+    handleFocusEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e,
+      {
+        lastFocusTime: lastFocusTimeRef,
+        lastFocusActionTime: lastFocusActionTimeRef,
+        isHandlingFocus: isHandlingFocusRef,
+      }
+    );
+    
+    // Reset cycle tracking after successful focus
+    focusBlurCycleRef.current = null;
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const now = Date.now();
+    
+    // Ignore blur events that occur within 300ms of a click (click-related blur)
+    if (now - lastClickTimeRef.current < 300) {
+      // Track this as part of a potential focus/blur cycle
+      if (focusBlurCycleRef.current) {
+        focusBlurCycleRef.current.blurTime = now;
+      } else {
+        focusBlurCycleRef.current = { focusTime: lastFocusTimeRef.current || now, blurTime: now };
+      }
+      return;
+    }
+    
+    // Check if blur is going to the label - if so, ignore it as it's part of label click cycle
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    if (relatedTarget && relatedTarget.tagName === 'LABEL') {
+      // Blur is going to the label, this is part of a label click cycle - ignore it
+      return;
+    }
+    
+    // Check if we just had a focus event - if blur happens immediately after focus, it might be a label click cycle
+    const timeSinceFocus = now - lastFocusTimeRef.current;
+    if (timeSinceFocus < 50) {
+      // Blur happened very quickly after focus, likely part of a label click cycle
+      // Track this as a cycle
+      if (!focusBlurCycleRef.current) {
+        focusBlurCycleRef.current = { focusTime: lastFocusTimeRef.current, blurTime: now };
+      } else {
+        focusBlurCycleRef.current.blurTime = now;
+      }
+      return;
+    }
+    
+    handleBlurEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e,
+      {
+        lastBlurTime: lastBlurTimeRef,
+        lastBlurActionTime: lastBlurActionTimeRef,
+        isHandlingBlur: isHandlingBlurRef,
+      }
+    );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    handleEnterKeyPressEvent(
+      p,
+      {
+        mode,
+        evaluationScope,
+        actions,
+        onUpdateDataStore,
+        dataStoreKey: p.dataStoreKey,
+      },
+      e
+    );
+  };
+
   return (
     <div 
         className="w-full h-full flex flex-col justify-center p-2"
@@ -56,7 +214,11 @@ const RadioGroupRenderer: React.FC<{
             name={component.id}
             value={option}
             checked={selectedValue === option}
-            onChange={(e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
+            onChange={mode === 'preview' ? handleChange : (e) => onUpdateDataStore?.(p.dataStoreKey, e.target.value)}
+            onFocus={mode === 'preview' ? handleFocus : undefined}
+            onBlur={mode === 'preview' ? handleBlur : undefined}
+            onKeyDown={mode === 'preview' ? handleKeyDown : undefined}
+            ref={(el) => { radioRefs.current[option] = el; }}
             className={`mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${isDisabledInPreview ? 'pointer-events-none' : ''}`}
             disabled={isDisabledInPreview}
           />
@@ -72,32 +234,22 @@ const RadioGroupProperties: React.FC<{
   updateProp: (key: keyof RadioGroupProps, value: any) => void;
   onOpenExpressionEditor: (initialValue: string, onSave: (newValue: string) => void) => void;
 }> = ({ component, updateProp, onOpenExpressionEditor }) => {
-  const settingsGroup: PropertyGroup = {
-    id: 'radiogroup-settings',
-    title: 'Settings',
-    order: 3,
+  const eventsGroup: PropertyGroup = {
+    id: 'radiogroup-events',
+    title: 'Events',
+    order: 4,
     collapsible: true,
-    properties: [
-      {
-        key: 'dataStoreKey',
-        label: 'Data Store Key',
-        type: 'text',
-        placeholder: 'e.g. selectedRecord.role',
-      },
-      {
-        key: 'options',
-        label: 'Options (CSV)',
-        type: 'text',
-        placeholder: 'Option 1, Option 2',
-      },
-    ],
+    defaultCollapsed: false,
+    customGroupRenderer: EventsGroupRenderer,
+    properties: [],
   };
 
   const accessibilityGroup: PropertyGroup = {
     id: 'radiogroup-accessibility',
     title: 'Accessibility',
-    order: 4,
+    order: 5,
     collapsible: true,
+    defaultCollapsed: false,
     properties: [
       {
         key: 'groupLabel',
@@ -109,14 +261,14 @@ const RadioGroupProperties: React.FC<{
   };
 
   const config: PropertyConfig = {
-    baseGroups: ['layout', 'state'],
-    customGroups: [settingsGroup, accessibilityGroup],
+    baseGroups: ['basic', 'container-layout', 'layout-position', 'input-value', 'data'],
+    customGroups: [eventsGroup, accessibilityGroup],
   };
 
   return (
     <BasePropertiesRenderer
-      component={component}
-      updateProp={updateProp}
+      component={{ ...component, type: ComponentType.RADIO_GROUP }}
+      updateProp={(key: string, value: any) => updateProp(key as keyof RadioGroupProps, value)}
       config={config}
       onOpenExpressionEditor={onOpenExpressionEditor}
     />
@@ -135,6 +287,10 @@ export const RadioGroupPlugin: ComponentPlugin = {
       width: 150,
       height: 80,
       disabled: false,
+      onChangeActionType: 'none' as InputActionType,
+      onFocusActionType: 'none' as InputActionType,
+      onBlurActionType: 'none' as InputActionType,
+      onEnterActionType: 'none' as InputActionType,
     },
   },
   renderer: RadioGroupRenderer,
