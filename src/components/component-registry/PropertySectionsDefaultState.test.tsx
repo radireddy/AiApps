@@ -81,7 +81,7 @@ describe('Property Sections Default State', () => {
 
   describe('Input Component', () => {
     it('should have all sections expanded by default', () => {
-      const component = getBaseComponent(ComponentType.INPUT, { placeholder: 'Test', dataStoreKey: 'test' });
+      const component = getBaseComponent(ComponentType.INPUT, { placeholder: 'Test' });
       render(
         <InputPlugin.properties
           component={component}
@@ -119,7 +119,7 @@ describe('Property Sections Default State', () => {
 
   describe('Checkbox Component', () => {
     it('should have all sections expanded by default', () => {
-      const component = getBaseComponent(ComponentType.CHECKBOX, { label: 'Test', dataStoreKey: 'test' });
+      const component = getBaseComponent(ComponentType.CHECKBOX, { label: 'Test' });
       render(
         <CheckboxPlugin.properties
           component={component}
@@ -140,7 +140,7 @@ describe('Property Sections Default State', () => {
 
   describe('Switch Component', () => {
     it('should have all sections expanded by default', () => {
-      const component = getBaseComponent(ComponentType.SWITCH, { label: 'Test', dataStoreKey: 'test' });
+      const component = getBaseComponent(ComponentType.SWITCH, { label: 'Test' });
       render(
         <SwitchPlugin.properties
           component={component}
@@ -157,7 +157,7 @@ describe('Property Sections Default State', () => {
 
   describe('RadioGroup Component', () => {
     it('should have all sections expanded by default', () => {
-      const component = getBaseComponent(ComponentType.RADIO_GROUP, { options: 'A,B', dataStoreKey: 'test' });
+      const component = getBaseComponent(ComponentType.RADIO_GROUP, { options: 'A,B' });
       render(
         <RadioGroupPlugin.properties
           component={component}
@@ -229,7 +229,7 @@ describe('Property Sections Default State', () => {
 
   describe('Select Component', () => {
     it('should have all sections expanded by default', () => {
-      const component = getBaseComponent(ComponentType.SELECT, { options: 'A,B', dataStoreKey: 'test' });
+      const component = getBaseComponent(ComponentType.SELECT, { options: 'A,B' });
       render(
         <SelectPlugin.properties
           component={component}
@@ -252,7 +252,7 @@ describe('Property Sections Default State', () => {
 
   describe('Textarea Component', () => {
     it('should have all sections expanded by default', () => {
-      const component = getBaseComponent(ComponentType.TEXTAREA, { placeholder: 'Test', dataStoreKey: 'test' });
+      const component = getBaseComponent(ComponentType.TEXTAREA, { placeholder: 'Test' });
       render(
         <TextareaPlugin.properties
           component={component}

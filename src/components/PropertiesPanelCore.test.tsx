@@ -179,7 +179,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           defaultValue: '',
           x: 0,
           y: 0,
@@ -210,7 +209,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: 'John Doe',
         x: 0,
         y: 0,
@@ -246,7 +244,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: '{{user.name}}',
         x: 0,
         y: 0,
@@ -284,7 +281,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: 'Default Name',
         x: 0,
         y: 0,
@@ -294,7 +290,7 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     };
     
     const dataStore = {
-      'user.name': 'Stored Name',
+      'input1': 'Stored Name',
     };
     const evaluationScope = {};
     
@@ -322,7 +318,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: 'Test Value',
         x: 0,
         y: 0,
@@ -370,7 +365,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: 'Initial Value',
         x: 0,
         y: 0,
@@ -383,7 +377,7 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     const onUpdateDataStore = jest.fn();
     const evaluationScope = {};
     
-    renderComponent(
+    const { container } = renderComponent(
       <InputPlugin.renderer
         component={component}
         mode="preview"
@@ -393,10 +387,12 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       />
     );
     
-    // Wait for useEffect to run and initialize dataStore
-    await waitFor(() => {
-      expect(onUpdateDataStore).toHaveBeenCalledWith('user.name', 'Initial Value');
-    }, { timeout: 2000 });
+    // Components now use local state and don't automatically initialize dataStore on mount
+    // They only update dataStore when user interacts with them
+    const input = container.querySelector('input');
+    expect(input).toBeInTheDocument();
+    // Component should display the default value from local state
+    expect(input?.value).toBe('Initial Value');
   });
 
   it('should show default value in preview when dataStore is empty for INPUT component', async () => {
@@ -409,7 +405,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: 'Preview Value',
         x: 0,
         y: 0,
@@ -448,7 +443,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.INPUT,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.name',
         defaultValue: 'Default Value',
         x: 0,
         y: 0,
@@ -459,7 +453,7 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     
     // dataStore already has a value
     const dataStore = {
-      'user.name': 'Changed Value',
+      'input1': 'Changed Value',
     };
     const evaluationScope = {};
     
@@ -488,7 +482,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.TEXTAREA,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.bio',
         defaultValue: 'Initial Bio',
         x: 0,
         y: 0,
@@ -501,7 +494,7 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     const onUpdateDataStore = jest.fn();
     const evaluationScope = {};
     
-    renderComponent(
+    const { container } = renderComponent(
       <TextareaPlugin.renderer
         component={component}
         mode="preview"
@@ -511,10 +504,12 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       />
     );
     
-    // Wait for useEffect to run and initialize dataStore
-    await waitFor(() => {
-      expect(onUpdateDataStore).toHaveBeenCalledWith('user.bio', 'Initial Bio');
-    }, { timeout: 2000 });
+    // Components now use local state and don't automatically initialize dataStore on mount
+    // They only update dataStore when user interacts with them
+    const textarea = container.querySelector('textarea');
+    expect(textarea).toBeInTheDocument();
+    // Component should display the default value from local state
+    expect(textarea?.value).toBe('Initial Bio');
   });
 
   it('should show default value in preview when dataStore is empty for TEXTAREA component', async () => {
@@ -527,7 +522,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       type: ComponentType.TEXTAREA,
       props: {
         placeholder: 'Enter text',
-        dataStoreKey: 'user.bio',
         defaultValue: 'Preview Bio',
         x: 0,
         y: 0,
@@ -567,7 +561,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       props: {
         placeholder: 'Select option',
         options: 'Option 1,Option 2,Option 3',
-        dataStoreKey: 'user.country',
         defaultValue: 'Option 2',
         x: 0,
         y: 0,
@@ -580,7 +573,7 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     const onUpdateDataStore = jest.fn();
     const evaluationScope = {};
     
-    renderComponent(
+    const { container } = renderComponent(
       <SelectPlugin.renderer
         component={component}
         mode="preview"
@@ -590,10 +583,12 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       />
     );
     
-    // Wait for useEffect to run and initialize dataStore
-    await waitFor(() => {
-      expect(onUpdateDataStore).toHaveBeenCalledWith('user.country', 'Option 2');
-    }, { timeout: 2000 });
+    // Components now use local state and don't automatically initialize dataStore on mount
+    // They only update dataStore when user interacts with them
+    const select = container.querySelector('select');
+    expect(select).toBeInTheDocument();
+    // Component should display the default value from local state
+    expect(select?.value).toBe('Option 2');
   });
 
   it('should show default value in preview when dataStore is empty for SELECT component', async () => {
@@ -607,7 +602,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       props: {
         placeholder: 'Select option',
         options: 'Option 1,Option 2,Option 3',
-        dataStoreKey: 'user.country',
         defaultValue: 'Option 3',
         x: 0,
         y: 0,
@@ -647,7 +641,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
       props: {
         placeholder: 'Select option',
         options: 'Option 1,Option 2,Option 3',
-        dataStoreKey: 'user.country',
         defaultValue: 'Option 1',
         x: 0,
         y: 0,
@@ -658,7 +651,7 @@ describe('PropertiesPanelCore - Default Value Property', () => {
     
     // dataStore already has a value
     const dataStore = {
-      'user.country': 'Option 2',
+      'select1': 'Option 2',
     };
     const evaluationScope = {};
     
@@ -685,7 +678,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         props: { 
           placeholder: 'Select an option',
           options: 'Option 1,Option 2',
-          dataStoreKey: 'user.country',
           defaultValue: '',
           x: 0,
           y: 0,
@@ -713,7 +705,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         type: ComponentType.TEXTAREA, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.message',
           defaultValue: '',
           x: 0,
           y: 0,
@@ -741,7 +732,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         type: ComponentType.CHECKBOX, 
         props: { 
           label: 'Accept terms',
-          dataStoreKey: 'user.accepted',
           defaultValue: false,
           x: 0,
           y: 0,
@@ -769,7 +759,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         type: ComponentType.SWITCH, 
         props: { 
           label: 'Enable feature',
-          dataStoreKey: 'user.enabled',
           defaultValue: false,
           x: 0,
           y: 0,
@@ -797,7 +786,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         type: ComponentType.RADIO_GROUP, 
         props: { 
           options: 'Option 1,Option 2',
-          dataStoreKey: 'user.gender',
           defaultValue: '',
           x: 0,
           y: 0,
@@ -825,7 +813,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           defaultValue: '',
           x: 0,
           y: 0,
@@ -858,7 +845,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         props: { 
           placeholder: 'Select an option',
           options: 'Option 1,Option 2,Option 3',
-          dataStoreKey: 'user.country',
           defaultValue: 'Option 1',
           x: 0,
           y: 0,
@@ -889,7 +875,6 @@ describe('PropertiesPanelCore - Default Value Property', () => {
         props: { 
           placeholder: 'Select an option',
           options: 'Option 1,Option 2',
-          dataStoreKey: 'user.country',
           defaultValue: '',
           x: 0,
           y: 0,
@@ -935,7 +920,6 @@ describe('PropertiesPanelCore - Group Ordering', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           x: 0,
           y: 0,
           width: 200,
@@ -985,7 +969,6 @@ describe('PropertiesPanelCore - Group Ordering', () => {
         props: { 
           placeholder: 'Select an option',
           options: 'Option 1,Option 2',
-          dataStoreKey: 'user.country',
           x: 0,
           y: 0,
           width: 200,
@@ -1059,7 +1042,6 @@ describe('PropertiesPanelCore - Property Tabs', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           x: 0,
           y: 0,
           width: 200,
@@ -1090,7 +1072,6 @@ describe('PropertiesPanelCore - Property Tabs', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           opacity: 1,
           boxShadow: '2px 2px 5px #ccc',
           borderRadius: '4px',
@@ -1140,7 +1121,6 @@ describe('PropertiesPanelCore - Property Tabs', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           x: 0,
           y: 0,
           width: 200,
@@ -1201,7 +1181,6 @@ describe('PropertiesPanelCore - Property Tabs', () => {
         type: ComponentType.INPUT, 
         props: { 
           placeholder: 'Enter text',
-          dataStoreKey: 'user.name',
           opacity: 1,
           borderWidth: '1px',
           x: 0,

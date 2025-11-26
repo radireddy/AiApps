@@ -18,7 +18,6 @@ describe('SelectPlugin', () => {
       props: {
         x: 0, y: 0, width: 200, height: 40,
         placeholder: 'Choose one...',
-        dataStoreKey: 'selection',
         options: 'Apple,Banana,Orange',
       },
     };
@@ -33,7 +32,8 @@ describe('SelectPlugin', () => {
     });
 
     it('should show the selected value from dataStore', () => {
-      render(<SelectRenderer component={baseComponent} mode="preview" dataStore={{ selection: 'Banana' }} evaluationScope={{}} />);
+      // Components now use their ID as the dataStore key
+      render(<SelectRenderer component={baseComponent} mode="preview" dataStore={{ select1: 'Banana' }} evaluationScope={{}} />);
       const select = screen.getByRole('combobox') as HTMLSelectElement;
       expect(select.value).toBe('Banana');
     });
@@ -43,7 +43,8 @@ describe('SelectPlugin', () => {
       render(<SelectRenderer component={baseComponent} mode="preview" dataStore={{}} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
       const select = screen.getByRole('combobox');
       await userEvent.selectOptions(select, 'Orange');
-      expect(onUpdateDataStore).toHaveBeenCalledWith('selection', 'Orange');
+      // Components now use their ID as the dataStore key
+      expect(onUpdateDataStore).toHaveBeenCalledWith('select1', 'Orange');
     });
   });
   
@@ -55,7 +56,6 @@ describe('SelectPlugin', () => {
         id: 'select1',
         props: {
           placeholder: 'My Placeholder',
-          dataStoreKey: 'myKey',
           options: 'A,B,C',
         } as any
       },
@@ -66,7 +66,6 @@ describe('SelectPlugin', () => {
     it('should render properties correctly', () => {
       render(<SelectProperties {...baseProps} />);
       expect(screen.getByLabelText('Placeholder')).toHaveValue('My Placeholder');
-      expect(screen.getByLabelText(/Value \(Data Store Key\)/i)).toHaveValue('myKey');
       expect(screen.getByLabelText('Options')).toHaveValue('A,B,C');
     });
   });

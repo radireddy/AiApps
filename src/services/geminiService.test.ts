@@ -51,7 +51,7 @@ describe('geminiService', () => {
   it('should process the API response and return a new AppDefinition', async () => {
     const mockApiResponse = {
       add: [
-        { id: 'INPUT_1', type: 'INPUT', props: { x: 10, y: 10, width: 150, height: 40, dataStoreKey: 'name' } },
+        { id: 'INPUT_1', type: 'INPUT', props: { x: 10, y: 10, width: 150, height: 40 } },
         { id: 'PANEL_1', type: 'PANEL', props: { x: 100, y: 100, width: 200, height: 200 } },
         { id: 'BUTTON_1', type: 'BUTTON', parentId: 'PANEL_1', props: { x: 20, y: 20, width: 100, height: 40 } },
       ],
@@ -70,8 +70,8 @@ describe('geminiService', () => {
     // Check that pageId was added
     expect(result?.components[0].pageId).toBe('page1');
 
-    // Check that dataStore was populated
-    expect(result?.dataStore.name).toBe('');
+    // Check that dataStore was populated with component ID as key
+    expect(result?.dataStore.INPUT_1).toBe('');
   });
 
   it('should handle double-stringified JSON responses', async () => {

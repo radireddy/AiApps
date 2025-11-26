@@ -14,7 +14,7 @@ import '@testing-library/jest-dom';
 // Mock the dragState utility
 jest.mock('../../utils/dragState', () => ({
   dragState: {
-    getState: jest.fn(() => ({ isDragging: false, mouseX: 0, mouseY: 0, draggedComponentIds: [] })),
+    getState: jest.fn(() => ({ isDragging: false, mouseX: 0, mouseY: 0, draggedComponentIds: [], highlightedContainerId: null })),
     setState: jest.fn(),
     subscribe: jest.fn((listener) => {
       // Return unsubscribe function
@@ -22,6 +22,7 @@ jest.mock('../../utils/dragState', () => ({
     }),
     startDrag: jest.fn(),
     updateMousePosition: jest.fn(),
+    setHighlightedContainer: jest.fn(),
     endDrag: jest.fn(),
   },
 }));

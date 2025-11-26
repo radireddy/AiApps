@@ -18,7 +18,6 @@ describe('TextareaPlugin', () => {
       props: {
         x: 0, y: 0, width: 250, height: 100,
         placeholder: 'Enter long text...',
-        dataStoreKey: 'user.bio',
       },
     };
 
@@ -30,7 +29,8 @@ describe('TextareaPlugin', () => {
     });
 
     it('should display value from dataStore', () => {
-      render(<TextareaRenderer component={baseComponent} mode="preview" dataStore={{ user: { bio: 'A detailed bio.' } }} evaluationScope={{}} />);
+      // Components now use their ID as the dataStore key
+      render(<TextareaRenderer component={baseComponent} mode="preview" dataStore={{ textarea1: 'A detailed bio.' }} evaluationScope={{}} />);
       expect(screen.getByDisplayValue('A detailed bio.')).toBeInTheDocument();
     });
 
@@ -39,7 +39,8 @@ describe('TextareaPlugin', () => {
       render(<TextareaRenderer component={baseComponent} mode="preview" dataStore={{}} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
       const textarea = screen.getByPlaceholderText('Enter long text...');
       await userEvent.type(textarea, 'Typing a bio');
-      expect(onUpdateDataStore).toHaveBeenLastCalledWith('user.bio', 'Typing a bio');
+      // Components now use their ID as the dataStore key
+      expect(onUpdateDataStore).toHaveBeenLastCalledWith('textarea1', 'Typing a bio');
     });
 
     it('should be disabled based on an expression', () => {
@@ -55,7 +56,7 @@ describe('TextareaPlugin', () => {
       const props = {
         component: {
           id: 'ta1',
-          props: { placeholder: 'My Placeholder', dataStoreKey: 'myKey' } as any,
+          props: { placeholder: 'My Placeholder' } as any,
         },
         updateProp,
         onOpenExpressionEditor: jest.fn(),

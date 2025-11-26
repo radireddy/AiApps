@@ -60,7 +60,6 @@ const mockApp: AppDefinition = {
         props: { 
             x: 10, y: 10, width: 100, height: 50,
             placeholder: 'Enter name', 
-            dataStoreKey: 'userName' 
         } as any
     },
     {
@@ -125,8 +124,8 @@ describe('Project Exporter', () => {
     it('translates component property access', () => {
       const expr = '{{ input1.value }}';
       const result = translateExpression(expr, mockApp, 'raw-js');
-      // input1 maps to userName key
-      expect(result).toBe("get(dataStore, 'userName')");
+      // input1 now uses component ID as dataStore key
+      expect(result).toBe("get(dataStore, 'input1')");
     });
 
     it('translates template literals', () => {
@@ -196,8 +195,8 @@ describe('Project Exporter', () => {
     it('generates input component with binding', () => {
       const code = generatePageTsx(mockApp.pages[0], mockApp.components, mockApp);
       expect(code).toContain('<input');
-      expect(code).toContain("value={get(dataStore, 'userName') || ''}");
-      expect(code).toContain("onChange={(e) => updateDataStore('userName', e.target.value)}");
+      expect(code).toContain("value={get(dataStore, 'input1') || ''}");
+      expect(code).toContain("updateDataStore('input1', e.target.value)");
     });
 
     it('generates button with click handler', () => {

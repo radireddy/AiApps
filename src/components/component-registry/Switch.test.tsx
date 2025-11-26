@@ -18,7 +18,6 @@ describe('SwitchPlugin', () => {
       props: {
         x: 0, y: 0, width: 180, height: 30,
         label: 'Enable Feature',
-        dataStoreKey: 'feature.enabled',
       },
     };
 
@@ -30,19 +29,21 @@ describe('SwitchPlugin', () => {
     });
 
     it('should be checked if the dataStore value is true', () => {
-      render(<SwitchRenderer component={baseComponent} mode="preview" dataStore={{ feature: { enabled: true } }} evaluationScope={{}} />);
+      // Components now use their ID as the dataStore key
+      render(<SwitchRenderer component={baseComponent} mode="preview" dataStore={{ switch1: true }} evaluationScope={{}} />);
       const switchEl = screen.getByRole('switch', { name: 'Enable Feature' });
       expect(switchEl).toHaveAttribute('aria-checked', 'true');
     });
 
     it('should call onUpdateDataStore when clicked', async () => {
       const onUpdateDataStore = jest.fn();
-      render(<SwitchRenderer component={baseComponent} mode="preview" dataStore={{ feature: { enabled: false } }} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
+      render(<SwitchRenderer component={baseComponent} mode="preview" dataStore={{ switch1: false }} onUpdateDataStore={onUpdateDataStore} evaluationScope={{}} />);
       
       const switchEl = screen.getByRole('switch', { name: 'Enable Feature' });
       await userEvent.click(switchEl);
 
-      expect(onUpdateDataStore).toHaveBeenCalledWith('feature.enabled', true);
+      // Components now use their ID as the dataStore key
+      expect(onUpdateDataStore).toHaveBeenCalledWith('switch1', true);
     });
 
     it('should be selectable in edit mode (not disabled)', () => {
@@ -59,7 +60,7 @@ describe('SwitchPlugin', () => {
       const props = {
         component: {
           id: 'sw1',
-          props: { label: 'My Switch', dataStoreKey: 'isSet' } as any,
+          props: { label: 'My Switch' } as any,
         },
         updateProp,
         onOpenExpressionEditor: jest.fn(),

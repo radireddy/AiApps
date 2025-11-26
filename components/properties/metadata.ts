@@ -164,7 +164,18 @@ export interface PropertyGroup {
     properties: PropertyMetadata[];
     context: PropertyContext;
     onUpdate: (propertyId: string, value: any) => void;
-    onOpenExpressionEditor?: (initialValue: string, onSave: (newValue: string) => void) => void;
+    onOpenExpressionEditor?: (
+      initialValue: string, 
+      onSave: (newValue: string) => void,
+      propertyContext?: {
+        propertyId?: string;
+        propertyLabel?: string;
+        propertyType?: string;
+        componentType?: string;
+        tab?: string;
+        group?: string;
+      }
+    ) => void;
     getValue: (propertyId: string) => any;
     getError: (propertyId: string) => string | undefined;
     isMixed: (propertyId: string) => boolean;

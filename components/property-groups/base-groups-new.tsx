@@ -324,15 +324,6 @@ export const InputValueGroup: PropertyGroup = {
     return shouldShowProperty(ComponentTypeGroups.INPUT_COMPONENTS, context);
   },
   properties: [
-    {
-      key: 'dataStoreKey',
-      label: 'Value (Data Store Key)',
-      type: 'text',
-      placeholder: 'e.g. user.name',
-      condition: (props: ComponentProps, context?: Record<string, any>) => {
-        return shouldShowProperty(ComponentTypeGroups.DATA_BINDING_COMPONENTS, context) || 'dataStoreKey' in props;
-      },
-    },
     // defaultValue - needs to be added if not present
     {
       key: 'defaultValue',
@@ -463,7 +454,7 @@ export const EventPropertiesGroup: PropertyGroup = {
         return shouldShowProperty([ComponentType.BUTTON], context) || 'actionType' in props;
       },
     },
-    // onChange - handled via dataStoreKey for inputs
+    // onChange - handled via value prop for inputs
     // onSelect - handled via rowSelectAction for Table
     {
       key: 'rowSelectAction',

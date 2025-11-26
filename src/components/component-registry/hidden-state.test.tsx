@@ -253,7 +253,6 @@ describe('Component Hidden State', () => {
       props: {
         x: 0, y: 0, width: 200, height: 40,
         placeholder: 'Enter text',
-        dataStoreKey: 'testKey',
       },
     },
     () => screen.getByRole('textbox')
@@ -287,7 +286,6 @@ describe('Component Hidden State', () => {
       props: {
         x: 0, y: 0, width: 150, height: 30,
         label: 'Check me',
-        dataStoreKey: 'checkboxKey',
       },
     },
     () => screen.getByRole('checkbox')
@@ -303,7 +301,6 @@ describe('Component Hidden State', () => {
       props: {
         x: 0, y: 0, width: 180, height: 30,
         label: 'Toggle me',
-        dataStoreKey: 'checkboxKey',
       },
     },
     () => screen.getByRole('switch')
@@ -319,7 +316,6 @@ describe('Component Hidden State', () => {
       props: {
         x: 0, y: 0, width: 200, height: 40,
         placeholder: 'Select option',
-        dataStoreKey: 'testKey',
         options: 'Option1,Option2',
       },
     },
@@ -336,7 +332,6 @@ describe('Component Hidden State', () => {
       props: {
         x: 0, y: 0, width: 250, height: 100,
         placeholder: 'Enter text',
-        dataStoreKey: 'testKey',
       },
     },
     () => screen.getByRole('textbox')
@@ -351,7 +346,6 @@ describe('Component Hidden State', () => {
       type: ComponentType.RADIO_GROUP,
       props: {
         x: 0, y: 0, width: 150, height: 80,
-        dataStoreKey: 'testKey',
         options: 'Option1,Option2',
       },
     },

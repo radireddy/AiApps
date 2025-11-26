@@ -176,9 +176,9 @@ Your app's appearance is controlled by the **Theme**, which you can edit in the 
 
 ### The Data Store
 
-The `dataStore` is a central JSON object that holds the state for your UI components. When you bind an input to a `dataStoreKey`, any change in that input automatically updates the value in the `dataStore`, and any component referencing that value will re-render.
+The `dataStore` is a central JSON object that holds the state for your UI components. Components can use the `value` property with expressions to bind to the `dataStore`, and any component referencing that value will re-render.
 
-*   **Example**: An Input with `dataStoreKey` set to `formData.firstName`. As you type, the `dataStore` will look like: `{ "formData": { "firstName": "..." } }`.
+*   **Example**: An Input with `value` set to `{{formData.firstName}}`. As you type, the `dataStore` will look like: `{ "formData": { "firstName": "..." } }`.
 
 ### App State Variables
 

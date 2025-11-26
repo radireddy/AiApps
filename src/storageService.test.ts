@@ -103,14 +103,17 @@ describe('storageService (with localStorage mock)', () => {
       await storageService.importApps(jsonString);
       const allApps = await storageService.getAllAppsMetadata();
       expect(allApps.length).toBe(1);
-      expect(allApps[0].name).toBe('My App');
+      // Imported apps get a timestamp appended to avoid name conflicts
+      expect(allApps[0].name).toContain('My App');
+      expect(allApps[0].name).toMatch(/My App \(Imported \d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\)/);
     });
 
-    it('should import a full backup, replacing existing apps', async () => {
+    it('should import a full backup, adding new apps', async () => {
         // Setup initial state with one app
         const existingApp = { ...mockApp, id: 'existing_app', name: 'Existing App' };
         await storageService.saveApp(existingApp);
-        expect((await storageService.getAllAppsMetadata()).length).toBe(1);
+        const beforeImport = await storageService.getAllAppsMetadata();
+        expect(beforeImport.length).toBe(1);
 
         const backupApps = [
             { ...mockApp, id: 'backup1', name: 'Backup App 1' },
@@ -120,9 +123,20 @@ describe('storageService (with localStorage mock)', () => {
         await storageService.importApps(jsonString);
 
         const allApps = await storageService.getAllAppsMetadata();
-        expect(allApps.length).toBe(2);
-        expect(allApps.find(app => app.name === 'Backup App 1')).toBeDefined();
-        expect(allApps.find(app => app.name === 'Existing App')).toBeUndefined();
+        // Imported apps get a timestamp appended
+        // Check that both backup apps were imported (with timestamp in name)
+        const backupApp1 = allApps.find(app => app.name && app.name.includes('Backup App 1'));
+        const backupApp2 = allApps.find(app => app.name && app.name.includes('Backup App 2'));
+        
+        expect(backupApp1).toBeDefined();
+        expect(backupApp2).toBeDefined();
+        // Verify they have the imported timestamp format
+        if (backupApp1) {
+            expect(backupApp1.name).toMatch(/Backup App 1 \(Imported \d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\)/);
+        }
+        if (backupApp2) {
+            expect(backupApp2.name).toMatch(/Backup App 2 \(Imported \d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\)/);
+        }
     });
   });
 

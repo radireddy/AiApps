@@ -189,6 +189,25 @@ The available data sources are: ${currentApp.dataSources.map(ds => `'${ds.id}' (
 
     let currentComponents = [...currentApp.components];
     const dataStoreUpdates: DataStore = {};
+    
+    // Initialize dataStore values for new form components using their component IDs
+    // Since we removed dataStoreKey, components now use their ID as the dataStore key
+    if (patch.add?.length) {
+        patch.add.forEach((comp: any) => {
+            if (comp && comp.id && comp.type) {
+                // Initialize dataStore for form components (INPUT, TEXTAREA, SELECT, CHECKBOX, SWITCH, RADIO_GROUP)
+                const formComponentTypes = ['INPUT', 'TEXTAREA', 'SELECT', 'CHECKBOX', 'SWITCH', 'RADIO_GROUP'];
+                if (formComponentTypes.includes(comp.type)) {
+                    // Initialize with empty string for text inputs, false for checkboxes/switches
+                    if (comp.type === 'CHECKBOX' || comp.type === 'SWITCH') {
+                        dataStoreUpdates[comp.id] = false;
+                    } else {
+                        dataStoreUpdates[comp.id] = '';
+                    }
+                }
+            }
+        });
+    }
 
     if (patch.delete?.length) {
         const idsToDelete = new Set<string>(patch.delete);
@@ -251,11 +270,6 @@ The available data sources are: ${currentApp.dataSources.map(ds => `'${ds.id}' (
                 props: { ...(plugin?.paletteConfig.defaultProps || {}), ...(comp.props || {}), } as ComponentProps
             };
             const props = finalComp.props as any;
-            if (props.dataStoreKey && !props.dataStoreKey.includes('.')) {
-                if (!currentApp.dataStore.hasOwnProperty(props.dataStoreKey)) {
-                    dataStoreUpdates[props.dataStoreKey] = (comp.type === ComponentType.CHECKBOX || comp.type === ComponentType.SWITCH) ? false : '';
-                }
-            }
             return finalComp;
         }).filter((c): c is AppComponent => c !== null);
 
